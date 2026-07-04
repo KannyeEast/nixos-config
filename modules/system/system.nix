@@ -142,11 +142,6 @@ in
             #        };
             #    };
             
-            #    environment.systemPackages = with pkgs; [
-            #        nixfmt
-            #        deadnix
-            #    ];
-            
             nix = {
                 # General settings
                 settings = {

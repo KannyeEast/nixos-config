@@ -1,5 +1,11 @@
-﻿./vid_transcript.txt
-./PLANNING.md
-./README.md 
-./install.sh
-./scripts
+﻿# Temporary ignore
+.vid_transcript.txt
+.PLANNING.md
+.README.md 
+.install.sh
+scripts
+
+
+result
+.direnv
+.env
