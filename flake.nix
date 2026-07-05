@@ -60,6 +60,12 @@
             url = "github:NixOS/nixos-hardware/master";  
             inputs.nixpkgs.follows = "nixpkgs";
         };
+        
+        ## Shell
+        quickshell = {
+            url = "git+https://git.outfoxxed.me/outfoxxed/quickshell";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
 
         ### Browser
         zen-browser = {
@@ -69,7 +75,6 @@
         };
 
         # @TODO: Custom packages
-        # >> Custom quickshell bar
         # >> https://github.com/pewdiepie-archdaemon/odysseus
     };
 

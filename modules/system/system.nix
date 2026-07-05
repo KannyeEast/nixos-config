@@ -123,7 +123,6 @@ in
             # Nix system settings
             #
             
-            # @TODO: point flake at git repo for nh and autoupgrade 
             programs.nh = {
                 enable = true;
                 clean.enable = true;
