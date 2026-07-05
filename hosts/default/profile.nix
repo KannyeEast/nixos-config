@@ -83,7 +83,7 @@ in
                 };
                 
                 # "waybar" | "dms" | "noctalia" | "caelestia"
-                shell = "waybar";
+                # shell = "waybar";
             };
         };
     };                                
