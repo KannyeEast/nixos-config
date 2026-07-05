@@ -16,5 +16,5 @@
     
     # Optional
     ## https://github.com/NixOS/nixos-hardware
-    hardwareModel = null;
+    hardwareModel = "asus-zephyrus-gu605my";
 }
