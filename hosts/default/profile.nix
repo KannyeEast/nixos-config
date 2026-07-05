@@ -77,7 +77,7 @@ in
 
                 displayManager = {
                     # "gdm" | "regreet" | "lemurs" | "ly" | "sddm"
-                    # type = "gdm";
+                    type = "gdm";
                     settings = { };
                     extraPackages = [ ];
                 };
