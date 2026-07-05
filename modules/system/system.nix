@@ -15,9 +15,10 @@ in
         imports = [
             nixos.boot
             nixos.debugging
+            nixos.user
+            # @TODO: These 2 need to be profile specific
             nixos.homeManager
             nixos.secrets
-            nixos.user
         ];
         
         options = {
@@ -53,11 +54,6 @@ in
                     default = "default";
                     description = "Set the hostname for this machine";
                 };
-                flakeModules = mkOption {
-                    type = types.listOf (types.enum [ "home-manager" "secrets" ]);
-                    default = [ ];
-                    description = "Which flake-module features to enable";
-                };
                 timeZone = mkOption {
                     type = types.str;
                     default = "America/New_York";
@@ -79,9 +75,6 @@ in
         };
         
         config = {
-            internal.user.homeManager.enable = elem "home-manager" profile.flakeModules;
-            internal.user.secrets.enable = elem "secrets" profile.flakeModules; 
-        
             #
             # Timezone
             #

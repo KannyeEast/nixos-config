@@ -23,8 +23,6 @@ in
         
             profile.system = {
                 hostname = hostname;
-                # "home-manager" | "secrets"
-                flakeModules = [ "home-manager" "secrets" ];
                 timeZone = "America/New_York";
                 locale.default = "en_US.UTF-8";
                 locale.extra = "en_US.UTF-8";

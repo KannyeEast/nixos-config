@@ -14,11 +14,8 @@ in
             inputs.home-manager.nixosModules.home-manager
         ];
         
-        options = {
-            internal.user.homeManager.enable = mkEnableOption "Home-manager" // { internal = true; };
-        };
         
-        config = mkIf homeManager.enable {
+        config = {
             # Create user profile for home-manager
             home-manager = {
                 useUserPackages = true;

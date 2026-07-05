@@ -12,12 +12,8 @@ in
         imports = [
             inputs.agenix.nixosModules.default
         ];
-        
-        options = {
-            internal.user.secrets.enable = mkEnableOption "Secrets" // { internal = true; };
-        };
     
-        config = mkIf secrets.enable {
+        config = {
             age.secrets = listToAttrs (map
             (name: nameValuePair (removeSuffix ".age" name) {
                 file = ../../secrets + "/${name}";
@@ -26,4 +22,4 @@ in
     };
 }
 
-# @TODO: Redo this
+# @TODO: Redo this with sops-nix
