@@ -39,7 +39,7 @@ in
                 
                 
                 # "systemd-boot" | "grub" | "limine"
-                bootloader.type = "systemd-boot";
+                bootloader.type = "grub";
                 bootloader.settings = { };
                 bootloader.extras = { };
                 
@@ -77,9 +77,12 @@ in
 
                 displayManager = {
                     # "gdm" | "regreet" | "lemurs" | "ly" | "sddm"
-                    type = "gdm";
-                    settings = { };
-                    extraPackages = [ ];
+                    type = "sddm";
+                    settings = {
+                        theme = "sddm-astronaut-theme";
+                        extraPackages = with pkgs.kdePackages; [ qtsvg qtmultimedia qtvirtualkeyboard qt5compat ];
+                    };
+                    extraPackages = [ (pkgs.sddm-astronaut.override { embeddedTheme = "astronaut"; }) ];
                 };
                 
                 # "waybar" | "dms" | "noctalia" | "caelestia"
