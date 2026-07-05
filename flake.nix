@@ -69,7 +69,7 @@
         };
 
         # @TODO: Custom packages
-        # >> https://github.com/debuggyo/Exo
+        # >> Custom quickshell bar
         # >> https://github.com/pewdiepie-archdaemon/odysseus
     };
 

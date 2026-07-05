@@ -1,5 +1,5 @@
 ﻿flake := justfile_directory()
-host   := `hostname`
+host := `hostname`
 
 # Overview
 default:
