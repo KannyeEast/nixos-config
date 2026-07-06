@@ -28,6 +28,8 @@ in
                     "http://kagi.com" "https://kagi.com"
                     "http://simplelogin.io" "https://simplelogin.io"
                 ];
+                Behavior = "reject-tracker-and-partition-foreign";
+                BehaviorPrivateBrowsing = "reject-tracker-and-partition-foreign";
             };
             DisableAppUpdate = true;
             DisableFeedbackCommands = true;
@@ -141,6 +143,7 @@ in
             };
         };
         
+        # @TODO: Still need to look through `Preferences` and `settings`
         programs.zen-browser.profiles.default.settings = {
             "zen.pinned-tab-manager.restore-pinned-tabs-to-pinned-url" = true;
             "zen.tabs.ctrl-tab.ignore-pending-tabs" = true;
@@ -153,7 +156,6 @@ in
             "zen.welcome-screen.seen" = true;
             "zen.workspaces.indicator-name-center" = true;
             "zen.workspaces.show-workspace-indicator" = true;
-
         };
     };
 }
