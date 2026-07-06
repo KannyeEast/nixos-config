@@ -1,6 +1,6 @@
 { config, lib, ... }:
 let
-    inherit (config.flake.modules) nixos; 
+    inherit (config.flake.modules) nixos homeManager; 
     inherit (lib) mkOption mkDefault types;
 in
 {
@@ -14,13 +14,12 @@ in
     {
         imports = [
             nixos.boot
-            # nixos.git @TODO: Import once settings are in place 
+            nixos.homeManager
             nixos.locale
+            nixos.secrets
             nixos.user
             
-            # @TODO: These 2 need to be profile specific
-            nixos.homeManager
-            nixos.secrets
+            # homeManager.git @TODO: Import once settings are in place 
         ];
         
         options = {
