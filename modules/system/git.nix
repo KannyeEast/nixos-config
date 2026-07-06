@@ -1,16 +1,33 @@
 { config, lib, ... }:
 let
-    inherit (config.flake.modules) homeManager;
     inherit (lib) mkIf;
 in
 {
     flake.modules.homeManager.git = { config, ... }:
     let
-        inherit (config.internal.user) homeManager;
+        inherit (config.profile) user;
     in
     {
-        config = mkIf homeManager.enable {
-        
+        options = {
+            # Git settings
+        };
+    
+        config = {
+            programs.git = {
+                enable = true;
+                userName = "<name>";
+                userEmail = "<email>";
+                signing = {
+                    key = "<key>";
+                    signByDefault = true;
+                };
+            };
+            
+            # For now also GitHub
+            programs.gh = {
+                enable = true;
+                gitCredentialHelper.enable = true;
+            };
         };
     };
 }

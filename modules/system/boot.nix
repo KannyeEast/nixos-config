@@ -3,69 +3,59 @@ let
     inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce types recursiveUpdate;
 in
 {
-    flake.modules.nixos.boot = { config, pkgs, ... }:
+    flake.modules.nixos.boot = { config, ... }:
     let
-        inherit (config.profile.system) bootloader plymouth;
+        inherit (config.profile.system) bootloader;
+        iBoot = config.internal.system.bootloader;
         
-        createConfig = name: preset: 
-            if bootloader.type == name
-            then (recursiveUpdate preset bootloader.settings) // { enable = lib.mkForce true; }
-            else { };
+        createConfig = preset: settings:
+            (recursiveUpdate preset settings) // { enable = mkForce true; };
     in
     {
         options = {
+            internal.system.bootloader.enable = mkEnableOption "Enable boot-loader" // { internal = true; };
             profile.system.bootloader = {
-                type = mkOption {
-                    type = types.enum [ "systemd-boot" "grub" "limine" ];
-                    default = "systemd-boot";
-                    description = "Choose which bootloader to enable";
-                };
                 settings = mkOption {
                     type = types.attrsOf types.anything;
                     default = { };
-                    description = "Options for theming and configuring the chosen bootloader";
+                    description = "Options for configuring the boot-loader";
                 };
-                extras = mkOption {
+                plymouth = mkOption {
                     type = types.attrsOf types.anything;
                     default = { };
-                    description = "Extra boot settings not present by default or for flake inputs";
-                };
-            };
-            profile.system.plymouth = {
-                enable = mkEnableOption "Plymouth";
-                settings = mkOption {
-                    type = types.attrsOf types.anything;
-                    default = { };
-                    description = "Options for theming and configuring plymouth";
+                    description = "Plymouth configuring";
                 };
             };
         };
         
         config = mkMerge [
-            {
-                boot.loader.efi.canTouchEfiVariables = true;
-                boot.loader.timeout = 5;
-                boot.consoleLogLevel = 0;
-                boot.kernelParams = [
-                    "quiet"
-                    "splash"
-                    "loglevel=3"
-                    "rd.systemd.show_status=false"
-                    "rd.udev.log_level=3"
-                    "systemd.show_status=auto"
-                ];
-            }
+            (mkIf iBoot.enable {
+                boot = {
+                    loader.efi.canTouchEfiVariables = true;
+                    loader.timeout = 5;
+                    consoleLogLevel = 0;
+                    kernelParams = [
+                        "quiet"
+                        "splash"
+                        "loglevel=3"
+                        "rd.systemd.show_status=false"
+                        "rd.udev.log_level=3"
+                        "systemd.show_status=auto"
+                    ];
+                    
+                    loader.grub = createConfig {
+                        device = "nodev";
+                        useOSProber = true;
+                        efiSupport = true;
+                    } bootloader.settings;
+                    
+                    plymouth = createConfig { } bootloader.plymouth;
+                };
+            })
             
-            { boot.loader.systemd-boot = createConfig "systemd-boot" { }; }
-            { boot.loader.grub = createConfig "grub" { device = "nodev"; useOSProber = true; efiSupport = true; }; }
-            { boot.loader.limine = createConfig "limine" { }; }
-            
-            { boot = bootloader.extras; }
-            
-            { boot.plymouth = {
-                enable = plymouth.enable;
-            } // plymouth.settings; }
+            (mkIf (!iBoot.enable) {
+                boot.loader.systemd-boot.enable = true;
+            })
         ];
     };
 }
-

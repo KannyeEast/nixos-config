@@ -9,11 +9,15 @@ in
         inherit (config.profile) desktop;
     in
     {
+        # Does this stay here or should roles import this?
         imports = [
             nixos.audio
             nixos.bluetooth
-            nixos.optionals
+            nixos.desktopEnvironment
+            nixos.desktopShell
+            nixos.displayManager
             nixos.experimental
+            nixos.fonts
         ];
         
         options = {
@@ -25,8 +29,9 @@ in
         };
         
         config = {
+            # @TODO: These might not be needed anymore? Depends on how config evolves with roles (roles as replacement to program selection)
+            # Experimental = Dev (Maybe keep though) || Base stays to import non configurable (or dotfiles) packages and the modules
             internal.desktop.experimental.enable = elem "experimental" desktop.modules;
-            internal.desktop.optionals.enable = elem "optionals" desktop.modules;
         };
     };
 }

@@ -1,21 +1,14 @@
-{ inputs, config, lib, ... }:
+{ inputs, lib, ... }:
 let
-    inherit (config.flake.modules) nixos;
-    inherit (lib) mkEnableOption mkOption mkIf types getExe;
+    inherit (lib) mkOption types getExe;
 in
 {
     flake.modules.nixos.desktopEnvironment = { config, pkgs, ... }:
     let
         inherit (config.profile) user;
-        inherit (config.internal) desktop;
     in
     {
-        imports = [
-            nixos.desktopShell
-        ];
-        
         options = {
-            internal.desktop.environment.enable = mkEnableOption "Desktop Environment" // { internal = true; };
             profile.user = {
                 terminal = mkOption {
                     type = types.str;
@@ -35,10 +28,7 @@ in
             };
         };
         
-        config = mkIf desktop.environment.enable {
-            # Enable shells if we have a DE
-            internal.desktop.shell.enable = true;
-        
+        config = {
             xdg.portal = {
                 enable = true;
                 extraPortals = [

@@ -1,7 +1,7 @@
 { inputs, config, lib, ... }:
 let 
     inherit (config.flake.modules) nixos;
-    inherit (lib) mkOption types optionals;
+    inherit (lib) mkOption types elem optionals;
 in
 {
     flake.modules.nixos.hardware = { config, host, ... }:
@@ -15,6 +15,7 @@ in
             nixos.intel
             nixos.nvidia
         ] ++ optionals (hardwareModel != null) [
+            # @TODO: This probably has the same infinite recursion but need to test
             inputs.nixos-hardware.nixosModules.${hardwareModel}
         ];
         
@@ -25,20 +26,20 @@ in
                     default = false;
                     description = "Are you dual-booting NixOS";
                 };  
-                gpu = mkOption {
-                    type = types.nullOr (types.enum [ "amd" "intel" "nvidia" ]);
-                    default = null;
-                    description = "Select your primary GPU manufacturer";
+                hardware = mkOption {
+                    type = types.listOf (types.enum [ "amd" "intel" "nvidia" ]);
+                    default = [ ];
+                    description = "Select your hardware manufacturer(s)";
                 };
             };
         };
         
         config = {
-            internal.system.amd.enable = (system.gpu == "amd");
-            internal.system.intel.enable = (system.gpu == "intel");
-            internal.system.nvidia.enable = (system.gpu == "nvidia");
+            internal.system.amd.enable = elem "amd" system.hardware;
+            internal.system.intel.enable = elem "intel" system.hardware;
+            internal.system.nvidia.enable = elem "nvidia" system.hardware;
         
-            hardware.graphics.enable = (system.gpu != null);
+            hardware.graphics.enable = system.hardware != [ ];
             time.hardwareClockInLocalTime = system.dualBoot;
         };
     };

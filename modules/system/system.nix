@@ -1,7 +1,7 @@
 { config, lib, ... }:
 let
     inherit (config.flake.modules) nixos; 
-    inherit (lib) mkOption mkDefault types elem;
+    inherit (lib) mkOption mkDefault types;
 in
 {
     flake.modules.nixos.system = { config, host, ... }:
@@ -14,8 +14,10 @@ in
     {
         imports = [
             nixos.boot
-            nixos.debugging
+            # nixos.git @TODO: Import once settings are in place 
+            nixos.locale
             nixos.user
+            
             # @TODO: These 2 need to be profile specific
             nixos.homeManager
             nixos.secrets
@@ -54,58 +56,12 @@ in
                     default = "default";
                     description = "Set the hostname for this machine";
                 };
-                timeZone = mkOption {
-                    type = types.str;
-                    default = "America/New_York";
-                    description = "Set to your local time zone";
-                };
-                locale = {
-                    default = mkOption {
-                        type = types.str;
-                        default = "en_US.UTF-8";
-                        description = "Set the language and characters for the system";
-                    };
-                    extra = mkOption {
-                        type = types.str;
-                        default = "en_US.UTF-8";
-                        description = "Additional language support";
-                    };
-                };
+
             };
         };
         
         config = {
-            #
-            # Timezone
-            #
-            
-            time.timeZone = profile.timeZone;
-            
-            # Basic keymap
             console.keyMap = "us";
-            
-            #
-            # Locale
-            #
-            
-            i18n.defaultLocale = profile.locale.default;
-            i18n.extraLocaleSettings = {
-                LC_CTYPE = profile.locale.extra;
-                LC_ADDRESS =  profile.locale.extra;
-                LC_MEASUREMENT =  profile.locale.extra;
-                LC_MESSAGES =  profile.locale.extra;
-                LC_MONETARY =  profile.locale.extra;
-                LC_NAME =  profile.locale.extra;
-                LC_NUMERIC =  profile.locale.extra;
-                LC_PAPER =  profile.locale.extra;
-                LC_TELEPHONE =  profile.locale.extra;
-                LC_TIME =  profile.locale.extra;
-                LC_COLLATE =  profile.locale.extra;
-            };
-            
-            #
-            # Network
-            #
             
             networking = {
                 hostName = hostname;
@@ -121,11 +77,6 @@ in
                 clean.enable = true;
                 clean.extraArgs = "--keep-since 4d --keep 5";
                 flake = internal.repo;
-            };
-            
-            programs.direnv = {
-                enable = true;
-                nix-direnv.enable = true;
             };
             
             nix = {

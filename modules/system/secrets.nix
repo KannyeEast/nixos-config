@@ -1,6 +1,6 @@
 { inputs, lib, ... }: 
 let
-    inherit (lib) mkEnableOption mkIf listToAttrs removeSuffix nameValuePair;
+    inherit (lib) listToAttrs removeSuffix nameValuePair;
 in
 {
     flake.modules.nixos.secrets = { config, host, ... }:

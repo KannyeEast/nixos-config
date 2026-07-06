@@ -23,49 +23,10 @@ in
                     Set the path to of your passwords file
                     '';
                 };
-                shell = mkOption {
-                    type = types.enum [ "bash" "zsh" "fish" ];
-                    default = "zsh";
-                    description = "Select your TUI shell: bash | zsh | fish ";
-                };
-                fonts = {
-                    size = mkOption {
-                        type = types.int;
-                        default = 14;
-                        description = "Set your font size";
-                    };
-                    packages = mkOption {
-                        type = types.listOf types.package;
-                        default = [ pkgs.noto-fonts pkgs.noto-fonts-cjk-sans pkgs.noto-fonts-color-emoji pkgs.nerd-fonts.jetbrains-mono];
-                        description = "Import any font package you want";
-                    };
-                    defaults = {
-                        serif = mkOption {
-                            type = types.listOf types.str;
-                            default = [ "Noto Serif" ];
-                            description = "Default Serif font";
-                        };
-                        sans = mkOption {
-                            type = types.listOf types.str;
-                            default = [ "Noto Sans" ];
-                            description = "Default Sans font";
-                        };
-                        mono = mkOption {
-                            type = types.listOf types.str;
-                            default = [ "JetBrains Mono" ];
-                            description = "Default Mono font";
-                        };
-                    };
-                };
             };
         };
         
         config = {
-            
-            #
-            # User
-            #
-        
             users.mutableUsers = false;
             
             # Create user profile
@@ -77,10 +38,11 @@ in
                     "networkmanager"    # network configuration
                 ];
                 
+                # @TODO: Need a better approach to this
                 hashedPasswordFile = mkIf (user.hashedPasswordFile != null) user.hashedPasswordFile;
                 initialPassword = mkIf (user.hashedPasswordFile == null) "nixos";
                 
-                shell = pkgs.${user.shell};
+                shell = pkgs.zsh;
             };
             
             services.openssh = {
@@ -88,30 +50,12 @@ in
                 openFirewall = true;
             };
             
-            programs.${user.shell}.enable = true;
+            programs.zsh.enable = true;
             
             nix.settings.trusted-users = [
                 "root"
                 "@wheel"
             ];
-            
-            #
-            # Fonts
-            #
-            
-            fonts = {
-                fontDir.enable = true;
-                enableDefaultPackages = true;
-                
-                packages = [
-                ] ++ user.fonts.packages;
-                
-                fontconfig = {
-                    defaultFonts.serif = user.fonts.defaults.serif;
-                    defaultFonts.sansSerif = user.fonts.defaults.sans;
-                    defaultFonts.monospace = user.fonts.defaults.mono;
-                };
-            };
         };
     };
 }

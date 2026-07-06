@@ -2,9 +2,10 @@
 .vid_transcript.txt
 .PLANNING.md
 .README.md 
+.AGENTS.md
 .install.sh
 scripts
-
+*.ps1
 
 result
 .direnv

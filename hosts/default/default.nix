@@ -1,8 +1,9 @@
 { inputs, config, ... }:
 let
     inherit ( config.flake.modules) nixos;
-    inherit (import ./_host.nix) hostname system;
+    
     host = import ./_host.nix;
+    inherit (host) hostname system;
 in
 {
     flake.nixosConfigurations.${hostname} = inputs.nixpkgs.lib.nixosSystem {
@@ -17,11 +18,10 @@ in
     /*
     Planned additions:
     - DevEnv
-    - VM's/Docker
+    - Docker (compose)
     - Disko
     - Impermanence 
-    - Stylix
     */
     
-    # @TODO: Refactor modules to work with role system
+    # @TODO: This file should move to lib/ and be generic
 } 

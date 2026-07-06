@@ -9,17 +9,19 @@ in
     
     in
     {
+        # @TODO: Imports shouldn't be visible to host. Role system handles who imports what automatically and enables it
         imports = [
             nixos.system
             nixos.hardware
             nixos.base
-            nixos.desktopEnvironment
-            nixos.displayManager
+            nixos.direnv
+            nixos.debug # @TODO: This needs a proper env
         ];
         
         config = {
-            internal.system.debugging.enable = true;
-            internal.desktop.environment.enable = true;
+            # Temp access >> Role system later
+            internal.system.debug.enable = true;
+            # internal.system.bootloader.enable = true;
         
             profile.system = {
                 hostname = hostname;
@@ -30,19 +32,13 @@ in
                 dualBoot = false;
                 
                 # "nvidia" | "amd" | "intel"
-                gpu = "nvidia";
+                hardware = [ "nvidia" "intel" ];
                 nvidia.powerManagement = true;
                 nvidia.finegrained = false;
                 nvidia.dynamicBoost = true;
                 
-                
-                # "systemd-boot" | "grub" | "limine"
-                bootloader.type = "grub";
                 bootloader.settings = { };
-                bootloader.extras = { };
-                
-                plymouth.enable = true;
-                plymouth.settings = {
+                bootloader.plymouth = {
                     theme = "loader_2";
                     themePackages = [
                         (pkgs.adi1090x-plymouth-themes.override {
@@ -53,16 +49,15 @@ in
             };
               
             profile.user = {
-                username = "user";
+                username = "user"; # The username will also be used as git name
                 # hashedPasswordFile = age.secrets.<ageFile>.path;
-                shell = "zsh";  # "bash" | "zsh" | "fish"
                 terminal = "kitty";
                 keyboard.layout = "us";
                 keyboard.variant = "";
                 
                 fonts = {
                     size = 14;
-                    packages = [ pkgs.noto-fonts pkgs.noto-fonts-cjk-sans pkgs.noto-fonts-color-emoji pkgs.nerd-fonts.jetbrains-mono ];
+                    packages = [ ];
                     defaults.serif = [ "Noto Serif" ];
                     defaults.sans  = [ "Noto Sans" ];
                     defaults.mono  = [ "JetBrains Mono" ];
@@ -74,17 +69,22 @@ in
                 modules = [ ];
 
                 displayManager = {
-                    # "gdm" | "regreet" | "lemurs" | "ly" | "sddm"
-                    type = "sddm";
                     settings = {
                         theme = "sddm-astronaut-theme";
-                        extraPackages = with pkgs.kdePackages; [ qtsvg qtmultimedia qtvirtualkeyboard qt5compat ];
+                        extraPackages = [ 
+                            # @TODO: These can probably be directly handled by the custom quickshell bar later
+                            pkgs.kdePackages.qtsvg 
+                            pkgs.kdePackages.qtmultimedia 
+                            pkgs.kdePackages.qtvirtualkeyboard 
+                            pkgs.kdePackages.qt5compat
+                        ];
                     };
-                    extraPackages = [ (pkgs.sddm-astronaut.override { embeddedTheme = "astronaut"; }) ];
+                    extraPackages = [
+                        (pkgs.sddm-astronaut.override {
+                            embeddedTheme = "astronaut";
+                        })
+                    ];
                 };
-                
-                # "waybar" | "dms" | "noctalia" | "caelestia"
-                # shell = "waybar";
             };
         };
     };                                
