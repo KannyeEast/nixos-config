@@ -17,23 +17,33 @@ printWarn()    { printf '  %s!%s %s\n' "$YELLOW" "$NC" "$*"; }
 printError()   { printf '  %s✗%s %s\n' "$RED" "$NC" "$*" >&2; }
 printInfo()    { printf '  %sℹ%s %s\n' "$BLUE" "$NC" "$*"; }
 
-have()  { command -v "$1" >/dev/null 2>&1; }
-first() { for v in "$@"; do [ -n "$v" ] && { printf '%s' "$v"; return; }; done; }
+have()   { command -v "$1" >/dev/null 2>&1; }
+first()  { for v in "$@"; do [ -n "$v" ] && { printf '%s' "$v"; return; }; done; }
+in_list(){ local x; for x in "${GPU_LIST[@]:-}"; do [ "$x" = "$1" ] && return 0; done; return 1; }
 
 # ── minimal JSON emitters (no jq) ───────────────────────────────
 jstr() { local s=${1//\\/\\\\}; s=${s//\"/\\\"}; printf '"%s"' "$s"; }
 jarr() { local out="" a; for a in "$@"; do [ -n "$a" ] || continue; out+="${out:+, }$(jstr "$a")"; done; printf '[%s]' "$out"; }
 
-# NVIDIA PCI device-id -> architecture (approximate consumer ranges; the printed
-# device id lets you verify/correct). All map to real common-gpu-nvidia-* modules.
+# NVIDIA architecture: read the chip codename the kernel reports (authoritative),
+# fall back to approximate PCI device-id ranges only if that's unavailable.
 nvidia_arch() {
-  local id=$(( ${1:-0} )) 2>/dev/null || return
-  if   [ $id -ge $((0x2B00)) ] && [ $id -le $((0x2DFF)) ]; then echo blackwell
+  local chip
+  chip=$( { dmesg 2>/dev/null | grep -iE 'nouveau|nvidia'; lspci -d 10de:: 2>/dev/null; } \
+          | grep -oE '\b(GB|AD|GA|TU|GV|GP|GM|GK|GF)[0-9]{3}[A-Za-z]?\b' | head -1 )
+  case "${chip:0:2}" in
+    GB) echo blackwell;    return ;; AD) echo ada-lovelace; return ;;
+    GA) echo ampere;       return ;; TU) echo turing;       return ;;
+    GV) echo volta;        return ;; GP) echo pascal;       return ;;
+    GM) echo maxwell;      return ;; GK) echo kepler;       return ;;
+    GF) echo fermi;        return ;;
+  esac
+  local id=$(( ${1:-0} ))
+  if   [ $id -ge $((0x2900)) ] && [ $id -le $((0x2FFF)) ]; then echo blackwell
   elif [ $id -ge $((0x2600)) ] && [ $id -le $((0x28FF)) ]; then echo ada-lovelace
   elif [ $id -ge $((0x2200)) ] && [ $id -le $((0x25FF)) ]; then echo ampere
   elif [ $id -ge $((0x1E00)) ] && [ $id -le $((0x21FF)) ]; then echo turing
-  elif [ $id -ge $((0x1B00)) ] && [ $id -le $((0x1DFF)) ]; then echo pascal
-  fi
+  elif [ $id -ge $((0x1B00)) ] && [ $id -le $((0x1DFF)) ]; then echo pascal; fi
 }
 
 # ── preflight ───────────────────────────────────────────────────
@@ -69,7 +79,6 @@ detect_cpu_march() {
   CPU_MARCH=${exact:-x86-64-v$lvl}
 
   if [ "$CPU" = intel ] && [ -n "$exact" ]; then
-    # gcc "alderlake" -> nixos-hardware "alder-lake"
     CPU_CODENAME=$(printf '%s' "$exact" | sed -E 's/(lake|bridge|well|cove|ridge|mont)$/-\1/')
   elif [ "$CPU" = amd ]; then
     local fam mod
@@ -114,14 +123,23 @@ detect() {
   [ $has_nvidia = 1 ] && GPU_LIST+=(nvidia)
   [ $has_amd = 1 ]    && GPU_LIST+=(amd)
   [ $has_intel = 1 ]  && GPU_LIST+=(intel)
-  NVIDIA_ARCH=""; [ $has_nvidia = 1 ] && [ -n "$NVIDIA_DEVID" ] && NVIDIA_ARCH=$(nvidia_arch "$NVIDIA_DEVID")
+
+  # Which one is the discrete GPU (the one that matters for arch):
+  #   nvidia present -> nvidia; intel+amd -> the vendor that ISN'T the CPU (iGPU);
+  #   otherwise the single GPU.
+  if   [ $has_nvidia = 1 ]; then DGPU=nvidia
+  elif [ $has_amd = 1 ] && [ $has_intel = 1 ]; then { [ "$CPU" = intel ] && DGPU=amd; } || DGPU=intel
+  elif [ $has_amd = 1 ];   then DGPU=amd
+  elif [ $has_intel = 1 ]; then DGPU=intel
+  else DGPU=""; fi
+
+  NVIDIA_ARCH=""
+  [ "$DGPU" = nvidia ] && NVIDIA_ARCH=$(nvidia_arch "${NVIDIA_DEVID:-0}")
+
   if   [ "$VIRT" != none ] && [ ${#GPU_LIST[@]} -eq 0 ]; then GPU_PROFILE=vm
   elif [ $has_nvidia = 1 ] && [ $has_intel = 1 ]; then GPU_PROFILE=nvidia-laptop
   elif [ $has_nvidia = 1 ] && [ $has_amd = 1 ];   then GPU_PROFILE=nvidia-hybrid
-  elif [ $has_nvidia = 1 ]; then GPU_PROFILE=nvidia
-  elif [ $has_amd = 1 ];    then GPU_PROFILE=amd
-  elif [ $has_intel = 1 ];  then GPU_PROFILE=intel
-  else GPU_PROFILE=unknown; fi
+  else GPU_PROFILE=${DGPU:-unknown}; fi
 
   if compgen -G '/sys/class/power_supply/BAT*' >/dev/null 2>&1; then PLATFORM=laptop
   else case "$(cat /sys/class/dmi/id/chassis_type 2>/dev/null)" in
@@ -148,8 +166,8 @@ detect() {
 
 # ── nixos-hardware modules ──────────────────────────────────────
 # exact model, else the most specific cpu/gpu arch modules (each imports its
-# generic default, so specific replaces generic). Laptop-only bits are gated;
-# cpu/gpu arch apply on desktops too. Every name validated against the live list.
+# generic default). A hybrid imports both GPU modules; arch specificity lands on
+# the discrete GPU. Every name validated against the live attr list.
 detect_hw_model() {
   HW_MODULES=(); HW_MODE=generic; HW_VALIDATED=0
   local attrs=""
@@ -172,12 +190,15 @@ detect_hw_model() {
 
   # 2) cpu arch (specific gen if available)
   [ -n "$CPU" ] && HW_MODULES+=("$(pick "common-cpu-$CPU" "${CPU_CODENAME:+common-cpu-$CPU-$CPU_CODENAME}")")
-  # 3) gpu arch (nvidia by devid; intel iGPU == cpu lake; amd modern -> generic)
-  case "$GPU_PROFILE" in
-    nvidia*) HW_MODULES+=("$(pick common-gpu-nvidia "${NVIDIA_ARCH:+common-gpu-nvidia-$NVIDIA_ARCH}")") ;;
-    intel)   HW_MODULES+=("$(pick common-gpu-intel  "${CPU_CODENAME:+common-gpu-intel-$CPU_CODENAME}")") ;;
-    amd)     HW_MODULES+=("common-gpu-amd") ;;
-  esac
+
+  # 3) gpu: one module per present vendor (iGPU + dGPU); arch on the discrete one
+  if in_list intel; then
+    local ig=""; [ "$CPU" = intel ] && [ -n "$CPU_CODENAME" ] && ig="common-gpu-intel-$CPU_CODENAME"
+    HW_MODULES+=("$(pick common-gpu-intel "$ig")")
+  fi
+  in_list nvidia && HW_MODULES+=("$(pick common-gpu-nvidia "${NVIDIA_ARCH:+common-gpu-nvidia-$NVIDIA_ARCH}")")
+  in_list amd    && HW_MODULES+=("common-gpu-amd")
+
   # 4) platform bits
   if [ "$PLATFORM" = laptop ]; then
     HW_MODULES+=("common-pc-laptop"); [ "$SSD" = 1 ] && HW_MODULES+=("common-pc-laptop-ssd")
@@ -185,7 +206,6 @@ detect_hw_model() {
     [ "$SSD" = 1 ] && HW_MODULES+=("common-pc-ssd")
   fi
 
-  # drop anything the live list doesn't have (only when validated)
   if [ "$HW_VALIDATED" = 1 ]; then
     local keep=() x; for x in "${HW_MODULES[@]}"; do has_attr "$x" && keep+=("$x"); done
     HW_MODULES=("${keep[@]}")
@@ -236,7 +256,7 @@ build_host_json() {
   "virt": $(jstr "$VIRT"),
   "cpu": { "vendor": $(jstr "$CPU"), "march": $(jstr "$CPU_MARCH") },
   "gpu": $(jarr "${GPU_LIST[@]:-}"),
-  "gpuProfile": $(jstr "$GPU_PROFILE"),
+  "dgpu": { "vendor": $(jstr "$DGPU"), "arch": $(jstr "$NVIDIA_ARCH"), "profile": $(jstr "$GPU_PROFILE") },
   "hardwareModel": $(jarr "${HW_MODULES[@]:-}"),
   "detected": { "vendor": $(jstr "$VENDOR"), "product": $(jstr "$PRODUCT"), "board": $(jstr "$BOARD"), "nvidiaDevice": $(jstr "$NVIDIA_DEVID") },
   "roles": $(jarr $(printf '%s' "$ROLES" | tr ',' ' ')),
@@ -262,9 +282,13 @@ if [ -n "$CPU" ]; then printSuccess "CPU:      $CPU  (march=$CPU_MARCH${CPU_CODE
 else printWarn "CPU:      not detected"; fi
 [ -n "$CPU_MARCH" ] && printInfo "march is optional tuning (nixpkgs.hostPlatform.gcc.arch) — bypasses the binary cache"
 if [ ${#GPU_LIST[@]} -gt 0 ]; then
-  printSuccess "GPU:      ${GPU_LIST[*]}  → profile: $GPU_PROFILE${NVIDIA_ARCH:+ (nvidia: $NVIDIA_ARCH, dev=$NVIDIA_DEVID)}"
+  gpu_desc=""
+  for v in "${GPU_LIST[@]}"; do
+    if [ "$v" = "$DGPU" ]; then gpu_desc+="${gpu_desc:+, }$v(dGPU)"; else gpu_desc+="${gpu_desc:+, }$v(iGPU)"; fi
+  done
+  printSuccess "GPU:      $gpu_desc${NVIDIA_ARCH:+  → $DGPU $NVIDIA_ARCH}"
+  [ "$DGPU" = nvidia ] && [ -z "$NVIDIA_ARCH" ] && printWarn "nvidia arch unknown (dev=$NVIDIA_DEVID) — set the gpu module by hand"
 else printWarn "GPU:      none found (profile: $GPU_PROFILE — normal under a VM/WSL)"; fi
-[ -n "$NVIDIA_DEVID" ] && [ -z "$NVIDIA_ARCH" ] && printWarn "nvidia arch: device $NVIDIA_DEVID out of known ranges — set gpu module by hand"
 printSuccess "Platform: $PLATFORM"
 [ -n "$BOARD$PRODUCT" ] && printSuccess "Board:    ${VENDOR:-?} ${PRODUCT:-} [${BOARD:-?}]" || printWarn "Board:    not detected"
 if [ -n "$PRIMARY_DISK" ]; then printSuccess "Disk:     $PRIMARY_DISK ($([ "$SSD" = 1 ] && echo ssd || echo rotational))"
@@ -298,6 +322,7 @@ cat <<PLAN
     [ ] nixos-install --flake "$REPO_DIR#$HOSTNAME_IN"     # or nixos-anywhere
     #   Nix side imports each hardwareModel entry:
     #   imports = map (m: inputs.nixos-hardware.nixosModules.\${m}) host.hardwareModel;
+    #   (hybrid prime bus IDs still set by hand or via the exact-model module)
   post:
     [ ] passwd for $USERNAME_IN  (until sops hashedPasswordFile is wired)
     [ ] git add hosts/$HOSTNAME_IN/host.json && commit
