@@ -7,14 +7,14 @@ in
     flake.modules.nixos.hardware = { config, host, ... }:
     let
         inherit (config.profile) system;
-        inherit (host) hardwareModel;
+        hardwareModel = host.hardwareModel or null;
     in
     {
         imports = [
             nixos.amd
             nixos.intel
             nixos.nvidia
-        ] ++ optionals (hardwareModel or null != null) [s
+        ] ++ optionals (hardwareModel != null) [s
             # @TODO: This probably has the same infinite recursion but need to test
             inputs.nixos-hardware.nixosModules.${hardwareModel}
         ];
