@@ -1,5 +1,6 @@
-{ ... }:
+{ lib, ... }:
 let
+    inherit (lib) mkForce;
 in
 {
     flake.modules.homeManager.browserPolicies = { ... }:
@@ -78,7 +79,7 @@ in
             };
             NetworkPrediction = false;
             NewTabPage = false;
-            NoDefaultBookmarks = true;
+            NoDefaultBookmarks = mkForce true;
             OfferToSaveLogins = false;
             PasswordManagerEnabled = false;
             Permissions = {
