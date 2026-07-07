@@ -1,7 +1,7 @@
 { config, lib, ... }:
 let
     inherit (config.flake.modules) nixos homeManager;
-    inherit (lib) mkEnableOption mkOption types elem;
+    inherit (lib) mkEnableOption mkOption mkIf types elem;
 in
 {
     flake.modules.nixos.base = { config, pkgs, ... }:
