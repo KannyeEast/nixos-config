@@ -2,7 +2,7 @@
 let
 in
 {
-    flake.modules.nixos.browser.policies = { ... }:
+    flake.modules.nixos.browserPolicies = { ... }:
     let
         mkPolicy = builtins.mapAttrs (_: Value: { inherit Value; });
     in

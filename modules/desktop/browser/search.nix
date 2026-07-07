@@ -2,7 +2,7 @@
 let
 in
 {
-    flake.modules.nixos.browser.search = { pkgs, ... }:
+    flake.modules.nixos.browserSearch = { pkgs, ... }:
     let
         nixIcon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
     in

@@ -10,13 +10,13 @@ in
         imports = [
             inputs.zen-browser.homeModules.beta
             
-            nixos.browser.containers
-            nixos.browser.extensions
-            nixos.browser.mods
-            nixos.browser.policies
-            nixos.browser.search
-            nixos.browser.tabs
-            nixos.browser.userChrome
+            nixos.browserContainers
+            nixos.browserExtensions
+            nixos.browserMods
+            nixos.browserPolicies
+            nixos.browserSearch
+            nixos.browserTabs
+            nixos.browserUserChrome
         ];
         
         programs.zen-browser = {
