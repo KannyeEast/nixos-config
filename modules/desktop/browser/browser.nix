@@ -3,7 +3,7 @@ let
     inherit (config.flake.modules) homeManager;
 in
 {
-    flake.modules.homeManager.browser = { ... }:
+    flake.modules.nixos.browser = { ... }:
     let
     in
     {

@@ -2,7 +2,7 @@
 let
 in
 {
-    flake.modules.homeManager.browser.tabs = { ... }:
+    flake.modules.nixos.browser.tabs = { ... }:
     let
         spaces = {
             "Entertainment" = {

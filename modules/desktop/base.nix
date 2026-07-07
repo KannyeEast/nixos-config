@@ -19,7 +19,7 @@ in
             nixos.experimental
             nixos.fonts
             
-            homeManager.browser
+            nixos.browser
         ];
         
         options = {

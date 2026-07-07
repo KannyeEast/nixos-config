@@ -2,7 +2,7 @@
 let
 in
 {
-    flake.modules.homeManager.browser.containers = { ... }:
+    flake.modules.nixos.browser.containers = { ... }:
     let
     in
     {
