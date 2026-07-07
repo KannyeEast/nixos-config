@@ -2,36 +2,46 @@
 # Rough draft installer (fresh NixOS assumed).
 # Detects hardware in the background, asks only for identity, then prints the
 # host.json it WOULD write plus the pre/post command plan. Changes nothing.
+#
+# Env toggles:  ROLES=base,desktop   LOOKUP_HW=0 (skip nixos-hardware query)
 set -uo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ── print helpers (reuse repo's, fall back if run standalone) ────
-if [ -f "$REPO_DIR/scripts/variables.sh" ]; then
-  # strip a possible UTF-8 BOM before sourcing (variables.sh currently has one)
-  # shellcheck disable=SC1090
-  source <(sed '1s/^\xEF\xBB\xBF//' "$REPO_DIR/scripts/variables.sh")
-fi
-type printHeader  >/dev/null 2>&1 || printHeader()  { printf '\n\033[1;32m== %s ==\033[0m\n' "$*"; }
-type printInfo    >/dev/null 2>&1 || printInfo()    { printf '  %s\n' "$*"; }
-type printSuccess >/dev/null 2>&1 || printSuccess() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
-type printError   >/dev/null 2>&1 || printError()   { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; }
+# ── colors + feedback (self-contained; my header, + a yellow warn) ──
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'
+BLUE=$'\033[0;34m'; BOLD=$'\033[1m'; NC=$'\033[0m'
+printHeader()  { printf '\n%s== %s ==%s\n' "$BOLD$GREEN" "$*" "$NC"; }
+printSuccess() { printf '  %s✓%s %s\n' "$GREEN" "$NC" "$*"; }
+printWarn()    { printf '  %s!%s %s\n' "$YELLOW" "$NC" "$*"; }
+printError()   { printf '  %s✗%s %s\n' "$RED" "$NC" "$*" >&2; }
+printInfo()    { printf '  %sℹ%s %s\n' "$BLUE" "$NC" "$*"; }
 
-have() { command -v "$1" >/dev/null 2>&1; }
+have()  { command -v "$1" >/dev/null 2>&1; }
 first() { for v in "$@"; do [ -n "$v" ] && { printf '%s' "$v"; return; }; done; }
 
-# ── silent detection (no prompts, best effort) ──────────────────
+# ── silent detection ────────────────────────────────────────────
 detect() {
   SYSTEM="$(uname -m)-linux"
   FIRMWARE=$([ -d /sys/firmware/efi ] && echo uefi || echo bios)
-  VIRT=$(have systemd-detect-virt && systemd-detect-virt 2>/dev/null || echo none)
+  if have systemd-detect-virt; then VIRT=$(systemd-detect-virt 2>/dev/null || true); fi
+  VIRT=${VIRT:-none}
 
   case "$(grep -m1 vendor_id /proc/cpuinfo 2>/dev/null)" in
     *GenuineIntel*) CPU=intel ;; *AuthenticAMD*) CPU=amd ;; *) CPU="" ;;
   esac
 
+  # GPU: read PCI display devices straight from sysfs (no lspci needed)
   GPU=()
-  if have lspci; then
+  local d
+  for d in /sys/bus/pci/devices/*; do
+    [ -e "$d/class" ] || continue
+    case "$(cat "$d/class" 2>/dev/null)" in 0x03*) ;; *) continue ;; esac
+    case "$(cat "$d/vendor" 2>/dev/null)" in
+      0x10de) GPU+=(nvidia) ;; 0x1002) GPU+=(amd) ;; 0x8086) GPU+=(intel) ;;
+    esac
+  done
+  if [ ${#GPU[@]} -eq 0 ] && have lspci; then
     local line
     while IFS= read -r line; do
       case "$line" in
@@ -41,15 +51,11 @@ detect() {
       esac
     done < <(lspci 2>/dev/null | grep -Ei 'vga|3d|display')
   fi
-  # de-dupe
   GPU=($(printf '%s\n' "${GPU[@]:-}" | awk 'NF && !seen[$0]++'))
 
-  if compgen -G '/sys/class/power_supply/BAT*' >/dev/null 2>&1; then
-    PLATFORM=laptop
-  else
-    case "$(cat /sys/class/dmi/id/chassis_type 2>/dev/null)" in
-      8|9|10|11|14) PLATFORM=laptop ;; *) PLATFORM=desktop ;;
-    esac
+  if compgen -G '/sys/class/power_supply/BAT*' >/dev/null 2>&1; then PLATFORM=laptop
+  else case "$(cat /sys/class/dmi/id/chassis_type 2>/dev/null)" in
+    8|9|10|11|14) PLATFORM=laptop ;; *) PLATFORM=desktop ;; esac
   fi
 
   VENDOR=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null | tr -d '\n')
@@ -57,86 +63,101 @@ detect() {
   BOARD=$(cat /sys/class/dmi/id/board_name 2>/dev/null | tr -d '\n')
 
   PRIMARY_DISK=$(lsblk -dpno NAME,TYPE 2>/dev/null | awk '$2=="disk"{print $1; exit}')
-
-  TIMEZONE=$(first \
-    "$(timedatectl show -p Timezone --value 2>/dev/null)" \
-    "$(cat /etc/timezone 2>/dev/null)" UTC)
+  TIMEZONE=$(first "$(timedatectl show -p Timezone --value 2>/dev/null)" "$(cat /etc/timezone 2>/dev/null)" UTC)
   LOCALE=${LANG:-en_US.UTF-8}
-  KEYMAP=$(first "$(localectl status 2>/dev/null | awk -F': ' '/Keymap/{print $2}')" us)
+  KEYMAP=$(localectl status 2>/dev/null | awk -F': ' '/Keymap/{print $2}')
 
-  # host key -> age recipient (sops/agenix). Empty if not generated/available yet.
   AGE_RECIPIENT=""
   if have ssh-to-age && [ -f /etc/ssh/ssh_host_ed25519_key.pub ]; then
     AGE_RECIPIENT=$(ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null)
   fi
 }
 
+# ── nixos-hardware match (best effort; board_name -> module attr) ─
+detect_hw_model() {
+  HW_MODEL=""; HW_MATCHES=""
+  HW_TOKEN=$(printf '%s' "${BOARD:-}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
+  { [ -z "$HW_TOKEN" ] || [ "${LOOKUP_HW:-1}" = 0 ] || ! have nix; } && return
+  local json
+  json=$(timeout 25 nix eval github:NixOS/nixos-hardware#nixosModules \
+           --apply 'builtins.attrNames' --json \
+           --extra-experimental-features 'nix-command flakes' 2>/dev/null) || return
+  [ -n "$json" ] || return
+  HW_MATCHES=$(printf '%s' "$json" | tr -d '[]"' | tr ',' '\n' | awk -v t="$HW_TOKEN" 'index($0,t)')
+  [ "$(printf '%s' "$HW_MATCHES" | grep -c .)" = 1 ] && HW_MODEL="$HW_MATCHES"
+}
+
 # ── identity (the only interactive part) ────────────────────────
 gather_identity() {
-  local reply
+  local reply def_host def_user
+  def_host=$(first "$(uname -n 2>/dev/null)" "$(hostname 2>/dev/null)" nixos)
   while :; do
-    read -rp "  Hostname: " HOSTNAME_IN || true
-    HOSTNAME_IN=${HOSTNAME_IN:-${HOST:-}}
+    read -rp "  Hostname [$def_host]: " HOSTNAME_IN || true
+    HOSTNAME_IN=${HOSTNAME_IN:-$def_host}
     [ "$HOSTNAME_IN" = default ] && { printError "'default' is reserved."; continue; }
     [[ "$HOSTNAME_IN" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]] && break
     printError "letters, numbers, hyphens only."
   done
-  local du; du=$(first "$(logname 2>/dev/null)" "${SUDO_USER:-}" "${USER:-}" user)
-  read -rp "  Username [$du]: " reply || true
-  USERNAME_IN=${reply:-$du}
-  ROLES=${ROLES:-base,desktop}          # override via env; no prompt
+  def_user=$(first "$(logname 2>/dev/null)" "${SUDO_USER:-}" "${USER:-}" user)
+  read -rp "  Username [$def_user]: " reply || true
+  USERNAME_IN=${reply:-$def_user}
+  ROLES=${ROLES:-base,desktop}
 }
 
 # ── host.json preview (what the installer WOULD write) ──────────
 build_host_json() {
+  have jq || { printWarn "jq missing — showing partial preview"; \
+    printf '{ "hostname": "%s", "system": "%s", "roles": "%s" }\n' "$HOSTNAME_IN" "$SYSTEM" "$ROLES"; return; }
   local gpu_json roles_json
-  if have jq; then
-    gpu_json=$(printf '%s\n' "${GPU[@]:-}" | jq -R . | jq -s 'map(select(length>0))')
-    roles_json=$(printf '%s' "$ROLES" | jq -R 'split(",")')
-    jq -n \
-      --arg hostname "$HOSTNAME_IN" --arg system "$SYSTEM" \
-      --arg platform "$PLATFORM"   --arg firmware "$FIRMWARE" \
-      --arg virt "$VIRT"           --arg cpu "$CPU" \
-      --arg user "$USERNAME_IN"    --arg disk "$PRIMARY_DISK" \
-      --arg tz "$TIMEZONE"         --arg locale "$LOCALE" --arg keymap "$KEYMAP" \
-      --arg vendor "$VENDOR"       --arg product "$PRODUCT" \
-      --arg age "$AGE_RECIPIENT"   --argjson gpu "$gpu_json" --argjson roles "$roles_json" '
-      {
-        hostname: $hostname, system: $system, platform: $platform,
-        firmware: $firmware, virt: $virt,
-        cpu: $cpu, gpu: $gpu,
-        hardwareModel: null,                # nixos-hardware attr — set by hand
-        detected: { vendor: $vendor, product: $product },
-        roles: $roles, user: $user,
-        locale: { timeZone: $tz, locale: $locale, keymap: $keymap },
-        primaryDisk: $disk,
-        secrets: { sopsFile: ("secrets/" + $hostname + ".yaml"),
-                   hostAgeRecipient: (if $age == "" then null else $age end) }
-      }'
-  else
-    printf '{ "hostname": "%s", "system": "%s", "roles": "%s", "user": "%s",\n' \
-      "$HOSTNAME_IN" "$SYSTEM" "$ROLES" "$USERNAME_IN"
-    printf '  "cpu": "%s", "gpu": "%s", "primaryDisk": "%s", "age": "%s" }\n' \
-      "$CPU" "${GPU[*]:-}" "$PRIMARY_DISK" "${AGE_RECIPIENT:-null}"
-  fi
+  gpu_json=$(printf '%s\n' "${GPU[@]:-}" | jq -R . | jq -s 'map(select(length>0))')
+  roles_json=$(printf '%s' "$ROLES" | jq -R 'split(",")')
+  jq -n \
+    --arg hostname "$HOSTNAME_IN" --arg system "$SYSTEM" --arg platform "$PLATFORM" \
+    --arg firmware "$FIRMWARE" --arg virt "$VIRT" --arg cpu "$CPU" --arg user "$USERNAME_IN" \
+    --arg disk "$PRIMARY_DISK" --arg tz "$TIMEZONE" --arg locale "$LOCALE" \
+    --arg keymap "${KEYMAP:-us}" --arg vendor "$VENDOR" --arg product "$PRODUCT" \
+    --arg hwmodel "$HW_MODEL" --arg age "$AGE_RECIPIENT" \
+    --argjson gpu "$gpu_json" --argjson roles "$roles_json" '
+    {
+      hostname: $hostname, system: $system, platform: $platform,
+      firmware: $firmware, virt: $virt,
+      cpu: $cpu, gpu: $gpu,
+      hardwareModel: (if $hwmodel == "" then null else $hwmodel end),
+      detected: { vendor: $vendor, product: $product },
+      roles: $roles, user: $user,
+      locale: { timeZone: $tz, locale: $locale, keymap: $keymap },
+      primaryDisk: $disk,
+      secrets: { sopsFile: ("secrets/" + $hostname + ".yaml"),
+                 hostAgeRecipient: (if $age == "" then null else $age end) }
+    }'
 }
 
 # ── main ────────────────────────────────────────────────────────
 clear 2>/dev/null || true
 printHeader "NixOS installer — draft (detect + preview, no changes)"
-
 grep -qi nixos /etc/os-release 2>/dev/null \
   && printSuccess "NixOS live environment" \
-  || printError "Not NixOS — detection will be partial (fine for a dry run)."
+  || printWarn "Not NixOS — detection will be partial (fine for a dry run)."
 
 printHeader "Detecting hardware"
 detect
-printSuccess "system=$SYSTEM firmware=$FIRMWARE virt=$VIRT"
-printSuccess "cpu=${CPU:-?} gpu=${GPU[*]:-?} platform=$PLATFORM"
-printSuccess "board=${VENDOR:-?} ${PRODUCT:-?}"
-printSuccess "disk=${PRIMARY_DISK:-?}  tz=$TIMEZONE  keymap=$KEYMAP"
-[ -n "$AGE_RECIPIENT" ] && printSuccess "age=$AGE_RECIPIENT" \
-                        || printInfo "age recipient: none yet (host key not generated / ssh-to-age missing)"
+printSuccess "System:   $SYSTEM ($FIRMWARE, virt=$VIRT)"
+[ -n "$CPU" ]           && printSuccess "CPU:      $CPU"            || printWarn "CPU:      not detected"
+[ -n "${GPU[*]:-}" ]    && printSuccess "GPU:      ${GPU[*]}"       || printWarn "GPU:      none found (no PCI display device — normal under a VM/WSL)"
+printSuccess "Platform: $PLATFORM"
+[ -n "$BOARD$PRODUCT" ] && printSuccess "Board:    ${VENDOR:-?} ${PRODUCT:-} [${BOARD:-?}]" || printWarn "Board:    not detected"
+[ -n "$PRIMARY_DISK" ]  && printSuccess "Disk:     $PRIMARY_DISK"   || printWarn "Disk:     not detected"
+printSuccess "Locale:   $TIMEZONE / ${KEYMAP:-us} / $LOCALE"
+[ -n "$AGE_RECIPIENT" ] && printSuccess "Age key:  $AGE_RECIPIENT"  || printWarn "Age key:  none yet (host ed25519 key / ssh-to-age missing)"
+
+printHeader "Matching nixos-hardware"
+detect_hw_model
+if   [ -n "$HW_MODEL" ];   then printSuccess "hardwareModel = $HW_MODEL"
+elif [ -n "$HW_MATCHES" ]; then printWarn "candidates for '$HW_TOKEN': $(printf '%s' "$HW_MATCHES" | tr '\n' ' ')— pick one by hand"
+elif [ "${LOOKUP_HW:-1}" = 0 ]; then printInfo "lookup disabled (LOOKUP_HW=0); board token '$HW_TOKEN'"
+elif have nix;             then printWarn "no match for board '$HW_TOKEN' — set hardwareModel by hand"
+else printInfo "skipped (nix unavailable); board token '${HW_TOKEN:-?}'"
+fi
 
 printHeader "Identity"
 gather_identity
