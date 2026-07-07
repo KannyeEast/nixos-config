@@ -2,7 +2,7 @@
 let
 in
 {
-    flake.modules.nixos.browserMods = { ... }:
+    flake.modules.homeManager.browserMods = { ... }:
     let
     in
     {

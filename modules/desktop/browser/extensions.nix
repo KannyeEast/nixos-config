@@ -1,6 +1,6 @@
 { ... }:
 {
-    flake.modules.nixos.browserExtensions = { ... }:
+    flake.modules.homeManager.browserExtensions = { ... }:
     let
         mkExtensionSettings = builtins.mapAttrs (_: entry:
             if builtins.isAttrs entry

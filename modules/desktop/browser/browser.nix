@@ -1,22 +1,22 @@
 { inputs, config, ... }:
 let
-    inherit (config.flake.modules) nixos;
+    inherit (config.flake.modules) homeManager;
 in
 {
-    flake.modules.nixos.browser = { ... }:
+    flake.modules.homeManager.browser = { ... }:
     let
     in
     {
         imports = [
             inputs.zen-browser.homeModules.beta
             
-            nixos.browserContainers
-            nixos.browserExtensions
-            nixos.browserMods
-            nixos.browserPolicies
-            nixos.browserSearch
-            nixos.browserTabs
-            nixos.browserUserChrome
+            homeManager.browserContainers
+            homeManager.browserExtensions
+            homeManager.browserMods
+            homeManager.browserPolicies
+            homeManager.browserSearch
+            homeManager.browserTabs
+            homeManager.browserUserChrome
         ];
         
         programs.zen-browser = {

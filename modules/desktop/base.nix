@@ -18,8 +18,6 @@ in
             nixos.displayManager
             nixos.experimental
             nixos.fonts
-            
-            nixos.browser
         ];
         
         options = {
@@ -30,6 +28,10 @@ in
             # @TODO: These might not be needed anymore? Depends on how the config evolves with roles (roles as replacement to program selection)
             # Experimental = Dev (Maybe keep though) || Base stays to import non configurable (or dotfiles) packages and the modules
             internal.desktop.experimental.enable = mkIf desktop.experimental.enable;
+            
+            home-manager.sharedModules = [
+                homeManager.browser
+            ];
             
             environment.systemPackages = [
                pkgs.keepassxc                         

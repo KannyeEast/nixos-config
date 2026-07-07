@@ -2,7 +2,7 @@
 let
 in
 {
-    flake.modules.nixos.browserUserChrome = { ... }:
+    flake.modules.homeManager.browserUserChrome = { ... }:
     let
     in
     {
