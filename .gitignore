@@ -2,7 +2,6 @@
 .vid_transcript.txt
 .PLANNING.md
 .README.md 
-scripts
 *.ps1
 
 result

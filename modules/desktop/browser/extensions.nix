@@ -328,15 +328,15 @@
                             {
                                 name = "sponsor";
                                 option = 1;
-                            },
+                            }
                             {
                                 name = "poi_highlight";
                                 option = 1;
-                            },
+                            }
                             {
                                 name = "exclusive_access";
                                 option = 0;
-                            },
+                            }
                             {
                                 name = "chapter";
                                 option = 0;
