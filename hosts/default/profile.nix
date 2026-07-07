@@ -65,8 +65,7 @@ in
             };
                 
             profile.desktop = {
-                # "experimental" and/or "optionals"
-                modules = [ ];
+                experimental.enable = false;
 
                 displayManager = {
                     settings = {

@@ -1,7 +1,7 @@
 { config, lib, ... }:
 let
     inherit (config.flake.modules) nixos homeManager;
-    inherit (lib) mkEnableOption mkOption mkIf types elem;
+    inherit (lib) mkEnableOption mkOption types elem;
 in
 {
     flake.modules.nixos.base = { config, pkgs, ... }:
@@ -27,7 +27,7 @@ in
         config = {
             # @TODO: These might not be needed anymore? Depends on how the config evolves with roles (roles as replacement to program selection)
             # Experimental = Dev (Maybe keep though) || Base stays to import non configurable (or dotfiles) packages and the modules
-            internal.desktop.experimental.enable = mkIf desktop.experimental.enable;
+            internal.desktop.experimental.enable = desktop.experimental.enable;
             
             home-manager.sharedModules = [
                 homeManager.browser
