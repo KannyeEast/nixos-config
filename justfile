@@ -1,4 +1,4 @@
-﻿flake := justfile_directory()
+flake := justfile_directory()
 host := `hostname`
 
 # Overview

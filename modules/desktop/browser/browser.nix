@@ -1,4 +1,4 @@
-﻿{ inputs, config, ... }:
+{ inputs, config, ... }:
 let
     inherit (config.flake.modules) homeManager;
 in
