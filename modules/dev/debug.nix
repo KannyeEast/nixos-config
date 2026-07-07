@@ -47,8 +47,6 @@ in
                     NIRI_DISABLE_HW_RENDER_CHECK = "1"; 
                 };
             };
-            
-            # virtualisation.qemu.drivers = {};
         };
     };
 }

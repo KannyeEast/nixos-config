@@ -27,12 +27,6 @@
             inputs.nixpkgs.follows = "nixpkgs"; 
         };
         
-        ## Wrapper
-        wrapper-modules = {
-            url = "github:BirdeeHub/nix-wrapper-modules";
-            inputs.nixpkgs.follows = "nixpkgs";
-        };
-        
         ## Secrets
         agenix = {
             url = "github:ryantm/agenix";

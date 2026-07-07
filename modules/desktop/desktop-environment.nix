@@ -1,4 +1,4 @@
-{ inputs, lib, ... }:
+{ lib, ... }:
 let
     inherit (lib) mkOption types getExe;
 in
@@ -41,21 +41,19 @@ in
                 };
             };
             
-            environment.sessionVariables.NIXOS_OZONE_WL = "1";
+            environment.systemPackages = [
+                pkgs.${user.terminal}
+            ];
             
-            programs.niri = {
-                enable = true;
-                package = inputs.wrapper-modules.wrappers.niri.wrap {
-                    inherit pkgs;
-                    settings = {
-                        input.keyboard.xkb.layout = user.keyboard.layout;
-                        input.keyboard.xkb.variant = user.keyboard.variant;
-                        xwayland-satellite.path = getExe pkgs.xwayland-satellite;
-                        binds."Mod+Return".spawn-sh = getExe pkgs.${user.terminal};
-                    };
-                };
+            environment.sessionVariables = {
+                NIXOS_OZONE_WL = "1";
+                TERMINAL = user.terminal;
+                XKB_DEFAULT_LAYOUT = user.keyboard.layout;
+                XKB_DEFAULT_VARIANT = user.keyboard.variant;
             };
             
+            programs.niri.enable = true;
+            programs.niri.useNautilus = true;
             programs.dconf.enable = true;
             services.gnome.gnome-keyring.enable = true;
         };
