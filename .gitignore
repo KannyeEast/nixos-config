@@ -2,7 +2,6 @@
 .vid_transcript.txt
 .PLANNING.md
 .README.md 
-.AGENTS.md
 scripts
 *.ps1
 

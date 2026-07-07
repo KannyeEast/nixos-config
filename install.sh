@@ -24,6 +24,18 @@ first() { for v in "$@"; do [ -n "$v" ] && { printf '%s' "$v"; return; }; done; 
 jstr() { local s=${1//\\/\\\\}; s=${s//\"/\\\"}; printf '"%s"' "$s"; }
 jarr() { local out="" a; for a in "$@"; do [ -n "$a" ] || continue; out+="${out:+, }$(jstr "$a")"; done; printf '[%s]' "$out"; }
 
+# NVIDIA PCI device-id -> architecture (approximate consumer ranges; the printed
+# device id lets you verify/correct). All map to real common-gpu-nvidia-* modules.
+nvidia_arch() {
+  local id=$(( ${1:-0} )) 2>/dev/null || return
+  if   [ $id -ge $((0x2B00)) ] && [ $id -le $((0x2DFF)) ]; then echo blackwell
+  elif [ $id -ge $((0x2600)) ] && [ $id -le $((0x28FF)) ]; then echo ada-lovelace
+  elif [ $id -ge $((0x2200)) ] && [ $id -le $((0x25FF)) ]; then echo ampere
+  elif [ $id -ge $((0x1E00)) ] && [ $id -le $((0x21FF)) ]; then echo turing
+  elif [ $id -ge $((0x1B00)) ] && [ $id -le $((0x1DFF)) ]; then echo pascal
+  fi
+}
+
 # ── preflight ───────────────────────────────────────────────────
 verify() {
   local fail=0
@@ -34,14 +46,14 @@ verify() {
   have git && printSuccess "git available" || printWarn "git missing  (nix-shell -p git)"
   [ -r /sys/bus/pci/devices ] && printSuccess "PCI sysfs readable" \
     || printWarn "no PCI sysfs — GPU detection will be limited"
-  have gcc && printSuccess "gcc available (exact -march)" \
-    || printInfo "gcc absent — CPU march falls back to x86-64 feature level"
+  have gcc && printSuccess "gcc available (exact -march / intel codename)" \
+    || printInfo "gcc absent — march falls back to x86-64 level; intel gen unknown"
   have ssh-to-age && printSuccess "ssh-to-age available" \
     || printInfo "ssh-to-age absent — age recipient step will be a TODO"
   return $fail
 }
 
-# ── CPU microarchitecture (compiler tuning; separate from modules) ─
+# ── CPU: compiler march + nixos-hardware codename ───────────────
 detect_cpu_march() {
   CPU_MARCH=""; CPU_CODENAME=""
   [ "$(uname -m)" = x86_64 ] || return
@@ -51,15 +63,21 @@ detect_cpu_march() {
   [ $lvl = 2 ] && printf '%s' "$f" | grep -qw avx2 && printf '%s' "$f" | grep -qw bmi2 \
                 && printf '%s' "$f" | grep -qw fma && lvl=3
   [ $lvl = 3 ] && printf '%s' "$f" | grep -qw avx512f && lvl=4
-  local level="x86-64-v$lvl" exact=""
-  if have gcc; then
-    exact=$(gcc -march=native -Q --help=target 2>/dev/null \
-              | sed -n 's/^[[:space:]]*-march=[[:space:]]*//p' | head -1)
-  fi
-  CPU_MARCH=${exact:-$level}
-  # Intel gcc march (e.g. "kabylake") ~ nixos-hardware codename ("kaby-lake")
-  if [ -n "$exact" ] && [ "$CPU" = intel ]; then
+  local exact=""
+  have gcc && exact=$(gcc -march=native -Q --help=target 2>/dev/null \
+                        | sed -n 's/^[[:space:]]*-march=[[:space:]]*//p' | head -1)
+  CPU_MARCH=${exact:-x86-64-v$lvl}
+
+  if [ "$CPU" = intel ] && [ -n "$exact" ]; then
+    # gcc "alderlake" -> nixos-hardware "alder-lake"
     CPU_CODENAME=$(printf '%s' "$exact" | sed -E 's/(lake|bridge|well|cove|ridge|mont)$/-\1/')
+  elif [ "$CPU" = amd ]; then
+    local fam mod
+    fam=$(awk -F: '$1 ~ /^cpu family[ \t]*$/{gsub(/ /,"",$2);print $2;exit}' /proc/cpuinfo)
+    mod=$(awk -F: '$1 ~ /^model[ \t]*$/{gsub(/ /,"",$2);print $2;exit}' /proc/cpuinfo)
+    case "$fam:$mod" in
+      25:97) CPU_CODENAME=raphael ;;   # Zen4 desktop; extend as modules appear
+    esac
   fi
 }
 
@@ -76,11 +94,14 @@ detect() {
   detect_cpu_march
 
   local d has_nvidia=0 has_amd=0 has_intel=0
+  NVIDIA_DEVID=""
   for d in /sys/bus/pci/devices/*; do
     [ -e "$d/class" ] || continue
     case "$(cat "$d/class" 2>/dev/null)" in 0x03*) ;; *) continue ;; esac
     case "$(cat "$d/vendor" 2>/dev/null)" in
-      0x10de) has_nvidia=1 ;; 0x1002) has_amd=1 ;; 0x8086) has_intel=1 ;;
+      0x10de) has_nvidia=1; NVIDIA_DEVID=$(cat "$d/device" 2>/dev/null) ;;
+      0x1002) has_amd=1 ;;
+      0x8086) has_intel=1 ;;
     esac
   done
   if [ $((has_nvidia + has_amd + has_intel)) -eq 0 ] && have lspci; then
@@ -93,6 +114,7 @@ detect() {
   [ $has_nvidia = 1 ] && GPU_LIST+=(nvidia)
   [ $has_amd = 1 ]    && GPU_LIST+=(amd)
   [ $has_intel = 1 ]  && GPU_LIST+=(intel)
+  NVIDIA_ARCH=""; [ $has_nvidia = 1 ] && [ -n "$NVIDIA_DEVID" ] && NVIDIA_ARCH=$(nvidia_arch "$NVIDIA_DEVID")
   if   [ "$VIRT" != none ] && [ ${#GPU_LIST[@]} -eq 0 ]; then GPU_PROFILE=vm
   elif [ $has_nvidia = 1 ] && [ $has_intel = 1 ]; then GPU_PROFILE=nvidia-laptop
   elif [ $has_nvidia = 1 ] && [ $has_amd = 1 ];   then GPU_PROFILE=nvidia-hybrid
@@ -124,13 +146,12 @@ detect() {
   fi
 }
 
-# ── nixos-hardware modules (laptops only) ───────────────────────
-# exact model  >  per-generation cpu module (if it exists)  >  generic common-*
-# All names validated against the live attr list when nix is available.
+# ── nixos-hardware modules ──────────────────────────────────────
+# exact model, else the most specific cpu/gpu arch modules (each imports its
+# generic default, so specific replaces generic). Laptop-only bits are gated;
+# cpu/gpu arch apply on desktops too. Every name validated against the live list.
 detect_hw_model() {
-  HW_MODULES=(); HW_MODE=""
-  [ "$PLATFORM" = laptop ] || { HW_MODE=skip-nonlaptop; return; }
-
+  HW_MODULES=(); HW_MODE=generic; HW_VALIDATED=0
   local attrs=""
   HW_TOKEN=$(printf '%s' "${BOARD:-}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
   if [ "${LOOKUP_HW:-1}" != 0 ] && have nix; then
@@ -138,34 +159,35 @@ detect_hw_model() {
               --apply 'builtins.attrNames' --json \
               --extra-experimental-features 'nix-command flakes' 2>/dev/null \
               | tr -d '[]"' | tr ',' '\n')
+    [ -n "$attrs" ] && HW_VALIDATED=1
   fi
-  has_attr() { [ -n "$attrs" ] && printf '%s\n' "$attrs" | grep -qx "$1"; }
+  has_attr() { [ "$HW_VALIDATED" = 1 ] && printf '%s\n' "$attrs" | grep -qx "$1"; }
+  pick()     { local base=$1 spec=$2; { [ -n "$spec" ] && has_attr "$spec"; } && printf '%s' "$spec" || printf '%s' "$base"; }
 
   # 1) exact model by board token
-  if [ -n "$attrs" ] && [ -n "$HW_TOKEN" ]; then
+  if [ "$HW_VALIDATED" = 1 ] && [ -n "$HW_TOKEN" ]; then
     local m; m=$(printf '%s\n' "$attrs" | awk -v t="$HW_TOKEN" 'index($0,t)')
     if [ "$(printf '%s' "$m" | grep -c .)" = 1 ]; then HW_MODULES=("$m"); HW_MODE=model; return; fi
   fi
 
-  # 2) generic set, preferring a per-generation cpu module when present
-  HW_MODE=generic
-  local cpu_mod="common-cpu-$CPU"
-  if [ -n "$CPU_CODENAME" ] && has_attr "common-cpu-$CPU-$CPU_CODENAME"; then
-    cpu_mod="common-cpu-$CPU-$CPU_CODENAME"; HW_MODE=generic-gen
-  fi
-  [ -n "$CPU" ] && HW_MODULES+=("$cpu_mod")
+  # 2) cpu arch (specific gen if available)
+  [ -n "$CPU" ] && HW_MODULES+=("$(pick "common-cpu-$CPU" "${CPU_CODENAME:+common-cpu-$CPU-$CPU_CODENAME}")")
+  # 3) gpu arch (nvidia by devid; intel iGPU == cpu lake; amd modern -> generic)
   case "$GPU_PROFILE" in
-    nvidia*) HW_MODULES+=("common-gpu-nvidia") ;;
+    nvidia*) HW_MODULES+=("$(pick common-gpu-nvidia "${NVIDIA_ARCH:+common-gpu-nvidia-$NVIDIA_ARCH}")") ;;
+    intel)   HW_MODULES+=("$(pick common-gpu-intel  "${CPU_CODENAME:+common-gpu-intel-$CPU_CODENAME}")") ;;
     amd)     HW_MODULES+=("common-gpu-amd") ;;
-    intel)   HW_MODULES+=("common-gpu-intel") ;;
   esac
-  HW_MODULES+=("common-pc-laptop")
-  [ "$SSD" = 1 ] && HW_MODULES+=("common-pc-laptop-ssd")
+  # 4) platform bits
+  if [ "$PLATFORM" = laptop ]; then
+    HW_MODULES+=("common-pc-laptop"); [ "$SSD" = 1 ] && HW_MODULES+=("common-pc-laptop-ssd")
+  else
+    [ "$SSD" = 1 ] && HW_MODULES+=("common-pc-ssd")
+  fi
 
-  # drop anything the live attr list doesn't actually have
-  if [ -n "$attrs" ]; then
-    local keep=() x
-    for x in "${HW_MODULES[@]}"; do has_attr "$x" && keep+=("$x"); done
+  # drop anything the live list doesn't have (only when validated)
+  if [ "$HW_VALIDATED" = 1 ]; then
+    local keep=() x; for x in "${HW_MODULES[@]}"; do has_attr "$x" && keep+=("$x"); done
     HW_MODULES=("${keep[@]}")
   fi
 }
@@ -216,7 +238,7 @@ build_host_json() {
   "gpu": $(jarr "${GPU_LIST[@]:-}"),
   "gpuProfile": $(jstr "$GPU_PROFILE"),
   "hardwareModel": $(jarr "${HW_MODULES[@]:-}"),
-  "detected": { "vendor": $(jstr "$VENDOR"), "product": $(jstr "$PRODUCT"), "board": $(jstr "$BOARD") },
+  "detected": { "vendor": $(jstr "$VENDOR"), "product": $(jstr "$PRODUCT"), "board": $(jstr "$BOARD"), "nvidiaDevice": $(jstr "$NVIDIA_DEVID") },
   "roles": $(jarr $(printf '%s' "$ROLES" | tr ',' ' ')),
   "user": $(jstr "$USERNAME_IN"),
   "locale": { "timeZone": $(jstr "$TIMEZONE"), "locale": $(jstr "$LOCALE"), "keymap": $(jstr "${KEYMAP:-us}") },
@@ -239,8 +261,10 @@ printSuccess "System:   $SYSTEM ($FIRMWARE, virt=$VIRT)"
 if [ -n "$CPU" ]; then printSuccess "CPU:      $CPU  (march=$CPU_MARCH${CPU_CODENAME:+, gen=$CPU_CODENAME})"
 else printWarn "CPU:      not detected"; fi
 [ -n "$CPU_MARCH" ] && printInfo "march is optional tuning (nixpkgs.hostPlatform.gcc.arch) — bypasses the binary cache"
-if [ ${#GPU_LIST[@]} -gt 0 ]; then printSuccess "GPU:      ${GPU_LIST[*]}  → profile: $GPU_PROFILE"
+if [ ${#GPU_LIST[@]} -gt 0 ]; then
+  printSuccess "GPU:      ${GPU_LIST[*]}  → profile: $GPU_PROFILE${NVIDIA_ARCH:+ (nvidia: $NVIDIA_ARCH, dev=$NVIDIA_DEVID)}"
 else printWarn "GPU:      none found (profile: $GPU_PROFILE — normal under a VM/WSL)"; fi
+[ -n "$NVIDIA_DEVID" ] && [ -z "$NVIDIA_ARCH" ] && printWarn "nvidia arch: device $NVIDIA_DEVID out of known ranges — set gpu module by hand"
 printSuccess "Platform: $PLATFORM"
 [ -n "$BOARD$PRODUCT" ] && printSuccess "Board:    ${VENDOR:-?} ${PRODUCT:-} [${BOARD:-?}]" || printWarn "Board:    not detected"
 if [ -n "$PRIMARY_DISK" ]; then printSuccess "Disk:     $PRIMARY_DISK ($([ "$SSD" = 1 ] && echo ssd || echo rotational))"
@@ -250,14 +274,10 @@ printSuccess "Locale:   $TIMEZONE / ${KEYMAP:-us} / $LOCALE"
 
 printHeader "nixos-hardware"
 detect_hw_model
-case "$HW_MODE" in
-  skip-nonlaptop) printInfo "not a laptop → skipping (hardwareModel = [])" ;;
-  model)          printSuccess "matched model: ${HW_MODULES[0]}" ;;
-  generic-gen)    printSuccess "modules (with per-gen cpu): ${HW_MODULES[*]}" ;;
-  generic)        printSuccess "generic modules: ${HW_MODULES[*]}"
-                  have nix || printInfo "no nix → generics unvalidated; no per-gen/model lookup" ;;
-esac
-[ "$GPU_PROFILE" = nvidia-laptop ] && printInfo "nvidia arch (driver, not a module) is a roles/driver choice — very new cards need the latest driver"
+if [ "$HW_MODE" = model ]; then printSuccess "matched model: ${HW_MODULES[0]}"
+elif [ ${#HW_MODULES[@]} -gt 0 ]; then printSuccess "modules: ${HW_MODULES[*]}"
+else printWarn "no modules resolved"; fi
+[ "$HW_VALIDATED" = 1 ] || printInfo "not validated against nixos-hardware (no nix / LOOKUP_HW=0) — names are best-effort"
 
 printHeader "Identity"
 gather_identity
@@ -268,7 +288,7 @@ build_host_json
 printHeader "Planned steps (not executed)"
 cat <<PLAN
   pre:
-    [ ] nix-shell -p git ssh-to-age nixos-install-tools   # if missing
+    [ ] nix-shell -p git gcc ssh-to-age nixos-install-tools   # if missing
     [ ] nixos-generate-config --show-hardware-config > hosts/$HOSTNAME_IN/hardware.nix
     [ ] template hosts/$HOSTNAME_IN/disko.nix from ${PRIMARY_DISK:-<disk>}
     [ ] ensure /etc/ssh/ssh_host_ed25519_key, then ssh-to-age -> host.json.secrets + .sops.yaml
