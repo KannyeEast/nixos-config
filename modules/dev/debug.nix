@@ -20,29 +20,32 @@ in
                 isNormalUser = true;
                 initialPassword = "test";
                 group = "nixosvmtest";
-                extraGroups = [ "seat" ];
             };
             
             users.groups.nixosvmtest = { };
-            
-            environment.sessionVariables = {
-                LIBGL_ALWAYS_SOFTWARE = "1";
-                WLR_RENDERER = "pixman"; 
-                NIRI_DISABLE_HW_RENDER_CHECK = "1"; 
-            };
             
             virtualisation.vmVariantWithBootLoader = {
                 virtualisation = {
                     memorySize = 8192;
                     cores = 4;
-                };         
+                };
+                sessionVariables = {
+                    LIBGL_ALWAYS_SOFTWARE = "1";
+                    WLR_RENDERER = "pixman"; 
+                    NIRI_DISABLE_HW_RENDER_CHECK = "1"; 
+                };
             };
             
             virtualisation.vmVariant = {
                 virtualisation = {
                     memorySize = 8192;
                     cores = 4;
-                };         
+                };
+                sessionVariables = {
+                    LIBGL_ALWAYS_SOFTWARE = "1";
+                    WLR_RENDERER = "pixman"; 
+                    NIRI_DISABLE_HW_RENDER_CHECK = "1"; 
+                };
             };
             
             # virtualisation.qemu.drivers = {};

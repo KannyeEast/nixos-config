@@ -20,15 +20,7 @@ in
             nixos.fonts
         ];
         
-        options = {
-            profile.desktop.experimental.enable = mkEnableOption "Enable experimental suite";
-        };
-        
-        config = {
-            # @TODO: These might not be needed anymore? Depends on how the config evolves with roles (roles as replacement to program selection)
-            # Experimental = Dev (Maybe keep though) || Base stays to import non configurable (or dotfiles) packages and the modules
-            internal.desktop.experimental.enable = desktop.experimental.enable;
-            
+        config = { 
             home-manager.sharedModules = [
                 homeManager.browser
             ];

@@ -11,11 +11,6 @@ in
         options = {
             profile.user = {
                 fonts = {
-                    size = mkOption {
-                        type = types.int;
-                        default = 14;
-                        description = "Set your font size";
-                    };
                     packages = mkOption {
                         type = types.listOf types.package;
                         default = [ ];

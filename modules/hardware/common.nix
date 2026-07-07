@@ -14,7 +14,7 @@ in
             nixos.amd
             nixos.intel
             nixos.nvidia
-        ] ++ optionals (hardwareModel != null) [
+        ] ++ optionals (hardwareModel or null != null) [s
             # @TODO: This probably has the same infinite recursion but need to test
             inputs.nixos-hardware.nixosModules.${hardwareModel}
         ];

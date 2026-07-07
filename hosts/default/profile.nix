@@ -56,7 +56,6 @@ in
                 keyboard.variant = "";
                 
                 fonts = {
-                    size = 14;
                     packages = [ ];
                     defaults.serif = [ "Noto Serif" ];
                     defaults.sans  = [ "Noto Sans" ];
@@ -65,8 +64,6 @@ in
             };
                 
             profile.desktop = {
-                experimental.enable = false;
-
                 displayManager = {
                     settings = {
                         theme = "sddm-astronaut-theme";

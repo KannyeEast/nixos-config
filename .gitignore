@@ -1,11 +1,11 @@
 # Temporary ignore
-.vid_transcript.txt
-.PLANNING.md
-.README.md 
+vid_transcript.txt
+PLANNING.md
+README.md
 *.ps1
 
 result
 .direnv
 .env
-default.*
+*.qcow2
 modules/desktop/browser/*.json
