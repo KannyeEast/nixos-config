@@ -16,7 +16,6 @@ in
             nixos.desktopEnvironment
             nixos.desktopShell
             nixos.displayManager
-            nixos.experimental
             nixos.fonts
         ];
         
