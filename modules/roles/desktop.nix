@@ -6,17 +6,8 @@ in
     flake.modules.nixos.desktop = { ... }:
     {
         imports = [
-            # System
-            nixos.boot
-            nixos.homeManager
-            nixos.locale
-            nixos.user
-            # nixos.secrets
+            nixos.base
             
-            # Hardware
-            nixos.hardware
-            
-            # Desktop
             nixos.audio
             nixos.bluetooth
             nixos.desktopEnvironment
@@ -28,13 +19,11 @@ in
         
         config = { 
             home-manager.sharedModules = [
-                # System
-                # homeManger.git
-                
-                # Desktop
                 homeManager.browser
                 homeManager.dotfiles
             ];
+            
+            internal.system.bootloader.enable = true;
         };
     };
 }

@@ -1,11 +1,10 @@
 { ... }:
-let
-in
 {
     flake.modules.homeManager.dotfiles = { config, host, ... }:
     let
-        inherit (host) hostname username;
+        inherit (host) hostname;
         inherit (config.lib.file) mkOutOfStoreSymlink;
+        inherit (config.home) homeDirectory;
         
         # https://gist.github.com/mawkler/195def384fd3f73aeb9a965c82781483
         mkSymlinks = configsAbsolutePath: configsNixPath:
@@ -32,13 +31,13 @@ in
                     if entryType == "directory"
                     then readDirRecursive relativePath' nixPath'
                     else [ relativePath' ]
-            ) names);
+                ) names);
         in
             builtins.listToAttrs (map mkSymLink (readDirRecursive "" configsAbsolutePath));
     in
     {
-        xdg.configFile =mkSymlinks
+        xdg.configFile = mkSymlinks
             ../../hosts/${hostname}/dotfiles
-            "/home/${username}/nixos-config/hosts/${hostname}/dotfiles";
+            "${homeDirectory}/nixos-config/hosts/${hostname}/dotfiles";
     };
-}s
+}

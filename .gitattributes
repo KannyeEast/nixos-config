@@ -1,0 +1,6 @@
+﻿* text=auto
+*.yaml diff=sopsdiffer
+*.yml diff=sopsdiffer
+*.json diff=sopsdiffer
+*.env diff=sopsdiffer
+*.ini diff=sopsdiffer

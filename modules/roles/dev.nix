@@ -11,9 +11,9 @@ in
         ];
         
         config = { 
-            home-manager.sharedModules = [
-
-            ];
+            home-manager.sharedModules = [ ];
+            
+            internal.system.debug.enable = true;
         };
     };
 }

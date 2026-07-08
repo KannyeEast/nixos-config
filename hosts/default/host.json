@@ -1,7 +1,7 @@
 {
-  "hostname": "zephyrus",
+  "hostname": "default",
   "system": "x86_64-linux",
-  "roles": [ "base", "desktop" ],
+  "roles": [ "desktop", "dev" ],
   "username": "user",
   "hardware": {
     "platform": "laptop",

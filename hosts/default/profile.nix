@@ -4,17 +4,13 @@ let
     inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
 {
+    imports = [
+        (import ../../lib/mkHost.nix ./.)
+    ];
+    
     flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }: 
     {
-        imports = [
-            (import ../../lib/mkHost.nix ./.)
-        ];
-        
         config = {
-            # Temp access >> Role system later
-            internal.system.debug.enable = true;
-            # internal.system.bootloader.enable = true;
-        
             profile.system = {
                 dualBoot = false;
                 
