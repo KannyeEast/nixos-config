@@ -9,7 +9,7 @@ in
     in
     {
         options = {
-            internal.system.intel.enable = mkEnableOption "Intel stack" // { internal = true; };
+            internal.system.intel.enable = mkEnableOption "Intel" // { internal = true; };
         };
         
         config = mkIf intel.enable {
@@ -18,6 +18,13 @@ in
                 pkgs.intel-media-driver # VA-API (iHD) userspace
                 pkgs.vpl-gpu-rt # oneVPL (QSV) runtime
             ];
+            
+            environment.sessionVariables = {
+                LIBVA_DRIVER_NAME = "iHD";
+            };
+                        
+            hardware.enableRedistributableFirmware = true;
+            boot.kernelParams = [ "i915.enable_guc=3" ];
         };
     };
 }

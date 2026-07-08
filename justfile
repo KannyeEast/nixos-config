@@ -1,16 +1,15 @@
 flake := justfile_directory()
-host := `hostname`
 
 # Overview
-default:
+list:
     @just --list
 
 # Rebuild switch
-switch:
+switch host='hostname':
     nh os switch {{flake}} -H {{host}}
 
 # Test the config in a VM
-test:
+test host='hostname':
     nixos-rebuild build-vm --flake {{flake}}#{{host}}
     ./result/bin/run-{{host}}-vm
 

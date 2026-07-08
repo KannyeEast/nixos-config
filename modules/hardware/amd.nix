@@ -9,7 +9,7 @@ in
     in
     {
         options = {
-            internal.system.amd.enable = mkEnableOption "Amd stack" // { internal = true; };
+            internal.system.amd.enable = mkEnableOption "Amd" // { internal = true; };
         };
     
         config = mkIf amd.enable {

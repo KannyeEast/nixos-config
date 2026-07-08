@@ -1,6 +1,6 @@
 { ... }:
 let
-    inherit (import ./_host.nix) hostname;
+    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
 {
     flake.modules.nixos."${hostname}Hardware" = { config, lib, pkgs, modulesPath, ... }:

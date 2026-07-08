@@ -2,10 +2,10 @@
 let
 in
 {
-    flake.modules.nixos.homeManager = { config, ... }:
+    flake.modules.nixos.homeManager = { config, host, ... }:
     let
         inherit (config.internal) system;
-        inherit (config.profile) user;
+        inherit (host) username;
     in
     {
         imports = [
@@ -17,10 +17,10 @@ in
                 useUserPackages = true;
                 useGlobalPkgs = true;
                 backupFileExtension = "backup";
-                users.${user.username} = {
+                users.${username} = {
                     home = {
-                        username = user.username;
-                        homeDirectory = "/home/${user.username}";
+                        username = username;
+                        homeDirectory = "/home/${username}";
                         
                         # Home-manager version  
                         stateVersion = system.version; 

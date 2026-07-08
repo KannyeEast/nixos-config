@@ -1,54 +1,43 @@
 { lib, ... }:
 let
-    inherit (lib) mkEnableOption mkOption mkIf types;
+    inherit (lib) mkEnableOption mkIf lists;
 in
 {
-    flake.modules.nixos.nvidia = { config, ... }:
+    flake.modules.nixos.nvidia = { config, host, ... }:
     let
-        inherit (config.profile.system) nvidia;
-        iNvidia = config.internal.system.nvidia;    # Cannot inherit as nvidia is already present
+        inherit (config.internal.system) nvidia;
+        inherit (host) hardware;
+        
+        listArchitecture = [ "fermi" "kepler" "maxwell" "pascal" "volta" "turing" "ampere" "ada-lovelace" "blackwell" ];
+        indexArchitecture = a: lists.findFirstIndex (x: x == a) (-1) listArchitecture;
+        checkArchitecture = generation: indexArchitecture (hardware.gpuArchitecture or null) >= indexArchitecture generation;
+        
+        hybridLaptop = hardware.platform == "laptop" && builtins.length hardware.gpu > 1;
     in
     {
         options = {
-            internal.system.nvidia.enable = mkEnableOption "Nvidia stack" // { internal = true; };
-            profile.system.nvidia = {
-                powerManagement = mkOption {
-                    type = types.bool;
-                    default = false;
-                    description = "Set to true for Turing (RTX 20-series) and newer GPUs";
-                };
-                finegrained = mkOption {
-                    type = types.bool;
-                    default = false;
-                    description = "Fully disables the GPU when not in use";
-                };
-                dynamicBoost = mkOption {
-                    type = types.bool;
-                    default = false;
-                    description = "Set to true for laptops with iGPU and a NVIDIA dGPU";
-                };
-            };
+            internal.system.nvidia.enable = mkEnableOption "Nvidia" // { internal = true; };
         };
         
-        config = mkIf iNvidia.enable {
-            # hardware.nvidia.prime >> Doesnt work on wayland so no need to configure that
-            # https://discourse.nixos.org/t/why-nixos-using-dgpu-instead-of-igpu/73973
+        config = mkIf nvidia.enable {
             hardware.nvidia = {
-             # Open-Source drivers
              open = true;
-             
-             powerManagement = {
-                 # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
-                 enable = nvidia.powerManagement;
-                 # Fine-grained power management. Turns off GPU when not in use.
-                 finegrained = nvidia.finegrained;
-             };
-             
-             # Enable the Nvidia settings menu,
-             # accessible via `nvidia-settings`.
+             powerManagement.enable = checkArchitecture "turing";
+             powerManagement.finegrained = false;
              nvidiaSettings = true;
             
-             dynamicBoost.enable = nvidia.dynamicBoost;
+             dynamicBoost.enable = hybridLaptop && checkArchitecture "ampere";
+            };
+            
+            environment.etc."nvidia/nvidia-application-profiles-rc.d/50-limit-vram-niri.json".text = builtins.toJSON {
+                rules = [{
+                    pattern = { feature = "procname"; matches = "niri"; };
+                    profile = "Limit Free Buffer Pool On Wayland Compositors";
+                }];
+                profiles = [{
+                    name = "Limit Free Buffer Pool On Wayland Compositors";
+                    settings = [{ key = "GLVidHeapReuseRatio"; value = 0; }];
+                }];
             };
         };
     };

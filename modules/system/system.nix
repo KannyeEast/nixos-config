@@ -1,7 +1,7 @@
 { config, lib, ... }:
 let
     inherit (config.flake.modules) nixos homeManager; 
-    inherit (lib) mkOption mkDefault types;
+    inherit (lib) mkOption types;
 in
 {
     flake.modules.nixos.system = { config, host, ... }:
@@ -16,7 +16,7 @@ in
             nixos.boot
             nixos.homeManager
             nixos.locale
-            nixos.secrets
+           # nixos.secrets @TODO: Import once sops are working 
             nixos.user
             
             # homeManager.git @TODO: Import once settings are in place 
@@ -48,14 +48,6 @@ in
                     internal = true;
                     description = "Automatically upgrades NixOS to the newest version";
                 };
-            };
-            profile.system = {
-                hostname = mkOption {
-                    type = types.str;
-                    default = "default";
-                    description = "Set the hostname for this machine";
-                };
-
             };
         };
         

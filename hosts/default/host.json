@@ -1,1 +1,18 @@
-// @TODO: Move _host.nix to here
+{
+  "hostname": "zephyrus",
+  "system": "x86_64-linux",
+  "roles": [ "base", "desktop" ],
+  "username": "user",
+  "hardware": {
+    "platform": "laptop",
+    "gpu": [ "nvidia", "intel" ],
+    "gpuArchitecture": "ada-lovelace",
+    "modules": [ "asus-zephyrus-gu605my" ]
+  },
+  "locale": {
+    "timeZone": "America/New_York",
+    "localeDefault": "en_US.UTF-8",
+    "localeExtra": "en_US.UTF-8"
+  },
+  "secrets": { "publicKeys": [ "..." ], "ageFiles": [ "..." ] }
+}

@@ -29,7 +29,7 @@ in
                     memorySize = 8192;
                     cores = 4;
                 };
-                sessionVariables = {
+                environment.sessionVariables = {
                     LIBGL_ALWAYS_SOFTWARE = "1";
                     WLR_RENDERER = "pixman"; 
                     NIRI_DISABLE_HW_RENDER_CHECK = "1"; 
@@ -41,7 +41,7 @@ in
                     memorySize = 8192;
                     cores = 4;
                 };
-                sessionVariables = {
+                environment.sessionVariables = {
                     LIBGL_ALWAYS_SOFTWARE = "1";
                     WLR_RENDERER = "pixman"; 
                     NIRI_DISABLE_HW_RENDER_CHECK = "1"; 

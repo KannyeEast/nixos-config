@@ -1,51 +1,26 @@
-{ lib, ... }:
-let
-    inherit (lib) mkOption types;
-in
+{ ... }:
 {
-    flake.modules.nixos.locale = { config, ... }:
+    flake.modules.nixos.locale = { host, ... }:
     let
-        inherit (config.profile) system;
+        inherit (host) locale;
     in
     {
-        options = {
-            profile.system = {
-                timeZone = mkOption {
-                    type = types.str;
-                    default = "America/New_York";
-                    description = "Set to your local time zone";
-                };
-                locale = {
-                    default = mkOption {
-                        type = types.str;
-                        default = "en_US.UTF-8";
-                        description = "Set the language and characters for the system";
-                    };
-                    extra = mkOption {
-                        type = types.str;
-                        default = "en_US.UTF-8";
-                        description = "Additional language support";
-                    };
-                };
-            };
-        };
-        
         config = {
-            time.timeZone = system.timeZone;
+            time.timeZone = locale.timeZone;
             
-            i18n.defaultLocale = system.locale.default;
+            i18n.defaultLocale = locale.localeDefault;
             i18n.extraLocaleSettings = {
-                LC_CTYPE = system.locale.extra;
-                LC_ADDRESS =  system.locale.extra;
-                LC_MEASUREMENT =  system.locale.extra;
-                LC_MESSAGES =  system.locale.extra;
-                LC_MONETARY =  system.locale.extra;
-                LC_NAME =  system.locale.extra;
-                LC_NUMERIC =  system.locale.extra;
-                LC_PAPER =  system.locale.extra;
-                LC_TELEPHONE =  system.locale.extra;
-                LC_TIME =  system.locale.extra;
-                LC_COLLATE =  system.locale.extra;
+                LC_CTYPE = locale.localeExtra;
+                LC_ADDRESS =  locale.localeExtra;
+                LC_MEASUREMENT =  locale.localeExtra;
+                LC_MESSAGES =  locale.localeExtra;
+                LC_MONETARY =  locale.localeExtra;
+                LC_NAME =  locale.localeExtra;
+                LC_NUMERIC =  locale.localeExtra;
+                LC_PAPER =  locale.localeExtra;
+                LC_TELEPHONE =  locale.localeExtra;
+                LC_TIME =  locale.localeExtra;
+                LC_COLLATE =  locale.localeExtra;
             };
         };
     };

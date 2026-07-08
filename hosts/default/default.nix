@@ -2,7 +2,7 @@
 let
     inherit ( config.flake.modules) nixos;
     
-    host = import ./_host.nix;
+    host = builtins.fromJSON (builtins.readFile ./host.json);
     inherit (host) hostname system;
 in
 {

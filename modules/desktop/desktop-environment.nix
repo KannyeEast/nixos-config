@@ -15,12 +15,12 @@ in
                     default = "alacritty";
                     description = "";
                 };
-                keyboard.layout = mkOption {
+                xkb.layout = mkOption {
                     type = types.str;
                     default = "us";
                     description = "xkb keyboard layout";
                 };
-                keyboard.variant = mkOption {
+                xkb.variant = mkOption {
                     type = types.str;
                     default = "";
                     description = "xkb keyboard variant";
@@ -48,8 +48,8 @@ in
             environment.sessionVariables = {
                 NIXOS_OZONE_WL = "1";
                 TERMINAL = user.terminal;
-                XKB_DEFAULT_LAYOUT = user.keyboard.layout;
-                XKB_DEFAULT_VARIANT = user.keyboard.variant;
+                XKB_DEFAULT_LAYOUT = user.xkb.layout;
+                XKB_DEFAULT_VARIANT = user.xkb.variant;
             };
             
             programs.niri.enable = true;

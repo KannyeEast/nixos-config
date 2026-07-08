@@ -1,7 +1,7 @@
 { config, ... }:
 let
     inherit (config.flake.modules) nixos; 
-    inherit (import ./_host.nix) hostname;
+    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
 {
     flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }: 
@@ -24,18 +24,7 @@ in
             # internal.system.bootloader.enable = true;
         
             profile.system = {
-                hostname = hostname;
-                timeZone = "America/New_York";
-                locale.default = "en_US.UTF-8";
-                locale.extra = "en_US.UTF-8";
-                
                 dualBoot = false;
-                
-                # "nvidia" | "amd" | "intel"
-                hardware = [ "nvidia" "intel" ];
-                nvidia.powerManagement = true;
-                nvidia.finegrained = false;
-                nvidia.dynamicBoost = true;
                 
                 bootloader.settings = { };
                 bootloader.plymouth = {
@@ -49,11 +38,10 @@ in
             };
               
             profile.user = {
-                username = "user"; # The username will also be used as git name
                 # hashedPasswordFile = age.secrets.<ageFile>.path;
                 terminal = "kitty";
-                keyboard.layout = "us";
-                keyboard.variant = "";
+                xkb.layout = "us";
+                xkb.variant = "";
                 
                 fonts = {
                     packages = [ ];

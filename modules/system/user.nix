@@ -3,18 +3,14 @@ let
     inherit (lib) mkOption mkIf types;
 in
 {
-    flake.modules.nixos.user = { config, pkgs, ... }:
+    flake.modules.nixos.user = { config, pkgs, host, ... }:
     let
         inherit (config.profile) user;
+        inherit (host) username;
     in
     {
         options = {
             profile.user = {
-                username = mkOption {
-                    type = types.str;
-                    default = "user";
-                    description = "Sets your username";
-                };
                 hashedPasswordFile = mkOption {
                     type = types.nullOr types.str;
                     default = null;
@@ -30,9 +26,9 @@ in
             users.mutableUsers = false;
             
             # Create user profile
-            users.users.${user.username} = {
+            users.users.${username} = {
                 isNormalUser = true;
-                home = "/home/${user.username}";
+                home = "/home/${username}";
                 extraGroups = [
                     "wheel"             # sudo/root privileges
                     "networkmanager"    # network configuration

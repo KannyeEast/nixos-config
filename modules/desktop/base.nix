@@ -1,10 +1,9 @@
 { config, lib, ... }:
 let
     inherit (config.flake.modules) nixos homeManager;
-    inherit (lib) mkEnableOption mkOption types elem;
 in
 {
-    flake.modules.nixos.base = { config, pkgs, ... }:
+    flake.modules.nixos.base = { ... }:
     let
         inherit (config.profile) desktop;
     in
