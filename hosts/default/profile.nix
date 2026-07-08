@@ -5,17 +5,9 @@ let
 in
 {
     flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }: 
-    let 
-    
-    in
     {
-        # @TODO: Imports shouldn't be visible to host. Role system handles who imports what automatically and enables it
         imports = [
-            nixos.system
-            nixos.hardware
-            nixos.base
-            nixos.direnv
-            nixos.debug # @TODO: This needs a proper env
+            (import ../../lib/mkHost.nix ./.)
         ];
         
         config = {

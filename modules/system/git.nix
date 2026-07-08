@@ -12,6 +12,7 @@ in
             # Git settings
         };
     
+        # @TODO: Finish configuration and import it 
         config = {
             programs.git = {
                 enable = true;

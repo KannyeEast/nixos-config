@@ -1,100 +1,260 @@
-# AGENTS.md — nixos-config
+# AGENTS.md
 
-## What this repo is
-- Opinionated, single-source-of-truth NixOS config. Not a customization framework.
-- Host-driven, multi-host, **single-user** (multi-user is out of scope — never add structural support for it; `username` is a single value, never a `users` set).
-- Dendritic / feature-first pattern: `flake-parts` + `import-tree` auto-import everything under `hosts/` and `modules/`. Organize by what things *do* (`desktop`, `dev`, `server`), never by where they run.
+This file provides guidance to coding agents working in this repository.
 
-## Architecture
-- **Flake**: `flake.nix` only declares inputs and calls `flake-parts.mkFlake` with `import-tree [ ./hosts ./modules ]`. All inputs set `inputs.nixpkgs.follows = "nixpkgs"`. Group inputs with comment headers (`# Core`, `# Profiles`, etc.).
-- **Every `.nix` file is a flake-parts module** exporting into `flake.modules.nixos.<name>` or `flake.modules.homeManager.<name>`. Names are flat camelCase at exactly two levels (`nixos.browserContainers`, never `nixos.browser.containers` — a third level silently corrupts the module merge).
-- **Home-manager modules** (anything touching `home.*`, `xdg.*`, or HM `programs.*`) register under `flake.modules.homeManager.*` and enter the system ONLY via `home-manager.sharedModules` (or `users.<name>.imports`) — never via a NixOS `imports` list.
-- **One concern per file.** New feature = new file under `modules/<area>/`, auto-imported — never edit a central import list.
-- **Aggregator modules** (`system.nix`, `base.nix`, `hardware.nix`) import their sibling leaf modules; hosts import aggregators, not leaves.
+> IMPORTANT: Never consider backward compatibility. Eliminate legacy support by default.
 
-## Hosts: host.json is the source of truth
-`hosts/<name>/` contains:
-- `host.json` — written by the installer, read by everything. Loaded via `builtins.fromJSON (builtins.readFile ./host.json)` and passed to all modules as the `host` specialArg. Must be git-added or flakes won't see it.
-- `default.nix` — builds `flake.nixosConfigurations.${hostname}` with `specialArgs = { inherit inputs host; }`.
-- `hardware.nix` — `"${hostname}Hardware"` module (generated `fileSystems`/initrd; regenerate with `nixos-generate-config --show-hardware-config` on the machine, never hand-copy UUIDs).
-- `profile.nix` — `"${hostname}Configuration"`: imports aggregators, sets `profile.*` values.
-- `dotfiles/` — raw config files symlinked into `~/.config` (hot-editable, no rebuild).
+## Critical Safety Rules (Read First)
 
-### host.json schema
-```json
-{
-    "hostname": "zephyrus",
-    "system": "x86_64-linux",
-    "username": "user",
-    "roles": [ "base", "desktop" ],
-    "hardware": {
-        "platform": "laptop",
-        "gpu": [ "nvidia", "intel" ],
-        "gpuArchitecture": "ada-lovelace",
-        "modules": [ "asus-zephyrus-gu605my" ]
-    },
-    "locale": { "timeZone": "...", "localeDefault": "...", "localeExtra": "..." },
-    "secrets": { "publicKeys": [ "..." ], "ageFiles": [ "..." ] }
-}
-```
-- A field earns its place ONLY if (a) Nix can't compute it at eval time AND (b) some module reads it. Derived values (dGPU role, hybrid detection, driver flags) live in modules, not in the schema.
-- **Writer boundary**: host.json is everything the installer writes (facts + identity). profile.nix is everything a human writes (taste). Never make the installer edit .nix files.
-- `hardware.modules` lists nixos-hardware module names, imported via `map (m: inputs.nixos-hardware.nixosModules.${m}) (hardware.modules or [ ])`. Trust policy lives in the installer (it validates names against the live attr list); Nix imports whatever the json says.
+These rules override all other instructions. Violations are unacceptable.
 
-## Module template (follow exactly)
+### Never Make Changes Irrecoverable
+
+Absolutely forbidden:
+
+- `git stash drop` or `git stash clear`
+- `git reset --hard` without explicit user approval
+- `git clean -fd` or similar destructive operations
+- `rm -rf` on user files or directories
+- Any command that permanently deletes user work
+
+Required practices:
+
+- Use `rip <path>` instead of `rm` for deletions (recoverable from graveyard)
+- Use `git stash` when needed, but never drop stashes
+- Allowed stash operations are `git stash`, `git stash list`, `git stash show`, and `git stash apply`
+- `git stash pop` requires explicit user approval
+- Preserve user changes; if uncertain, ask first
+- Before any potentially destructive operation, stop and ask
+
+If something is accidentally deleted:
+
+1. Immediately attempt recovery (stash hash, reflog, `rip` graveyard, etc.)
+2. Inform the user exactly what happened and what was recovered
+3. Never hide or minimize deletion mistakes
+
+## Repository Overview
+
+This is a NixOS configuration using the Dendritic Pattern (organic configuration growth with automatic module discovery). Files can be moved and nested freely without breaking imports.
+
+## Nix Configuration
+
+`flake.nix#nixConfig` carries only pre-evaluation settings needed before the
+module graph is loaded:
+
+- `abort-on-warn`
+    - Value: `false`
+    - Purpose: Don't abort on warnings
+- `extra-experimental-features`
+    - Value: `[ "pipe-operators" ]`
+    - Purpose: Enable pipe operator syntax in Nix expressions
+- `allow-import-from-derivation`
+    - Value: `true`
+    - Purpose: Required by IFD consumer `nix-doom-emacs-unstraightened`
+
+Durable daemon and evaluator settings live in `modules/base/nix-settings.nix`.
+Cache topology and download retry settings live in
+`modules/hosts/common/nix-substituters.nix`. Inspect those owning files for
+current values instead of duplicating the full `nix.settings` set here.
+
+`build.sh` exports `NIX_CONFIG` only as a bootstrap overlay for the Nix commands
+it launches before the target system configuration is active.
+
+## Architecture and Module System
+
+### Automatic Module Discovery
+
+All Nix files are automatically imported as flake-parts modules. Files prefixed with `_` are ignored. Avoid literal path imports. Modules register under:
+
+- `flake.nixosModules`
+- `flake.homeManagerModules`
+
+### Module Composition Pattern
+
+Hosts compose modules from aggregator namespaces, not literal paths. Use `lib.hasAttrByPath` with `lib.getAttrFromPath` for optional modules to avoid ordering issues.
+
+### Shared Host Modules (`modules/hosts/common/`)
+
+Modules that apply to every host opted into the registry live under `modules/hosts/common/`. The registry is `flake.lib.nixos.hosts.<name>.shareCommon` (declared in `modules/hosts/common/registry.nix`).
+
+Common modules contribute to the aggregate `flake.nixosModules.hosts-common` module. `modules/configurations/nixos.nix` imports that aggregate for each host whose registry entry has `shareCommon = true`, before importing the host-specific module so per-host overrides still win.
+
 ```nix
-{ config, lib, ... }:                       # Outer = flake-parts module
+{ ... }:
 let
-    inherit (config.flake.modules) nixos;   # Only flake-level attrs at outer level
-    inherit (lib) mkOption mkIf types;      # Inherit lib helpers, don't repeat lib. everywhere
+  body = {
+    networking.domain = "local";
+  };
 in
 {
-    flake.modules.nixos.<camelCaseName> = { config, pkgs, host, ... }:
-    let
-        inherit (config.profile) system;    # inherit when the name maps 1:1
-        hw = host.hardware;                 # plain binding on rename/default/collision
-        model = host.hardware.model or null; # `or` needs a selection — inherit can't default
-    in
-    {
-        imports = [ ... ];
-        options = { ... };
-        config = { ... };
-    };
+  flake.nixosModules.hosts-common.imports = [ body ];
 }
 ```
-- Keep the `imports` / `options` / `config` block order, even when a section is empty.
-- Gate optional features with `config = mkIf <internal>.enable { ... };`.
 
-## Options policy (A/B/C test — the most important rule)
-An option is warranted **only if**: **(A)** host-specific (hosts legitimately differ), **(B)** frequently changing (experimental toggles), or **(C)** convenience / installer-written / referenced in many places. Everything else: **hardcode it in its feature file.**
-- **Prefer facts over options**: if the host-specific bit is derivable from host.json, derive it and delete the option (e.g. nvidia `open`/`powerManagement` derive from `gpuArchitecture` via the generation-order list; `internal.system.nvidia.enable = elem "nvidia" host.hardware.gpu`). Use `mkDefault` on derived values so a quirky host can override with raw `hardware.*` settings in profile.nix — no option ceremony.
-- Several values can coexist → list the host opts into. Only one value valid at a time → no enum; hard-wire the preferred choice (bootloader = systemd-boot, one display manager).
-- No dead/unused options. Delete by omission.
+Do NOT iterate over `flake.lib.nixos.hosts` with `lib.filterAttrs`/`lib.mapAttrs` from `modules/hosts/common/*.nix`. Host iteration belongs in `modules/configurations/nixos.nix`, which already owns NixOS system construction. Iterating from a common module that contributes to host configuration can trigger infinite recursion in the flake-parts module evaluator.
 
-## Option namespaces
-- `profile.*` — human-set knobs in profile.nix (`profile.system`, `profile.user`, `profile.desktop`). Always `mkOption` with `type`, `default`, `description`.
-- `internal.*` — machinery, always `internal = true` (`mkEnableOption "X" // { internal = true; }`). Derived from `host` facts or `profile` values, not set directly by hosts (temporary exceptions carry a `@TODO`).
+`modules/hosts/common/apps-enable.nix` carries the default-on baseline at `lib.mkOverride 1100`; per-host override files (e.g. `modules/tpnix/apps-enable.nix`) layer overrides at `lib.mkOverride 1000` so the host value wins. User overrides at default priority 100 still win over both. `modules/hosts/common/checks.nix` adds a flake-level `nix flake check` assertion that fails when a per-host override duplicates the common baseline value (silent no-op detection).
 
-## Boundaries
-- **Nix makes it work, dotfiles make it pretty.** Nix owns packages, hardware, services, and the session environment (`TERMINAL`, `XKB_DEFAULT_*`). Ricing lives in `hosts/<name>/dotfiles/` via `mkOutOfStoreSymlink` (live-editable). The interface between the two is the environment, not generated config.
-- Console keymap stays hardcoded (`console.keyMap = "us"`) as fallback; xkb env vars handle everything graphical.
-- Secrets: agenix today (`.age` in `secrets/`, keys/files in host.json `secrets.*`; `secrets/secrets.nix` aggregates across hosts for the agenix CLI). sops-nix migration planned. Never commit plaintext secrets; `.env` is untracked scratch.
-- No long-lived divergent branches; shareable-vs-personal is solved by design, not branching.
+### Flake Input Deduplication
 
-## Naming, style, encoding
-- File names: **kebab-case**. Module/variable names: **camelCase**. 4-space indent.
-- Comments explain *why*; open questions are inline `# @TODO:`.
-- **Files must be UTF-8, no BOM, LF line endings, no trailing NUL bytes.** The Windows editor has corrupted files before (truncation, NUL padding, UTF-16 saves). If eval fails with a bizarre parse error, check `file <path>` first. Keep `.gitattributes` with `* text=auto eol=lf`.
+Use the generated README's "Flake Input Deduplication" section as the canonical
+source for local flake input naming and follower relationships. Its source text
+is `modules/readme.nix`.
 
-## Workflow
-- `just check` — flake evaluates. `just test <host>` — build & run VM. `just switch <host>` — rebuild via nh. `just fmt` — nixfmt + deadnix. `just clean` — GC.
-- Test in the VM (`debug` module provides the `nixosvmtest` user), then one real reboot before layering more changes — `switch` succeeding proves activation, not stage-1 boot.
-- Debug tricks: `nix eval .#nixosConfigurations.<host>.config.system.build.toplevel --show-trace` for the trace `just check` hides; `options.<path>.definitionsWithLocations` in `nix repl` (`:lf .`) to find where conflicting values come from; `mkForce` is the legitimate tool against upstream modules that set plain-priority values.
-- Consult `PLANNING.md` before structural changes — it's the decision record; don't re-litigate settled verdicts (no den, no multi-user, no wrapper-modules for niri).
+### Repository Layout
 
-## Reference sites
-- **Options & packages**: https://mynixos.com (NixOS + home-manager options, package search — check here before claiming an option doesn't exist) · https://search.nixos.org (packages, `unstable` channel) · https://home-manager-options.extranix.com (HM options by release)
-- **lib functions**: https://noogle.dev (search `lib.*` / `builtins.*` signatures)
-- **Hardware**: https://github.com/NixOS/nixos-hardware (valid `hardware.modules` names)
-- **niri**: https://niri-wm.github.io/niri/ (config reference, includes, nvidia quirks)
-- **Zen browser flake**: https://github.com/0xc000022070/zen-browser-flake (HM module options)
+- NixOS modules
+    - Location: `modules/`
+    - Notes: Auto-loaded. Per-host logic under `modules/system76` and `modules/tpnix`; cross-host shared logic under `modules/hosts/common`; other bundles grouped by domain.
+- Shared derivations
+    - Location: `packages/`
+    - Notes: Common build logic shared between modules.
+- Helper scripts
+    - Location: `scripts/`
+    - Notes: Operational tooling.
+- Documentation
+    - Location: `docs/`
+    - Notes: Long-form references and local workflows. The NixOS manual mirror
+      lives under `docs/nixos-manual/`.
+- Secrets
+    - Location: `secrets/`
+    - Notes: Encrypted payloads managed via `sops.secrets`.
+- Generated artifacts
+    - Location: `.actrc`, `.githooks/post-checkout`, `.gitignore`,
+      `.gitleaks.toml`, `.sops.yaml`, `README.md`
+    - Notes: Owned by the files module. Update source definitions instead of editing generated output directly.
+
+### Local Mirrors
+
+The shared mirror root is managed in `modules/git/mirror-root.nix`, and the
+common-host mirror list is managed in `modules/hosts/common/mirrors.nix`.
+Prefer GitHub `owner/repo` shorthand for GitHub repositories, even when the
+input is a `https://github.com/owner/repo/` URL. For example,
+`tridactyl/tridactyl` maps to `/data/git/tridactyl-tridactyl`.
+
+The full path inventory lives in `docs/reference/local-mirrors.md`. When a
+common mirror is added or removed, keep `docs/reference/local-mirrors.md`,
+`docs/architecture/06-reference.md`, and `modules/agents/system-prompt.nix` in
+sync with `modules/hosts/common/mirrors.nix`.
+
+## Execution Playbooks
+
+### Branch Workflow
+
+Rule: Use a dedicated worktree and PR for changes. Do not commit directly to `main` unless explicitly approved.
+
+- Create
+    - Command: `git worktree add $HOME/trees/nixos/<type>-<name> -b <type>/<name>`
+- Work
+    - Command: `cd $HOME/trees/nixos/<type>-<name>` then commit changes
+- PR
+    - Command: `gh pr create --title "<type>(scope): summary" --body "..."` (Assign labels)
+- Cleanup after merge
+    - Command: `scripts/git-worktree-remove-safe.sh $HOME/trees/nixos/<type>-<name>`
+    - Follow-up: `git branch -d <type>/<name> && git worktree prune`
+    - Why: the repository has the initialized `secrets/` submodule. Plain
+      `git worktree remove` can fail on clean worktrees with
+      `working trees containing submodules cannot be moved or removed`; the helper
+      refuses dirty, ignored, or locked worktrees before using `--force` for that
+      Git guard.
+
+Branch type should follow Conventional Commits prefixes.
+
+PR body should include:
+
+- `## Summary`
+- `## Test plan`
+
+### Development Environment
+
+- Start work
+    - Command: `nix develop`
+    - Preconditions: Clean tree; network available for substituters.
+    - Post-check: Dev tools available (`treefmt`, `pre-commit`, etc.).
+- Format sources
+    - Command: `nix fmt`
+    - Preconditions: Run at repo root.
+    - Post-check: No remaining formatting diffs in `git status`.
+- Run hooks
+    - Command: `nix develop -c pre-commit run --all-files --hook-stage manual`
+    - Preconditions: Dev shell ready; workspace writable.
+    - Post-check: Exit code 0; review reported TODOs/failures.
+- Generate artifacts
+    - Command: `nix develop --accept-flake-config -c write-files --offline`
+    - Preconditions: Dev shell ready; managed files may update.
+    - Post-check: Review diffs in `.actrc`, `.githooks/post-checkout`, `.gitignore`, `.gitleaks.toml`, `.sops.yaml`, `README.md`.
+
+### Validation and Builds
+
+- Verify flake health
+    - Command: `nix flake check --accept-flake-config --no-build --offline`
+    - Preconditions: Dev shell recommended.
+    - Post-check: Exit code 0; resolve reported failures.
+- Build host
+    - Command: `nix build .#nixosConfigurations.$HOSTNAME.config.system.build.toplevel`
+    - Post-check: Build completes; capture resulting store path.
+- Update inputs
+    - Command: `nix flake metadata --refresh && nix flake update && nix fmt flake.lock`
+
+### GitHub Actions (Local)
+
+- List jobs
+    - Command: `nix develop -c gh-actions-list`
+    - Preconditions: Dev shell ready
+    - Post-check: Lists available workflow jobs
+- Run jobs
+    - Command: `nix develop -c gh-actions-run`
+    - Preconditions: Dev shell ready
+    - Post-check: Runs actions locally via `act`
+- Dry run
+    - Command: `nix develop -c gh-actions-run -n`
+    - Preconditions: Dev shell ready
+    - Post-check: Shows planned execution
+
+### Troubleshooting
+
+- Unfree package blocked
+    - Resolution: Add package to `config.nixpkgs.allowedUnfreePackages` in `modules/meta/nixpkgs-allowed-unfree.nix`.
+- Missing reference
+    - Resolution: Ensure that the file is tracked by git.
+- Explore config in repl
+    - Resolution: `nix develop --accept-flake-config -c nix repl --expr 'import ./.'` then inspect config module imports.
+
+## Coding Style and Verification
+
+- Naming
+    - Guidance: Prefer lowercase, hyphenated identifiers. Prefix experiments with `_` to avoid auto-discovery.
+- Imports
+    - Guidance: Expose modules through namespace exports; avoid literal path imports.
+- Validation
+    - Guidance: Keep `nix flake check --accept-flake-config --no-build --offline` passing. Build host closures before PRs. Use targeted `nix eval`/`nix run` checks when changing modules.
+
+**Skip `nix flake check` after value-level edits**: For nix flakes, skip `nix flake check` after value-level edits to existing lists or attrsets (adding strings, toggling booleans, scalar changes). Reserve it for structural changes: new modules, options, imports, let-binding refactors, argument-shape changes. `treefmt` plus a parse pass is sufficient during iteration.
+
+## Secret Management
+
+### Adding a secret with `sops-nix`
+
+1. Encrypt payload: `sops secrets/<name>.yaml`
+2. Declare in Nix under `sops.secrets."<namespace>/<name>"`
+3. Consume via `config.sops.secrets."<namespace>/<name>".path`
+
+Example:
+
+```nix
+sops.secrets."context7/api-key" = {
+  sopsFile = ./../../secrets/context7.yaml;
+  key = "context7_api_key";
+  path = "%r/context7/api-key";
+  mode = "0400";
+};
+```
+
+## Safety and Escalation
+
+Escalate when:
+
+1. A needed workflow is not documented
+2. A command fails and remediation is unclear
+
+Pause, summarize the issue, and ask for direction.

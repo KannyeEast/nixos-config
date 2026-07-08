@@ -1,10 +1,6 @@
 { ... }:
-let
-in
 {
     flake.modules.nixos.direnv = { ... }:
-    let
-    in
     { 
         config = {
             programs.direnv = {

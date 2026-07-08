@@ -3,6 +3,7 @@ vid_transcript.txt
 PLANNING.md
 README.md
 *.ps1
+scripts
 
 result
 .direnv

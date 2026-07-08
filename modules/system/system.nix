@@ -1,27 +1,14 @@
-{ config, lib, ... }:
+{ lib, ... }:
 let
-    inherit (config.flake.modules) nixos homeManager; 
     inherit (lib) mkOption types;
 in
 {
     flake.modules.nixos.system = { config, host, ... }:
     let
         inherit (host) hostname;
-        
-        profile = config.profile.system;
-        internal = config.internal.system;
+        inherit (config.internal) system;
     in
     {
-        imports = [
-            nixos.boot
-            nixos.homeManager
-            nixos.locale
-           # nixos.secrets @TODO: Import once sops are working 
-            nixos.user
-            
-            # homeManager.git @TODO: Import once settings are in place 
-        ];
-        
         options = {
             internal.system = {
                 name = mkOption {
@@ -67,7 +54,7 @@ in
                 enable = true;
                 clean.enable = true;
                 clean.extraArgs = "--keep-since 4d --keep 5";
-                flake = internal.repo;
+                flake = system.repo;
             };
             
             nix = {
@@ -109,9 +96,9 @@ in
             system = {
                 # Auto upgrade
                 autoUpgrade = {
-                    enable = internal.autoUpgrade;
+                    enable = system.autoUpgrade;
                     dates = "03:00";
-                    flake = internal.repo;
+                    flake = system.repo;
                     randomizedDelaySec = "45min";
                     flags = [
                         "--print-build-logs"
@@ -119,7 +106,7 @@ in
                 };
                 
                 # NixOS Version
-                stateVersion = internal.version;   
+                stateVersion = system.version;   
             };
             
             # Allow unfree packages
