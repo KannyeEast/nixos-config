@@ -34,7 +34,7 @@ in
                     "networkmanager"    # network configuration
                 ];
                 
-                # @TODO: Need a better approach to this
+                # @TODO: Need a better approach to this >> New sops should fix this
                 hashedPasswordFile = mkIf (user.hashedPasswordFile != null) user.hashedPasswordFile;
                 initialPassword = mkIf (user.hashedPasswordFile == null) "nixos";
                 

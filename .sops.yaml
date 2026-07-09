@@ -1,0 +1,9 @@
+﻿keys:
+  - &{hostname} <publicKey>
+  - &{username} <publicKey>
+creation_rules:
+  - path_regex: secrets/{hostname}\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+        - *{username} 
+        - *{hostname}

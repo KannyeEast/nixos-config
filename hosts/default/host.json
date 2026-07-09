@@ -13,6 +13,5 @@
     "timeZone": "America/New_York",
     "localeDefault": "en_US.UTF-8",
     "localeExtra": "en_US.UTF-8"
-  },
-  "secrets": { "publicKeys": [ "..." ], "ageFiles": [ "..." ] }
+  }
 }

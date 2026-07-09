@@ -40,6 +40,15 @@ in
             };
                 
             profile.desktop = {
+                browser = {
+                    extensions.extra = { };
+                    extensions.exclude = [ ];
+                    bookmarks.extra = [ ];
+                    tabs.extra = { };
+                    tabs.exclude = [ ];
+                    spaces.extra = { };
+                };
+                
                 displayManager = {
                     settings = {
                         theme = "sddm-astronaut-theme";
