@@ -27,6 +27,14 @@ HOST_DIR="${1:?usage: install.sh <host-dir> [target-root]}"
 TARGET_ROOT="${2:-}"                      # empty = running system, /mnt = ISO install
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Normalize to a clean repo-relative path — sops matches path_regex against
+# the path relative to .sops.yaml, so a trailing slash (tab completion!),
+# ./ prefix, or absolute path would bake a regex that can never match
+# ("error loading config: no matching creation rules found").
+HOST_DIR="$(realpath --relative-to="$REPO_ROOT" "$HOST_DIR")"
+[[ "$HOST_DIR" == ..* ]] && { echo "!! host dir must live inside the repo"; exit 1; }
+
 cd "$REPO_ROOT"
 
 HOST_JSON="$HOST_DIR/host.json"
