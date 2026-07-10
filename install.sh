@@ -67,13 +67,33 @@ USER_PUB="$(cat "$USER_KEY.pub")"
 USER_AGE="$(ssh-to-age < "$USER_KEY.pub")"
 echo ">> User age key: $USER_AGE"
  
-# ─── 3. Admin key (manual, one-time — public part only) ─────────────────────
+# ─── 3. Admin key (manual, one-time) ─────────────────────────────────────────
+# Resolution order:
+#   1. ADMIN_AGE env var
+#   2. first age1... key in the existing .sops.yaml
+#   3. admin identity in <user home>/.config/sops/age/
+#      - keys.txt         -> used as-is
+#      - id_ed25519(.pub) -> brought e.g. via USB; converted into keys.txt once
+ADMIN_DIR="$USER_HOME/.config/sops/age"
 ADMIN_AGE="${ADMIN_AGE:-$(grep -oE 'age1[0-9a-z]{58}' .sops.yaml 2>/dev/null | head -n1 || true)}"
+ 
+if [[ -z "$ADMIN_AGE" && -f "$ADMIN_DIR/id_ed25519" && ! -f "$ADMIN_DIR/keys.txt" ]]; then
+    echo ">> Converting admin SSH key to age identity: $ADMIN_DIR/keys.txt"
+    # NOTE: fails on passphrase-protected keys — strip the passphrase on a
+    # copy first: ssh-keygen -p -N "" -f <copy>
+    ssh-to-age -private-key -i "$ADMIN_DIR/id_ed25519" >> "$ADMIN_DIR/keys.txt"
+    chmod 600 "$ADMIN_DIR/keys.txt"
+fi
+ 
+if [[ -z "$ADMIN_AGE" && -f "$ADMIN_DIR/keys.txt" ]]; then
+    ADMIN_AGE="$(age-keygen -y "$ADMIN_DIR/keys.txt" | head -n1)"
+fi
+ 
 if [[ -z "$ADMIN_AGE" ]]; then
-    echo "!! No admin age key found. Pass it explicitly:"
-    echo "!!   ADMIN_AGE=age1... $0 $*"
-    echo "!! (Public key of the admin identity:"
-    echo "!!   nix-shell -p ssh-to-age --run 'ssh-to-age < /home/<user>/.ssh/id_ed25519.pub')"
+    echo "!! No admin age key found. Either:"
+    echo "!!   * copy the admin key (id_ed25519) or keys.txt into $ADMIN_DIR/, or"
+    echo "!!   * pass it explicitly: ADMIN_AGE=age1... $0 $*"
+    echo "!! (Generate a fresh one with: age-keygen -o $ADMIN_DIR/keys.txt)"
     exit 1
 fi
 echo ">> Admin age key: $ADMIN_AGE"
