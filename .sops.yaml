@@ -1,5 +1,5 @@
 ﻿keys:
-  - &users:
+  - &users: # nix-shell -p ssh-keygen -t ed25519 -f /home/<user>/.ssh/<user>
     - &admin <age key>
     - &user <age key>
   - &hosts: # nix-shell -p ssh-to-age --run 'cat /etc/ssh/ssh_host_ed25519_key.pub | ssh-to-age'
