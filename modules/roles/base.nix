@@ -11,13 +11,13 @@ in
             nixos.locale
             nixos.system
             nixos.user
-            # nixos.secrets
+            nixos.secrets
             nixos.hardware
         ];
         
         config = { 
             home-manager.sharedModules = [
-                # homeManager.git
+                homeManager.git
             ];
         };
     };

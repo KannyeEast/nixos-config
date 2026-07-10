@@ -678,9 +678,6 @@ in
                     };
                 in
                 {
-                    "./sponsorblock.json".text = builtins.toJSON sponsorBlock;
-                    "./dearrow.json".text = builtins.toJSON deArrow;
-                    "./yt-tweaks.json".text = builtins.toJSON ytTweaks;
                 };
             };
         };

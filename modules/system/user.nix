@@ -5,38 +5,26 @@ in
 {
     flake.modules.nixos.user = { config, pkgs, host, ... }:
     let
-        inherit (config.profile) user;
-        inherit (host) username;
+        inherit (host) user;
+        inherit (config) sops;
     in
     {
-        options = {
-            profile.user = {
-                hashedPasswordFile = mkOption {
-                    type = types.nullOr types.str;
-                    default = null;
-                    description = ''
-                    -- If left at default the system will fallback to the initial password --
-                    Set the path to of your passwords file
-                    '';
-                };
-            };
-        };
-        
         config = {
+            sops.secrets."userPassword".neededForUsers = true;
+        
             users.mutableUsers = false;
             
             # Create user profile
-            users.users.${username} = {
+            users.users.${user.name} = {
                 isNormalUser = true;
-                home = "/home/${username}";
+                home = "/home/${user.name}";
                 extraGroups = [
                     "wheel"             # sudo/root privileges
                     "networkmanager"    # network configuration
                 ];
-                
-                # @TODO: Need a better approach to this >> New sops should fix this
-                hashedPasswordFile = mkIf (user.hashedPasswordFile != null) user.hashedPasswordFile;
-                initialPassword = mkIf (user.hashedPasswordFile == null) "nixos";
+
+                hashedPasswordFile = sops.secrets.userPassword.path;
+                openssh.authorizedKeys.keys = user.sshKey;
                 
                 shell = pkgs.zsh;
             };

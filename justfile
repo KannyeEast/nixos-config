@@ -1,17 +1,18 @@
 flake := justfile_directory()
 
 # Overview
-list:
+default:
     @just --list
 
 # Rebuild switch
-switch host='hostname':
-    nh os switch {{flake}} -H {{host}}
+switch HOSTNAME='hostname':
+    git add --intent-to-add . && \
+    nh os switch {{flake}} -H {{HOSTNAME}}
 
 # Test the config in a VM
-test host='hostname':
-    nixos-rebuild build-vm --flake {{flake}}#{{host}}
-    ./result/bin/run-{{host}}-vm
+test HOSTNAME='hostname':
+    nixos-rebuild build-vm --flake {{flake}}#{{HOSTNAME}}
+    ./result/bin/run-{{HOSTNAME}}-vm
 
 # Check if flake evaluates
 check:
@@ -24,3 +25,14 @@ clean:
 # Clean code
 fmt:
     cd {{flake}} && find . -name '*.nix' -exec nixfmt {} + && deadnix .
+    
+
+# Utilize [private] and [group] to make bundeled commands
+
+[group("git")]
+stage:
+    git stage .
+    
+[group("git")]
+commit MESSAGE:
+    git commit

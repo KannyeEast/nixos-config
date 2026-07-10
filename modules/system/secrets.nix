@@ -1,8 +1,8 @@
-{ inputs, ... }: 
+{ inputs, ... }:
 {
     flake.modules.nixos.secrets = { host, ... }:
     let
-        inherit (host) hostname username;
+        inherit (host) hostname;
     in
     {
         imports = [
@@ -10,21 +10,16 @@
         ];
     
         config = {
-            sops.defaultSopsFile = ../../secrets/${hostname}.yaml;
-            sops.age.keyFile = "/home/${username}/.config/sops/age/keys.txt";
+            sops = {
+                defaultSopsFile = ../../hosts/${hostname}/secrets.yaml;
+                validateSopsFiles = false;
+                
+                age = {
+                    sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+                    keyFile = "/var/lib/sops-nix/key.txt";
+                    generateKey = true;
+                };
+            };
         };
-    };
-    
-    # @TODO: Do we create this file on rebuild in a loop (for each host this is his key and this his path), or just manually append it for each new host
-    perSystem = _: {
-        files.file.".sops.yaml".text = ''
-            keys:
-                - &${hostname} ${key}
-            creation_rules:
-                - path_regex: secrets/${hostname}\.(yaml|json|env|ini)$
-                  key_groups:
-                    - age:
-                        - *${hostname}
-        '';
     };
 }

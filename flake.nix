@@ -2,18 +2,18 @@
     description = "Very cool NixOS config";
 
     inputs = {
-        # Core
+        #
+        # Nix architecture
+        #
+        
         ## Unstable packages
         nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";        
         
-        ## Flake modules
-        flake-parts = {
-            url = "github:hercules-ci/flake-parts";
-            inputs.nixpkgs-lib.follows = "nixpkgs";    
+        ## Hardware tweaks
+        nixos-hardware = {                                          
+            url = "github:NixOS/nixos-hardware/master";  
+            inputs.nixpkgs.follows = "nixpkgs";
         };
-        
-        ## Import modules recursively 
-        import-tree.url = "github:denful/import-tree";
         
         ## Disk partitioning 
         disko = {
@@ -27,36 +27,51 @@
             inputs.nixpkgs.follows = "nixpkgs"; 
         };
         
-        ## Secrets        
-        sops-nix = {
-            url = "github:Mic92/sops-nix";
-            inputs.nixpkgs.follows = "nixpkgs";
-        };
-        
-        # Profiles
-        ## Server
-
-        
-        ## Workstation
         ### Home-manager
         home-manager = {
             url = "github:nix-community/home-manager";
             inputs.nixpkgs.follows = "nixpkgs";
         };
         
-        ### Hardware tweaks
-        nixos-hardware = {                                          
-            url = "github:NixOS/nixos-hardware/master";  
+        ## Secrets        
+        sops-nix = {
+            url = "github:Mic92/sops-nix";
             inputs.nixpkgs.follows = "nixpkgs";
         };
         
+        #
+        # Dendritic Pattern
+        #
+         
+        ## Flake modules
+        flake-parts = {
+            url = "github:hercules-ci/flake-parts";
+            inputs.nixpkgs-lib.follows = "nixpkgs";    
+        };
+        
+        ## Import modules recursively 
+        import-tree.url = "github:denful/import-tree";
+         
+        #
+        # Profiles
+        #
+        
+        # Server
+        ## Infrastructure and network diagrams
+        nix-topology = {
+            url = "github:oddlama/nix-topology";
+            inputs.nixpkgs.follows = "nixpkgs";
+            inputs.flake-parts.follow = "flake-parts";
+        };
+        
+        # Workstation        
         ## Shell
         quickshell = {
             url = "git+https://git.outfoxxed.me/outfoxxed/quickshell";
             inputs.nixpkgs.follows = "nixpkgs";
         };
 
-        ### Browser
+        ## Browser
         zen-browser = {
             url = "github:0xc000022070/zen-browser-flake";
             inputs.nixpkgs.follows = "nixpkgs";
@@ -75,6 +90,3 @@
             ];
         };
 }
-
-
-

@@ -2,7 +2,11 @@
   "hostname": "default",
   "system": "x86_64-linux",
   "roles": [ "desktop", "dev" ],
-  "username": "user",
+  "user": {
+    "name": "user",
+    "email": "idk@man.com",
+    "sshKey": ""
+  },
   "hardware": {
     "platform": "laptop",
     "gpu": [ "nvidia", "intel" ],

@@ -1,7 +1,7 @@
 { config, ... }:
 let
     inherit (config.flake.modules) nixos; 
-    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
+    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname user;
 in
 {
     imports = [
@@ -11,6 +11,9 @@ in
     flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }: 
     {
         config = {
+            sops.secrets = {
+            };
+            
             profile.system = {
                 dualBoot = false;
                 
@@ -26,7 +29,6 @@ in
             };
               
             profile.user = {
-                # hashedPasswordFile = age.secrets.<ageFile>.path;
                 terminal = "kitty";
                 xkb.layout = "us";
                 xkb.variant = "";
@@ -53,7 +55,6 @@ in
                     settings = {
                         theme = "sddm-astronaut-theme";
                         extraPackages = [ 
-                            # @TODO: These can probably be directly handled by the custom quickshell bar later
                             pkgs.kdePackages.qtsvg 
                             pkgs.kdePackages.qtmultimedia 
                             pkgs.kdePackages.qtvirtualkeyboard 

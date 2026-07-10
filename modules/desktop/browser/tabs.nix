@@ -86,7 +86,7 @@ in
             };
             "FRITZ!Box" = {
                 id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
-                url = "http://192.168.178.1/"; # This is also fine right?
+                url = "http://192.168.178.1/";
                 position = 301;
                 workspace = spaces."Personal Projects".id;
                 folderParentId = pins."Server".id;

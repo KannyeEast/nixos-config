@@ -1,9 +1,13 @@
 ﻿keys:
-  - &{hostname} <publicKey>
-  - &{username} <publicKey>
+  - &users:
+    - &admin <age key>
+    - &user <age key>
+  - &hosts: # nix-shell -p ssh-to-age --run 'cat /etc/ssh/ssh_host_ed25519_key.pub | ssh-to-age'
+    - &default <age key>
 creation_rules:
-  - path_regex: secrets/{hostname}\.(yaml|json|env|ini)$
+  - path_regex: hosts/default/secrets.yaml$
     key_groups:
       - age:
-        - *{username} 
-        - *{hostname}
+          - *admin
+          - *user
+          - *default
