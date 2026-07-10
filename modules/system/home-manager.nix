@@ -1,6 +1,4 @@
 { inputs, ... }:
-let
-in
 {
     flake.modules.nixos.homeManager = { config, host, ... }:
     let
@@ -17,6 +15,7 @@ in
                 useUserPackages = true;
                 useGlobalPkgs = true;
                 backupFileExtension = "backup";
+                extraSpecialArgs = { inherit inputs host; };
                 users.${user.name} = {
                     home = {
                         username = user.name;
