@@ -1,7 +1,7 @@
 { config, ... }:
 let
     inherit (config.flake.modules) nixos; 
-    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname user;
+    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
 {
     imports = [

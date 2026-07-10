@@ -19,7 +19,7 @@
                     commit.gpgsign = true;
                     core.editor = "$EDITOR";
                     gpg.format = "ssh";
-                    gpg.ssh.allowedSignersFile = "~/.ssh/allowed_signers";
+                    gpg.ssh.allowedSignersFile = "/home/${user.name}/.ssh/allowed_signers";
                     user.signingKey = user.sshKey;
                     url = {
                         "https://github.com/".insteadOf = "github:";

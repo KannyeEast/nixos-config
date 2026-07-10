@@ -61,7 +61,7 @@
         nix-topology = {
             url = "github:oddlama/nix-topology";
             inputs.nixpkgs.follows = "nixpkgs";
-            inputs.flake-parts.follow = "flake-parts";
+            inputs.flake-parts.follows = "flake-parts";
         };
         
         # Workstation        
