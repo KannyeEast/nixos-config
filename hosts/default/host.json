@@ -1,17 +1,25 @@
 {
   "hostname": "default",
   "system": "x86_64-linux",
-  "roles": [ "desktop", "dev" ],
+  "roles": [
+    "desktop",
+    "dev"
+  ],
   "user": {
     "name": "user",
     "email": "idk@man.com",
-    "sshKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMX+dMqj751lL/srdcHX9HXGxb4uNUpMRzDri+zUfNzk user@default"
+    "sshKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFZBktIq0acbe6o6u6GFzmPm81icbVzTVfraYfCJ2P5I user@default"
   },
   "hardware": {
     "platform": "laptop",
-    "gpu": [ "nvidia", "intel" ],
+    "gpu": [
+      "nvidia",
+      "intel"
+    ],
     "gpuArchitecture": "ada-lovelace",
-    "modules": [ "asus-zephyrus-gu605my" ]
+    "modules": [
+      "asus-zephyrus-gu605my"
+    ]
   },
   "locale": {
     "timeZone": "America/New_York",

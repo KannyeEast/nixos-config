@@ -1,11 +1,11 @@
-﻿keys:
-  - &users: # nix-shell -p ssh-keygen -t ed25519 -f /home/<user>/.ssh/<user>
-    - &admin <age key>
-    - &user <age key>
-  - &hosts: # nix-shell -p ssh-to-age --run 'cat /etc/ssh/ssh_host_ed25519_key.pub | ssh-to-age'
-    - &default <age key>
+keys:
+  - &users:
+    - &admin age1fv4c8lqxxuqvhl3pudpgrye4fggf6qm5623p9qrxxseju0ydxy0q7x9x56
+    - &user age1xv0p3utt70aefcjh97kkucq6prjyxe2th56avzhmq3u2wadyv94svnygy9
+  - &hosts:
+    - &default age1002ehp0wafszh4pqerqyf69fmj3r2mgfaatrqrdhg2zlhzq39c6q9sau39
 creation_rules:
-  - path_regex: hosts/default/secrets.yaml$
+  - path_regex: hosts/default/secrets\.yaml$
     key_groups:
       - age:
           - *admin
