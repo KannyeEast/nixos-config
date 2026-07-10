@@ -1,6 +1,6 @@
 { inputs, config, ... }:
 let
-    inherit (config.flake.modules) homeManager;
+    inherit (config.flake.modules) nixos homeManager;
 in
 {
     flake.modules.nixos.browser = { ... }:
