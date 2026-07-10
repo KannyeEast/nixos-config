@@ -5,7 +5,7 @@ in
     flake.modules.nixos.homeManager = { config, host, ... }:
     let
         inherit (config.internal) system;
-        inherit (host) username;
+        inherit (host) user;
     in
     {
         imports = [
@@ -17,10 +17,10 @@ in
                 useUserPackages = true;
                 useGlobalPkgs = true;
                 backupFileExtension = "backup";
-                users.${username} = {
+                users.${user.name} = {
                     home = {
-                        username = username;
-                        homeDirectory = "/home/${username}";
+                        username = user.name;
+                        homeDirectory = "/home/${user.name}";
                         
                         # Home-manager version  
                         stateVersion = system.version; 
