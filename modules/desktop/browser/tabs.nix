@@ -3,9 +3,37 @@ let
     inherit (lib) mkOption types;
 in
 {
-    flake.modules.homeManager.browserTabs = { config, ... }:
+    flake.modules.nixos.browserTabs = { ... }:
+    {
+         options = {
+            profile.desktop.browser = {
+                bookmarks.extra = mkOption {
+                    type = types.listOf types.attrs;
+                    default = [ ];
+                    description = "Bookmarks added on top of base config";
+                };
+                tabs.extra = mkOption {
+                    type = types.attrsOf types.attrs;
+                    default = { };
+                    description = "Tabs added on top of base config";
+                };
+                tabs.exclude = mkOption {
+                    type = types.listOf types.str;
+                    default = [ ];
+                    description = "Tabs removed from base config";               
+                };                            
+                spaces.extra = mkOption {
+                    type = types.attrsOf types.attrs;
+                    default = { };
+                    description = "Spaces added on top of base config";
+                };
+            };
+        };
+    };
+    
+    flake.modules.homeManager.browserTabs = { osConfig, ... }:
     let
-        inherit (config.profile.desktop) browser;
+        inherit (osConfig.profile.desktop) browser;
         
         bookmarks = [
             {
@@ -115,32 +143,7 @@ in
             };
         };
     in
-    {
-        options = {
-            profile.desktop.browser = {
-                bookmarks.extra = mkOption {
-                    type = types.listOf types.attrs;
-                    default = [ ];
-                    description = "Bookmarks added on top of base config";
-                };
-                tabs.extra = mkOption {
-                    type = types.attrsOf types.attrs;
-                    default = { };
-                    description = "Tabs added on top of base config";
-                };
-                tabs.exclude = mkOption {
-                    type = types.listOf types.str;
-                    default = [ ];
-                    description = "Tabs removed from base config";               
-                };                            
-                spaces.extra = mkOption {
-                    type = types.attrsOf types.attrs;
-                    default = { };
-                    description = "Spaces added on top of base config";
-                };
-            };
-        };
-        
+    {   
         config = {
             programs.zen-browser.profiles.default = {
                 bookmarks.force = true;

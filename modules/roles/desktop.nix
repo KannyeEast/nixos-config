@@ -10,6 +10,7 @@ in
             
             nixos.audio
             nixos.bluetooth
+            nixos.browser
             nixos.desktopEnvironment
             nixos.desktopShell
             nixos.displayManager

@@ -8,7 +8,7 @@ in
         (import ../../lib/mkHost.nix ./.)
     ];
     
-    flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }: 
+    flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }:
     {
         config = {
             sops.secrets = {

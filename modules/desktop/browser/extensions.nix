@@ -3,9 +3,27 @@ let
     inherit (lib) mkOption types;
 in
 {
-    flake.modules.homeManager.browserExtensions = { config, ... }:
+    flake.modules.nixos.browserExtensions = { ... }:
+    {
+        options = {
+            profile.desktop.browser = {
+                extensions.extra = mkOption {
+                    type = types.attrsOf (types.either types.str types.attrs);
+                    default = { };
+                    description = "Extensions added on top of base config";
+                };
+                extensions.exclude = mkOption {
+                    type = types.listOf types.str;
+                    default = [ ];
+                    description = "Extensions removed from base config";               
+                };
+            };
+        };
+    };
+    
+    flake.modules.homeManager.browserExtensions = { osConfig, ... }:
     let
-        inherit (config.profile.desktop) browser;
+        inherit (osConfig.profile.desktop) browser;
         
         mkExtensionSettings = builtins.mapAttrs (_: entry:
             if builtins.isAttrs entry
@@ -59,20 +77,6 @@ in
         };
     in
     {
-        options = {
-            profile.desktop.browser = {
-                extensions.extra = mkOption {
-                    type = types.attrsOf (types.either types.str types.attrs);
-                    default = { };
-                    description = "Extensions added on top of base config";
-                };
-                extensions.exclude = mkOption {
-                    type = types.listOf types.str;
-                    default = [ ];
-                    description = "Extensions removed from base config";               
-                };
-            };
-        };
         # Entry = about:debugging#/runtime/this-firefox
         # Id = https://addons.mozilla.org/en-US/firefox/addon/<extension>
         config = {

@@ -3,9 +3,15 @@ let
     inherit (config.flake.modules) homeManager;
 in
 {
+    flake.modules.nixos.browser = { ... }:
+    {
+        imports = [
+            nixos.browserExtensions
+            nixos.browserTabs
+        ];
+    };
+        
     flake.modules.homeManager.browser = { ... }:
-    let
-    in
     {
         imports = [
             inputs.zen-browser.homeModules.beta
