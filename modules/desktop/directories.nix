@@ -1,4 +1,4 @@
-﻿{ ... }:
+{ ... }:
 {
     flake.modules.homeManager.directories = { host, ... }:
     let 
