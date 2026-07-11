@@ -396,7 +396,26 @@ else
     exit 1
 fi
 
-# ─── 9. Stage everything — flakes ignore untracked files ────────────────────
+# ─── 9. Ownership — staged files belong to the target user ──────────────────
+# Everything above ran as root; hand the user's files back to the user, or
+# git/sops will later refuse to work with them ("dubious ownership").
+# From the ISO the user does not exist yet — NixOS assigns the first normal
+# user uid 1000 / group 'users' (gid 100) on first boot, so fall back to
+# numeric ids. (Single-user hosts only; a second user would not get 1000.)
+if [[ -z "$TARGET_ROOT" ]] && id -u "$USER_NAME" >/dev/null 2>&1; then
+    OWNER="$USER_NAME:users"
+else
+    OWNER="1000:100"
+fi
+chown "$OWNER" "$USER_HOME" 2>/dev/null || true
+chown -R "$OWNER" "$USER_HOME/.ssh" "$USER_HOME/.config" 2>/dev/null || true
+# The repo IS the user's config — transfer it too when it lives in their home
+case "$REPO_ROOT" in
+    "$USER_HOME"/*) chown -R "$OWNER" "$REPO_ROOT" ;;
+esac
+echo ">> Ownership of staged user files set to $OWNER"
+
+# ─── 10. Stage everything — flakes ignore untracked files ───────────────────
 git add .
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
@@ -413,8 +432,10 @@ cat <<EOF
        users.users.$USER_NAME.hashedPasswordFile =
            config.sops.secrets.userPassword.path;
      Without neededForUsers the hash is decrypted too late -> no login.
-   * After the first boot, fix ownership of the staged user files:
-       chown -R $USER_NAME:users /home/$USER_NAME/.ssh /home/$USER_NAME/.config
+   * Ownership of staged files was set automatically (step 9). If git still
+     complains about 'dubious ownership', build as $USER_NAME via 'nh os
+     switch' (root never needs to read the repo then), or as a last resort:
+       git config --global --add safe.directory <repo path>
    * Commit the staged files before building; then:
        nixos-install --flake .#$HOSTNAME   (from ISO)
        nixos-rebuild switch --flake .#$HOSTNAME   (on a running system)

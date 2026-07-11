@@ -6,7 +6,7 @@
         devShells.default = pkgs.mkShell {
             packages = [
                 pkgs.just
-                pkgs.nixfmt-rfc-style
+                pkgs.nixfmt
                 pkgs.deadnix
             ];
         };

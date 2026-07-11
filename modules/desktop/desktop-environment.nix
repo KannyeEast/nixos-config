@@ -47,7 +47,7 @@ in
             
             environment.sessionVariables = {
                 NIXOS_OZONE_WL = "1";
-                TERMINAL = user.terminal;
+                TERMINAL = getExe pkgs.${user.terminal};
                 XKB_DEFAULT_LAYOUT = user.xkb.layout;
                 XKB_DEFAULT_VARIANT = user.xkb.variant;
             };
