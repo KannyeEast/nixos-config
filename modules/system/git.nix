@@ -1,39 +1,52 @@
-{ ... }:
+{ lib, ... }:
+let
+    inherit (lib) concatMapStringsSep;
+in
 {
-    flake.modules.homeManager.git = { host, ... }:
+    flake.modules.homeManager.git = { config, host, ... }:
     let
         inherit (host) user;
     in
     {
         config = {
             home.file.".ssh/allowed_signers".text =
-                "* ${builtins.elemAt user.sshKeys 1}";
+                concatMapStringsSep "\n" (key: "${user.email} ${key}") user.sshKeys + "\n";
         
             programs.git = {
                 enable = true;
-                userName = user.name;
-                userEmail = user.email;
+                
+                signing = {
+                    format = "ssh";
+                    signByDefault = true;
+                    key = "${config.home.homeDirectory}/.ssh";
+                };
                 
                 settings = {
+                    user.name = user.name;
+                    user.email = user.email;
                     init.defaultBranch = "main";
-                    commit.gpgsign = true;
-                    core.editor = "$EDITOR";
-                    gpg.format = "ssh";
-                    gpg.ssh.allowedSignersFile = "/home/${user.name}/.ssh/allowed_signers";
-                    user.signingKey = builtins.elemAt user.sshKeys 1;
+                    gpg.ssh.allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
+
                     url = {
-                        "https://github.com/".insteadOf = "github:";
+                        "ssh://git@github.com/".insteadOf = "https://github.com/:";
                         "https://gitlab.com/".insteadOf = "gitlab:";
                         "https://codeberg.org/".insteadOf = "codeberg:";
                     };
                 };
             };
             
-            # For now also GitHub
-            programs.gh = {
+            programs.shh = {
                 enable = true;
-                gitCredentialHelper.enable = true;
+                matchBlocks."github.com" = {
+                   identityFile = [
+                    "${config.home.homeDirectory}/.ssh/id_${user.name}"
+                    "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO: Temporary admin key for ssh auth >> Remove when system stable
+                   ];
+                   identitiesOnly = true;
             };
+            
+            # For now also GitHub
+            programs.gh.enable = true;
         };
     };
 }

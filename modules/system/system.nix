@@ -19,7 +19,7 @@ in
                 };
                 repo = mkOption {
                     type = types.str;
-                    default = "github:KannyeEast/nixos-config";
+                    default = "git+ssh://git@github.com/KannyeEast/nixos-config";
                     internal = true;
                     description = "The git repo this is associated with";
                 };
