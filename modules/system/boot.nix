@@ -34,10 +34,10 @@ in
                 boot = {
                     loader.efi.canTouchEfiVariables = true;
                     loader.timeout = 5;
-                    consoleLogLevel = 0;
+                    # consoleLogLevel = 0;
                     kernelParams = [
-                        "quiet"
-                        "splash"
+                        # "quiet"
+                        # "splash"
                         "loglevel=3"
                         "rd.systemd.show_status=false"
                         "rd.udev.log_level=3"
