@@ -7,7 +7,7 @@
     {
         config = {
             home.file.".ssh/allowed_signers".text =
-                "* ${builtins.readFile /home/${user.name}/.ssh/id_${user.name}.pub}";
+                "* ${builtins.elemAt user.sshKeys 1}";
         
             programs.git = {
                 enable = true;
