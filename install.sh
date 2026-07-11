@@ -19,12 +19,13 @@
 #   sudo ./install.sh hosts/default          # on the running (installed) system
 #   sudo ./install.sh hosts/default /mnt     # from the ISO, after mounting target
 #
-# Admin key (manual, one-time): the PUBLIC half is committed to the repo as
-# id_admin.pub and used as the encryption recipient. The PRIVATE half (for
-# editing secrets later) is brought e.g. via boot USB to
+# Admin key (manual, one-time, OPTIONAL): the PUBLIC half is committed to the
+# repo as id_admin.pub and used as an extra encryption recipient. The PRIVATE
+# half (for editing secrets later) is brought e.g. via boot USB to
 # <user home>/.config/sops/age/ — either as keys.txt (age identity) or as
 # id_ed25519 (SSH key), which gets converted to keys.txt automatically.
 # Override the recipient explicitly with: ADMIN_AGE=age1... ./install.sh ...
+# Without an admin key, secrets are readable by the user + this host only.
 
 set -euo pipefail
 
@@ -83,14 +84,19 @@ if [[ -f .sops.yaml ]]; then
     fi
 fi
 
-# Decrypt one value from secrets.yaml: try the caller's identities first
-# (keys.txt / SOPS_AGE_KEY*), then fall back to the host key. Silent on
-# failure so callers can branch on it.
-sops_extract() {
-    sops --decrypt --extract "$1" "$SECRETS" 2>/dev/null && return 0
+# Run any sops command: try the caller's identities first (keys.txt /
+# SOPS_AGE_KEY*), then retry with the host key as identity. Keeps the admin
+# key optional — this host can always operate on its own secrets.
+sops_host() {
+    "$@" 2>/dev/null && return 0
     [[ -f "$HOST_KEY" ]] || return 1
-    SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$HOST_KEY" 2>/dev/null)" \
-        sops --decrypt --extract "$1" "$SECRETS" 2>/dev/null
+    SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$HOST_KEY" 2>/dev/null)" "$@"
+}
+
+# Decrypt one value from secrets.yaml; silent on failure so callers can
+# branch on it.
+sops_extract() {
+    sops_host sops --decrypt --extract "$1" "$SECRETS" 2>/dev/null
 }
 
 # ─── 2. User key (editing recipient, git signing) ───────────────────────────
@@ -151,19 +157,16 @@ fi
 if [[ -z "$ADMIN_AGE" && -f "$ADMIN_DIR/keys.txt" ]]; then
     ADMIN_AGE="$(age-keygen -y "$ADMIN_DIR/keys.txt" | head -n1)"
 fi
-if [[ -z "$ADMIN_AGE" ]]; then
-    ADMIN_AGE="$(grep -oE 'age1[0-9a-z]{58}' .sops.yaml 2>/dev/null | head -n1 || true)"
-fi
+# NOTE: deliberately NO fallback to "first age1... key in .sops.yaml" — that
+# could silently promote another host's key to admin recipient.
 
 if [[ -z "$ADMIN_AGE" ]]; then
-    echo "!! No admin age key found. Either:"
-    echo "!!   * commit the admin public key as $ADMIN_PUB_FILE, or"
-    echo "!!   * copy the admin key (id_ed25519) or keys.txt into $ADMIN_DIR/, or"
-    echo "!!   * pass it explicitly: ADMIN_AGE=age1... $0 $*"
-    echo "!! (Generate a fresh identity with: age-keygen -o $ADMIN_DIR/keys.txt)"
-    exit 1
+    echo ">> No admin key found — continuing without one."
+    echo ">> (secrets stay readable by the user and this host only; add one"
+    echo ">>  later via $ADMIN_PUB_FILE or ADMIN_AGE=age1... and re-run)"
+else
+    echo ">> Admin age key: $ADMIN_AGE"
 fi
-echo ">> Admin age key: $ADMIN_AGE"
 
 # ─── 4. .sops.yaml ───────────────────────────────────────────────────────────
 # Merge, don't overwrite: existing users/hosts/rules are preserved.
@@ -194,7 +197,6 @@ if [[ ! -f .sops.yaml ]]; then
     cat > .sops.yaml <<EOF
 keys:
   - &users:
-    - &admin $ADMIN_AGE
   - &hosts:
 creation_rules:
 EOF
@@ -222,19 +224,21 @@ upsert_key() {
 }
 
 echo ">> Updating .sops.yaml"
-upsert_key "admin"        "$ADMIN_AGE" "  - &hosts:"       # users block
+if [[ -n "$ADMIN_AGE" ]]; then
+    upsert_key "admin" "$ADMIN_AGE" "  - &hosts:"           # users block
+fi
 upsert_key "$USER_ANCHOR" "$USER_AGE"  "  - &hosts:"       # append to users block
 upsert_key "$HOSTNAME"    "$HOST_AGE"  "creation_rules:"   # append to hosts block
 
 if ! grep -q -- "path_regex: $HOST_DIR/secrets" .sops.yaml; then
-    cat >> .sops.yaml <<EOF
-  - path_regex: $HOST_DIR/secrets\.yaml\$
-    key_groups:
-      - age:
-          - *admin
-          - *$USER_ANCHOR
-          - *$HOSTNAME
-EOF
+    {
+        printf '  - path_regex: %s/secrets\\.yaml$\n' "$HOST_DIR"
+        printf '    key_groups:\n'
+        printf '      - age:\n'
+        if [[ -n "$ADMIN_AGE" ]]; then printf '          - *admin\n'; fi
+        printf '          - *%s\n' "$USER_ANCHOR"
+        printf '          - *%s\n' "$HOSTNAME"
+    } >> .sops.yaml
 fi
 
 # ─── 5. secrets.yaml ─────────────────────────────────────────────────────────
@@ -248,9 +252,9 @@ fi
 # The fresh-create path needs public keys only.
 if [[ -f "$SECRETS" ]] && grep -q '^sops:' "$SECRETS"; then
     echo ">> $SECRETS exists — updating recipients (sops updatekeys)"
-    if ! sops updatekeys --yes "$SECRETS"; then
+    if ! sops_host sops updatekeys --yes "$SECRETS"; then
         echo "!! updatekeys could not decrypt $SECRETS — none of the available"
-        echo "!! identities (admin keys.txt, host key) match its recipients."
+        echo "!! identities (admin keys.txt if any, host key) match its recipients."
         echo "!! Fix: bring the admin identity to $ADMIN_DIR, or recreate the"
         echo "!! secrets: mv $SECRETS $SECRETS.bak and re-run this script."
         exit 1
@@ -267,7 +271,7 @@ if [[ -f "$SECRETS" ]] && grep -q '^sops:' "$SECRETS"; then
         [[ "$USER_KEY_GENERATED" == 1 ]] \
             && echo ">> Fresh user key generated — replacing stale userSshKey in $SECRETS" \
             || echo ">> userSshKey in $SECRETS differs from $USER_KEY — syncing to disk copy"
-        sops set "$SECRETS" '["userSshKey"]' "$(jq -Rs . < "$USER_KEY")"
+        sops_host sops set "$SECRETS" '["userSshKey"]' "$(jq -Rs . < "$USER_KEY")"
     fi
 else
     if [[ -f "$SECRETS" ]]; then
@@ -399,7 +403,7 @@ git add .
 cat <<EOF
 
 >> Done. Recipients for $SECRETS:
-     admin: $ADMIN_AGE   (&admin)
+     admin: ${ADMIN_AGE:-<none — user + host only>}   (&admin)
      user:  $USER_AGE   (&$USER_ANCHOR)
      host:  $HOST_AGE   (&$HOSTNAME)
 
