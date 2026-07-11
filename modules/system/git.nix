@@ -20,7 +20,7 @@
                     core.editor = "$EDITOR";
                     gpg.format = "ssh";
                     gpg.ssh.allowedSignersFile = "/home/${user.name}/.ssh/allowed_signers";
-                    user.signingKey = user.sshKey;
+                    user.signingKey = builtins.elemAt user.sshKeys 1;
                     url = {
                         "https://github.com/".insteadOf = "github:";
                         "https://gitlab.com/".insteadOf = "gitlab:";
