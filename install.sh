@@ -8,6 +8,12 @@
 #   * secrets.yaml   -> userPassword (mkpasswd) + user private key, sops-encrypted
 #   * hardware.nix   -> generated hardware config embedded in the dendritic module
 #
+# Re-runs are meant to be safe: existing keys are REUSED (never overwritten),
+# a user key missing on disk is restored from secrets.yaml when possible,
+# mismatches between disk and secrets.yaml are repaired toward the disk copy,
+# and the script refuses to finish unless the host key can actually decrypt
+# secrets.yaml (the lockout failure mode).
+#
 # Usage:
 #   @TODO: The host itself can later be declared in the script itself. For now just specify
 #   sudo ./install.sh hosts/default          # on the running (installed) system
@@ -54,7 +60,9 @@ echo ">> Bootstrapping host '$HOSTNAME' for user '$USER_NAME'"
 # NixOS generates this on first boot; when installing from the ISO it does
 # not exist yet, so create it now — secrets.yaml must be encrypted to it
 # BEFORE the first boot, or activation cannot decrypt the user password.
-if [[ ! -f "$HOST_KEY.pub" ]]; then
+if [[ -f "$HOST_KEY.pub" ]]; then
+    echo ">> Using existing host SSH key: $HOST_KEY"
+else
     echo ">> Generating host SSH key (requires root): $HOST_KEY"
     install -d -m 755 "$(dirname "$HOST_KEY")"
     ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$HOST_KEY"
@@ -62,12 +70,49 @@ fi
 HOST_AGE="$(ssh-to-age < "$HOST_KEY.pub")"
 echo ">> Host age key: $HOST_AGE"
 
+# Drift check: warn when .sops.yaml already pins a DIFFERENT key for this
+# host. Every secret encrypted to the old key is unreadable by this machine
+# until 'sops updatekeys' re-encrypts (step 5 does — if it can decrypt).
+if [[ -f .sops.yaml ]]; then
+    OLD_HOST_AGE="$(sed -nE "s/^ *- &$HOSTNAME (age1[0-9a-z]+) *$/\1/p" .sops.yaml | head -n1)"
+    if [[ -n "$OLD_HOST_AGE" && "$OLD_HOST_AGE" != "$HOST_AGE" ]]; then
+        echo "!! Host key for '$HOSTNAME' CHANGED:"
+        echo "!!   old: $OLD_HOST_AGE"
+        echo "!!   new: $HOST_AGE"
+        echo "!!   secrets will be re-encrypted to the new key in step 5"
+    fi
+fi
+
+# Decrypt one value from secrets.yaml: try the caller's identities first
+# (keys.txt / SOPS_AGE_KEY*), then fall back to the host key. Silent on
+# failure so callers can branch on it.
+sops_extract() {
+    sops --decrypt --extract "$1" "$SECRETS" 2>/dev/null && return 0
+    [[ -f "$HOST_KEY" ]] || return 1
+    SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$HOST_KEY" 2>/dev/null)" \
+        sops --decrypt --extract "$1" "$SECRETS" 2>/dev/null
+}
+
 # ─── 2. User key (editing recipient, git signing) ───────────────────────────
-if [[ ! -f "$USER_KEY.pub" ]]; then
+# Priority: key on disk > key stored in secrets.yaml > generate fresh.
+# Restoring from secrets.yaml keeps disk / secrets.yaml / host.json in
+# agreement instead of silently minting a key that mismatches the stored one.
+USER_KEY_GENERATED=0
+if [[ -f "$USER_KEY.pub" ]]; then
+    echo ">> Using existing user SSH key: $USER_KEY"
+elif [[ -f "$SECRETS" ]] && grep -q '^sops:' "$SECRETS" \
+        && RESTORED_KEY="$(sops_extract '["userSshKey"]')" && [[ -n "$RESTORED_KEY" ]]; then
+    echo ">> Restoring user SSH key from $SECRETS"
+    install -d -m 700 "$USER_HOME/.ssh"
+    (umask 077; printf '%s\n' "$RESTORED_KEY" > "$USER_KEY")
+    # ssh-keygen -y drops the comment; re-add the tag host.json dedupes on
+    echo "$(ssh-keygen -y -f "$USER_KEY") $USER_NAME@$HOSTNAME" > "$USER_KEY.pub"
+else
     echo ">> Generating user SSH key: $USER_KEY"
     install -d -m 700 "$USER_HOME/.ssh"
     ssh-keygen -t ed25519 -N "" -C "$USER_NAME@$HOSTNAME" -f "$USER_KEY"
     chmod 600 "$USER_KEY"
+    USER_KEY_GENERATED=1
 fi
 USER_PUB="$(cat "$USER_KEY.pub")"
 USER_AGE="$(ssh-to-age < "$USER_KEY.pub")"
@@ -140,6 +185,8 @@ if [[ -f .sops.yaml ]] && ! { grep -Fqx 'keys:' .sops.yaml \
         && grep -Fqx 'creation_rules:' .sops.yaml; }; then
     echo "!! .sops.yaml has an unknown layout — backing up to .sops.yaml.bak"
     mv .sops.yaml .sops.yaml.bak
+    # Cleanup once verified (recoverable, see AGENTS.md):
+    # rip .sops.yaml.bak
 fi
 
 if [[ ! -f .sops.yaml ]]; then
@@ -200,12 +247,34 @@ fi
 # only works where the admin identity is available (e.g. keys.txt in place).
 # The fresh-create path needs public keys only.
 if [[ -f "$SECRETS" ]] && grep -q '^sops:' "$SECRETS"; then
-    echo ">> $SECRETS exists — updating recipients only (sops updatekeys)"
-    sops updatekeys --yes "$SECRETS"
+    echo ">> $SECRETS exists — updating recipients (sops updatekeys)"
+    if ! sops updatekeys --yes "$SECRETS"; then
+        echo "!! updatekeys could not decrypt $SECRETS — none of the available"
+        echo "!! identities (admin keys.txt, host key) match its recipients."
+        echo "!! Fix: bring the admin identity to $ADMIN_DIR, or recreate the"
+        echo "!! secrets: mv $SECRETS $SECRETS.bak and re-run this script."
+        exit 1
+    fi
+
+    # Keep the stored private key in agreement with the key on disk —
+    # otherwise host.json authorizes one key while secrets.yaml carries
+    # another (e.g. after the generate-fresh path above).
+    STORED_KEY="$(sops_extract '["userSshKey"]' || true)"
+    DISK_KEY="$(cat "$USER_KEY")"
+    if [[ -z "$STORED_KEY" ]]; then
+        echo "!! Cannot read userSshKey from $SECRETS to compare against $USER_KEY"
+    elif [[ "$STORED_KEY" != "$DISK_KEY" ]]; then
+        [[ "$USER_KEY_GENERATED" == 1 ]] \
+            && echo ">> Fresh user key generated — replacing stale userSshKey in $SECRETS" \
+            || echo ">> userSshKey in $SECRETS differs from $USER_KEY — syncing to disk copy"
+        sops set "$SECRETS" '["userSshKey"]' "$(jq -Rs . < "$USER_KEY")"
+    fi
 else
     if [[ -f "$SECRETS" ]]; then
         echo ">> $SECRETS is not sops-encrypted — backing up to $SECRETS.bak"
         mv "$SECRETS" "$SECRETS.bak"
+        # Cleanup once verified (recoverable, see AGENTS.md):
+        # rip "$SECRETS.bak"
     fi
     echo ">> Set the login password for '$USER_NAME':"
     HASH="$(mkpasswd -m sha-512)"
@@ -309,10 +378,24 @@ if [[ -f "$ADMIN_PUB_FILE" ]]; then
     mv "$HOST_JSON.tmp" "$HOST_JSON"
 fi
 
-# ─── 8. Stage everything — flakes ignore untracked files ────────────────────
+# ─── 8. Sanity: the host must be able to decrypt its own secrets ────────────
+# This is the exact first-boot lockout mode (mutableUsers = false +
+# undecryptable userPassword) — catch it here, not after a reboot.
+if SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$HOST_KEY")" \
+        sops --decrypt --extract '["userPassword"]' "$SECRETS" > /dev/null 2>&1; then
+    echo ">> Verified: host key decrypts $SECRETS"
+else
+    echo "!! Host key $HOST_KEY CANNOT decrypt $SECRETS"
+    echo "!! First boot would lock out every account (mutableUsers = false)."
+    echo "!! Refusing to continue — check the &$HOSTNAME recipient in .sops.yaml,"
+    echo "!! then re-run so updatekeys can re-encrypt."
+    exit 1
+fi
+
+# ─── 9. Stage everything — flakes ignore untracked files ────────────────────
 git add .
 
-# ─── Summary ─────────────────────────────────────────────────────────────────
+# ─── Summary ──────────────────────────────────────────────────────────────────
 cat <<EOF
 
 >> Done. Recipients for $SECRETS:
