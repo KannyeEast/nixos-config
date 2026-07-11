@@ -24,7 +24,7 @@ in
                 ];
 
                 hashedPasswordFile = sops.secrets.userPassword.path;
-                openssh.authorizedKeys.keys = user.sshKey;
+                openssh.authorizedKeys.keys = user.sshKeys;
                 
                 shell = pkgs.zsh;
             };
@@ -43,4 +43,3 @@ in
         };
     };
 }
-

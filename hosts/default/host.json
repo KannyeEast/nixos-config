@@ -8,7 +8,10 @@
   "user": {
     "name": "user",
     "email": "idk@man.com",
-    "sshKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFZBktIq0acbe6o6u6GFzmPm81icbVzTVfraYfCJ2P5I user@default"
+    "sshKeys": [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFZBktIq0acbe6o6u6GFzmPm81icbVzTVfraYfCJ2P5I user@default",
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMX+dMqj751lL/srdcHX9HXGxb4uNUpMRzDri+zUfNzk admin@root"
+    ]
   },
   "hardware": {
     "platform": "laptop",

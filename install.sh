@@ -288,9 +288,26 @@ EOF
 } > "$HOST_DIR/hardware.nix"
 echo ">> Wrote $HOST_DIR/hardware.nix"
 
-# ─── 7. Update host.json with the new user public key ───────────────────────
-jq --arg key "$USER_PUB" '.user.sshKey = $key' "$HOST_JSON" > "$HOST_JSON.tmp"
+# ─── 7. Update host.json (user.sshKeys list) ────────────────────────────────
+# Upsert, not append: the user key is replaced by its comment tag
+# ("<user>@<host>", set via ssh-keygen -C), so re-installs with fresh keys
+# don't accumulate stale entries. All other keys (e.g. admin) are kept.
+jq --arg key "$USER_PUB" --arg tag "$USER_NAME@$HOSTNAME" \
+    '.user.sshKeys = ((.user.sshKeys // [])
+        | map(select(endswith(" " + $tag) | not))
+        + [$key])' \
+    "$HOST_JSON" > "$HOST_JSON.tmp"
 mv "$HOST_JSON.tmp" "$HOST_JSON"
+
+# Ensure the admin public key is authorized on this host as well
+if [[ -f "$ADMIN_PUB_FILE" ]]; then
+    ADMIN_PUB="$(cat "$ADMIN_PUB_FILE")"
+    jq --arg key "$ADMIN_PUB" \
+        '.user.sshKeys = (.user.sshKeys
+            | if index($key) then . else . + [$key] end)' \
+        "$HOST_JSON" > "$HOST_JSON.tmp"
+    mv "$HOST_JSON.tmp" "$HOST_JSON"
+fi
 
 # ─── 8. Stage everything — flakes ignore untracked files ────────────────────
 git add .
