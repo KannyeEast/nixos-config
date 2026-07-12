@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-    inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce types recursiveUpdate optionalString;
+    inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce types recursiveUpdate optionalString concatMapAttrs;
 in
 {
     flake.modules.nixos.boot = { config, pkgs, ... }:
@@ -11,7 +11,7 @@ in
         createConfig = preset: settings:
             (recursiveUpdate preset settings) // { enable = mkForce true; };
             
-        refindConfig = pkgs.writeText "refind.conf" ''
+        refindConfig = ''
             #
             # refind.conf
             # Configuration file for the rEFInd boot menu
@@ -28,6 +28,20 @@ in
             ${optionalString (bootloader.refind.theme.name != null && bootloader.refind.theme.source != null)
             "include themes/${bootloader.refind.theme.name}/theme.conf"}
         '';
+        
+        refindFiles = 
+        let
+            inherit (bootloader.refind) theme;
+            collect = dir: prefix:
+                concatMapAttrs (name: type:
+                    if type == "directory"
+                    then refindFiles ("${dir}/${name}") "${prefix}${name}/"
+                    else { "themes/${theme.name}/${prefix}${name}" = "${dir}/${name}"; }
+                ) (builtins.readDir dir);
+        in
+            if theme.name != null && theme.source != null
+            then collect "${theme.source}" ""
+            else { };
     in
     {
         options = {
@@ -84,25 +98,17 @@ in
                 };
             })
             
-             (mkIf (iBoot.enable && bootloader.refind.enable) {
-                systemd.tmpfiles.settings."10-refind" = {
-                    "/boot/EFI/refind/refind_x64.efi"."C+".argument = "${pkgs.refind}/share/refind/refind_x64.efi";
-                    "/boot/EFI/refind/refind.conf"."C+".argument = "${refindConfig}";
-                    "/boot/EFI/tools/shellx64.efi"."C+".argument = "${pkgs.edk2-uefi-shell}/shell.efi";
-                    "/boot/EFI/tools/memtest86/memtest86.efi"."C+".argument = "${pkgs.memtest86plus}/memtest.efi";
+            (mkIf (iBoot.enable && bootloader.refind.enable) {
+                boot.loader.refind = {
+                    enable = true;
+                    # efiInstallAsRemovable = true;
+                    extraConfig = refindConfig;
+                    additionalFiles = refindFiles // { 
+                        "efi/memtest86/memtest86.efi" = "${pkgs.memtest86-efi}/BOOTX64.efi";
+                        "efi/tools/shellx64.efi" = "${pkgs.edk2-uefi-shell}/shell.efi";
+                    };
                 };
-             })
-            
-            (mkIf (iBoot.enable &&
-                   bootloader.refind.enable &&
-                   bootloader.refind.theme.name != null &&
-                   bootloader.refind.theme.source != null)
-                {
-                    systemd.tmpfiles.settings."10-refind" = {
-                        "/boot/EFI/refind/themes/${bootloader.refind.theme.name}"."C+".argument = "${bootloader.refind.theme.source}";
-                    };  
-                }
-            )
+            })
             
             (mkIf (!iBoot.enable) {
                 boot.loader.systemd-boot.enable = true;
