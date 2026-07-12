@@ -59,8 +59,10 @@ in
                 
                 displayManager = {
                     settings = {
-                        theme = "where-is-my-sddm-theme";
-                        package = (pkgs.where-is-my-sddm-theme.override {
+                        theme = "where_is_my_sddm_theme_qt6";
+                    };
+                   extraPackages = [
+                        (pkgs.where-is-my-sddm-theme.override {
                             variants = [ "qt6" ];
                             themeConfig.General = {
                                 backgroundFillMode = "aspect";
@@ -78,9 +80,8 @@ in
                                 showSessionsByDefault = false;
                                 showUsersByDefault = false;
                             };
-                        });
-                    };
-                   extraPackages = [ ];
+                        })
+                    ];
                 };
             };
         };
