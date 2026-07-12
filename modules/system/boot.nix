@@ -40,7 +40,7 @@ in
             use_nvram false
             scanfor internal,manual
             
-            dont_scan_dirs EFI/BOOT, EFI/nixos, EFI/NixOS-boot, EFI/refind, EFI/systemd
+            dont_scan_dirs EFI/BOOT,EFI/nixos,EFI/NixOS-boot,EFI/refind,EFI/systemd
             
             showtools shell,memtest,about,reboot,shutdown,firmware
             

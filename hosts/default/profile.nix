@@ -59,14 +59,27 @@ in
                 
                 displayManager = {
                     settings = {
-                        theme = "catppuccin-mocha-mauve";
+                        theme = "where-is-my-sddm-theme";
                     };
                    extraPackages = [
-                        (pkgs.catppuccin-sddm.override {
-                            flavor = "mocha";
-                            accent = "mauve";
-                            font = "Inter";
-                            fontSize = "10";
+                        (pkgs.where-is-my-sddm-theme.override {
+                            variants = [ "qt6" ];
+                            themeConfig.General = {
+                                backgroundFillMode = "aspect";
+                                blurRadius = 0;
+                                
+                                passwordCharacter = "•";
+                                passwordFontSize = 32;
+                                passwordInputWidth = 0.25;
+                                passwordInputRadius = 12;
+                                passwordInputBackground = "#171a21";
+                                passwordTextColor = "#e6e8ee";
+                                passwordCursorColor = "#8aa2ff";
+                                
+                                basicTextColor = "#7d8494";
+                                showSessionsByDefault = false;
+                                showUsersByDefault = false;
+                            };
                         })
                    ];
                 };
