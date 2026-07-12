@@ -82,11 +82,6 @@ in
                 icon /${refindIconsDir}/os_nixos.png
                 loader /EFI/NixOS-boot/grubx64.efi
             }
-            
-            menuentry "Windows" {
-                icon /${refindIconsDir}/os_win.png
-                loader /EFI/Microsoft/Boot/bootmgfw.efi
-            }
         '';
         
         refindFiles = refindAssets // {
@@ -97,27 +92,39 @@ in
         };
         
         refindInstaller = pkgs.writeShellScript "install-refind" ''
-            set -eu
-            export PATH=${makeBinPath [
-                pkgs.efibootmgr
-                pkgs.util-linux
-                pkgs.coreutils
-                pkgs.gnugrep
-            ]}:$PATH
-            
-            esp=${escapeShellArg config.boot.loader.efi.efiSysMountPoint}
-            
-            part_dev=$(findmnt -no SOURCE --target "$esp")      # e.g. /dev/nvme0n1p1
-            disk=/dev/$(lsblk -no PKNAME "$part_dev")           # e.g. /dev/nvme0n1
-            part=$(cat "/sys/class/block/$(basename "$part_dev")/partition")
-            
-            # Drop stale entries so this stays idempotent across rebuilds.
-            for n in $(efibootmgr | grep -E '^Boot[0-9A-F]{4}\*? +rEFInd$' | cut -c5-8); do
-                efibootmgr -q -b "$n" -B
-            done
-            
-            efibootmgr -q -c -d "$disk" -p "$part" \
-                -L "rEFInd" -l '\EFI\refind\refind_x64.efi'
+        set -eu
+        export PATH=${makeBinPath [
+            pkgs.efibootmgr
+            pkgs.util-linux
+            pkgs.coreutils
+            pkgs.gnugrep
+        ]}:$PATH
+        
+        esp=${escapeShellArg config.boot.loader.efi.efiSysMountPoint}
+        
+        part_dev=$(findmnt -no SOURCE --target "$esp")      # e.g. /dev/nvme0n1p1
+        disk=/dev/$(lsblk -no PKNAME "$part_dev")           # e.g. /dev/nvme0n1
+        part=$(cat "/sys/class/block/$(basename "$part_dev")/partition")
+        
+        # Drop stale entries so this stays idempotent across rebuilds.
+        for n in $(efibootmgr | grep -E '^Boot[0-9A-F]{4}\*? +rEFInd$' | cut -c5-8); do
+            efibootmgr -q -b "$n" -B
+        done
+        
+        efibootmgr -q -c -d "$disk" -p "$part" \
+            -L "rEFInd" -l '\EFI\refind\refind_x64.efi'
+        
+        win=$esp/EFI/Microsoft/Boot/bootmgfw.efi
+        if [ -f "$win" ];
+        then
+        cat >> "$esp/EFI/refind/refind.conf" <<EOF
+        
+        menuentry "Windows" {
+            icon   /${refindIconsDir}/os_win.png
+            loader /EFI/Microsoft/Boot/bootmgfw.efi
+        }
+        EOF
+        fi
         '';
     in
     {

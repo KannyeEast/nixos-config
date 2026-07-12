@@ -29,7 +29,7 @@ in
                     theme.name = "rEFInd-minimal-dark";
                     theme.source = builtins.fetchGit {
                         url = "https://github.com/KannyeEast/rEFInd-minimal-dark";
-                        rev = "bfd0d4e802ecf2c0c26903712a6de59f3cbf7d19";
+                        rev = "5e56a8110af88323fe4bc7aa95442ecf5d0ba4ed";
                     };
                 };
             };
@@ -59,11 +59,10 @@ in
                 
                 displayManager = {
                     settings = {
-                        theme = "where_is_my_sddm_theme_qt6";
+                        theme = "where_is_my_sddm_theme";
                     };
                    extraPackages = [
                         (pkgs.where-is-my-sddm-theme.override {
-                            variants = [ "qt6" ];
                             themeConfig.General = {
                                 backgroundFillMode = "aspect";
                                 blurRadius = 0;
