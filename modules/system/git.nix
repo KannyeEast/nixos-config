@@ -38,11 +38,12 @@ in
             programs.shh = {
                 enable = true;
                 matchBlocks."github.com" = {
-                   identityFile = [
-                    "${config.home.homeDirectory}/.ssh/id_${user.name}"
-                    "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO@TEMP: Temporary admin key for ssh auth >> Remove when system stable
-                   ];
-                   identitiesOnly = true;
+                    identityFile = [
+                        "${config.home.homeDirectory}/.ssh/id_${user.name}"
+                        "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO@TEMP: Temporary admin key for ssh auth >> Remove when system stable
+                    ];
+                    identitiesOnly = true;
+                };
             };
             
             # For now also GitHub
