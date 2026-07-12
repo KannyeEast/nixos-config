@@ -40,8 +40,9 @@ in
             use_nvram false
             scanfor internal,manual
             
-            # @TODO: See other default directories we dont want
-            dont_scan_dirs EFI/nixos-boot
+            dont_scan_dirs EFI/BOOT, EFI/nixos, EFI/NixOS-boot, EFI/refind, EFI/systemd
+            
+            showtools shell,memtest,about,reboot,shutdown,firmware
             
             ${optionalString refindTheme
             "include themes/${bootloader.refind.theme.name}/theme.conf"
