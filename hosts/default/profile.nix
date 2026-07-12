@@ -59,19 +59,16 @@ in
                 
                 displayManager = {
                     settings = {
-                        theme = "sddm-astronaut-theme";
-                        extraPackages = [ 
-                            pkgs.kdePackages.qtsvg 
-                            pkgs.kdePackages.qtmultimedia 
-                            pkgs.kdePackages.qtvirtualkeyboard 
-                            pkgs.kdePackages.qt5compat
-                        ];
+                        theme = "catppuccin-mocha-mauve";
                     };
-                    extraPackages = [
-                        (pkgs.sddm-astronaut.override {
-                            embeddedTheme = "astronaut";
+                   extraPackages = [
+                        (pkgs.catppuccin-sddm.override {
+                            flavor = "mocha";
+                            accent = "mauve";
+                            font = "Inter";
+                            fontSize = "10";
                         })
-                    ];
+                   ];
                 };
             };
         };

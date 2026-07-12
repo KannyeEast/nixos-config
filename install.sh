@@ -471,7 +471,7 @@ fix_ownership() {
     fi
 
     chown "$owner" "$USER_HOME" 2>/dev/null || true
-    chown -R "$owner" "$USER_HOME/.ssh" "$USER_HOME/.config" 2>/dev/null || true
+    chown -R "$owner" "$USER_HOME" 2>/dev/null || true
 
     # The repo IS the user's config — transfer it too when it lives in their home
     case "$REPO_ROOT" in
