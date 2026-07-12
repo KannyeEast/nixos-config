@@ -5,7 +5,7 @@ in
 {
     flake.modules.nixos.system = { config, host, ... }:
     let
-        inherit (host) hostname;
+        inherit (host) hostname user;
         inherit (config.internal) system;
     in
     {
