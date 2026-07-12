@@ -12,7 +12,11 @@ in
         config = {
             profile.system = {
                 # Grub attributes
-                bootloader.settings = { };
+                bootloader.settings = {
+                    theme = "${pkgs.sleek-grub-theme.override { withStyle = "dark"; }}/grub/themes/sleek";
+                    gfxmodeEfi = "1920x1080";
+                    splashImage = null;
+                };
                 # Plymouth attributes
                 bootloader.plymouth = {
                     theme = "loader_2";
