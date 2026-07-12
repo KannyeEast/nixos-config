@@ -66,7 +66,7 @@ in
                             themeConfig.General = {
                                 background = "";                      
                                 backgroundFill = "#0f1115";
-                                backgroundFillMode = "aspect";
+                                backgroundFillMode = "fill";
                         
                                 font = "Inter";
                                 basicTextColor = "#9aa1b1";
@@ -89,7 +89,7 @@ in
                                 wrongPasswordBorderRadius = 12;
                         
                                 showUsersByDefault = true;
-                                showUserRealNameByDefault = true;
+                                showUserRealNameByDefault = false;
                                 usersFontSize = 16;
                         
                                 showSessionsByDefault = true;

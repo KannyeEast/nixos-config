@@ -126,6 +126,24 @@ in
         EOF
         fi
         '';
+        
+        refindUninstaller = pkgs.writeShellScript "uninstall-refind" ''
+        set -eu
+        
+        export PATH=${makeBinPath [
+            pkgs.efibootmgr
+            pkgs.coreutils
+            pkgs.gnugrep
+        ]}:$PATH
+        
+        esp=${escapeShellArg config.boot.loader.efi.efiSysMountPoint}
+        
+        for n in $(efibootmgr | grep -E '^Boot[0-9A-F]{4}\*? +rEFInd$' | cut -c5-8 || true); do
+            efibootmgr -q -b "$n" -B
+        done
+        
+        rm -rf "$esp/EFI/refind"
+        '';
     in
     {
         options = {
@@ -192,6 +210,10 @@ in
                     extraFiles = refindFiles;
                     extraInstallCommands = "${refindInstaller}";
                 };
+            })
+            
+            (mkIf (iBoot.enable && !bootloader.refind.enable) {
+                boot.loader.grub.extraInstallCommands = "${refindUninstaller}";
             })
             
             (mkIf (!iBoot.enable) {
