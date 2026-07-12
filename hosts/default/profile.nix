@@ -29,7 +29,7 @@ in
                     theme.name = "rEFInd-minimal-dark";
                     theme.source = builtins.fetchGit {
                         url = "https://github.com/KannyeEast/rEFInd-minimal-dark";
-                        rev = "bb6c31f3000cbdd471ab8726275d2b6d71bb1f6a";
+                        rev = "172068ab35708de05d21b0684b7af8f53524a922";
                     };
                 };
             };
