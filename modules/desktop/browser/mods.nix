@@ -1,12 +1,7 @@
 { ... }:
-let
-in
 {
     flake.modules.homeManager.browserMods = { ... }:
-    let
-    in
     {
-        # @TODO: Need to configure mod settings
         config = {
             programs.zen-browser.profiles.default = {
                 mods = [

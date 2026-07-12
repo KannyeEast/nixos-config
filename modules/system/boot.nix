@@ -3,7 +3,7 @@ let
     inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce types recursiveUpdate;
 in
 {
-    flake.modules.nixos.boot = { config, ... }:
+    flake.modules.nixos.boot = { config, pkgs, ... }:
     let
         inherit (config.profile.system) bootloader;
         iBoot = config.internal.system.bootloader;
@@ -25,6 +25,11 @@ in
                     default = { };
                     description = "Plymouth configuring";
                 };
+                dualBoot = mkOption {
+                    type = types.bool;
+                    default = false;
+                    description = "Are you dual-booting NixOS";
+                };  
             };
         };
         
@@ -34,10 +39,10 @@ in
                 boot = {
                     loader.efi.canTouchEfiVariables = true;
                     loader.timeout = 5;
-                    # consoleLogLevel = 0;
+                    consoleLogLevel = 0;
                     kernelParams = [
-                        # "quiet"
-                        # "splash"
+                        "quiet"
+                        "splash"
                         "loglevel=3"
                         "rd.systemd.show_status=false"
                         "rd.udev.log_level=3"
@@ -53,6 +58,14 @@ in
                     plymouth = createConfig { } bootloader.plymouth;
                 };
             })
+            
+             (mkIf (iBoot.enable && bootloader.dualBoot) {
+                systemd.tmpfiles.settings."10-refind" = {
+                    "/boot/EFI/refind/refind_x64.efi"."C+".argument = "${pkgs.refind}/share/refind/refind_x64.efi";
+                    "/boot/EFI/refind/refind.conf"."C+".argument = "${./refind/refind.conf}";
+                    "/boot/EFI/refind/themes"."C+".argument = "${./refind/themes}";
+                };
+             })
             
             (mkIf (!iBoot.enable) {
                 boot.loader.systemd-boot.enable = true;

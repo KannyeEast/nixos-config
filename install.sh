@@ -15,7 +15,7 @@
 # secrets.yaml (the lockout failure mode).
 #
 # Usage:
-#   @TODO: The host itself can later be declared in the script itself. For now just specify
+#   @TODO@TEMP: The host itself can later be declared in the script itself. For now just specify
 #   sudo ./install.sh hosts/default          # on the running (installed) system
 #   sudo ./install.sh hosts/default /mnt     # from the ISO, after mounting target
 #

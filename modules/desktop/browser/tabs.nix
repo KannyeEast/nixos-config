@@ -40,7 +40,7 @@ in
                 name = "Streaming Sites";
                 bookmarks = [
                     {   
-                        # @TODO: Zen needs DRM support for this
+                        # @TODO: Zen needs DRM support for this >> Maybe not on linux actually
                         name = "F1TV";
                         tags = [ "streaming" ];
                         url = "https://f1tv.formula1.com/";

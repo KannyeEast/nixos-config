@@ -1,6 +1,5 @@
-{ config, ... }:
+{ ... }:
 let
-    inherit (config.flake.modules) nixos; 
     inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
 {
@@ -11,12 +10,8 @@ in
     flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }:
     {
         config = {
-            sops.secrets = {
-            };
-            
             profile.system = {
-                dualBoot = false;
-                
+                bootloader.dualBoot = false;
                 bootloader.settings = { };
                 bootloader.plymouth = {
                     theme = "loader_2";

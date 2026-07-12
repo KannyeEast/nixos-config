@@ -40,7 +40,7 @@ in
                 matchBlocks."github.com" = {
                    identityFile = [
                     "${config.home.homeDirectory}/.ssh/id_${user.name}"
-                    "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO: Temporary admin key for ssh auth >> Remove when system stable
+                    "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO@TEMP: Temporary admin key for ssh auth >> Remove when system stable
                    ];
                    identitiesOnly = true;
             };
