@@ -64,6 +64,8 @@ in
                     "/boot/EFI/refind/refind_x64.efi"."C+".argument = "${pkgs.refind}/share/refind/refind_x64.efi";
                     "/boot/EFI/refind/refind.conf"."C+".argument = "${./refind/refind.conf}";
                     "/boot/EFI/refind/themes"."C+".argument = "${./refind/themes}";
+                    "/boot/EFI/tools/shellx64.efi"."C+".argument = "${pkgs.edk2-uefi-shell}/shell.efi";
+                    "/boot/EFI/tools/memtest86/memtest86.efi"."C+".argument = "${pkgs.memtest86plus}/memtest.efi";
                 };
              })
             

@@ -73,7 +73,8 @@ in
             "{b86e4813-687a-43e6-ab65-0bde4ab75758}" = "localcdn-fork-of-decentraleyes";
             "harper@writewithharper.com" = "private-grammar-checker-harper";
             "{b8326f03-322f-4112-96bd-e7996548d99f}" = "theater-mode-for-youtube";
-            "{9076cefe-e6f8-4883-a480-9f968bd09249}" = "reddit-nsfw-unblocker";        
+            "{9076cefe-e6f8-4883-a480-9f968bd09249}" = "reddit-nsfw-unblocker";   
+            "7esoorv3@alefvanoon.anonaddy.me" = "libredirect";     
         };
     in
     {
