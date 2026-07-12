@@ -135,7 +135,7 @@ in
                 };
             })
             
-            (mkIf (iBoot.enable && refind.enable) {
+            (mkIf (iBoot.enable && bootloader.refind.enable) {
                 environment.systemPackages = [
                     pkgs.refind
                     pkgs.efibootmgr 
