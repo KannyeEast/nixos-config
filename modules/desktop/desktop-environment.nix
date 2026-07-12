@@ -43,6 +43,7 @@ in
             
             environment.systemPackages = [
                 pkgs.${user.terminal}
+                pkgs.alacritty #@TODO@TEMP: Add fallback terminal until option works
             ];
             
             environment.sessionVariables = {

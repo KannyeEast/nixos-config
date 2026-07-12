@@ -33,7 +33,6 @@ in
             };
         };
         
-        # @TODO: Need to add refind for dualboot setup
         config = mkMerge [
             (mkIf iBoot.enable {
                 boot = {

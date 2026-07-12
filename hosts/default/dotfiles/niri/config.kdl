@@ -1,3 +1,4 @@
 binds {
     Mod+Return { spawn-sh "$TERMINAL"; }
+    Mod+F { spawn-sh "alacritty"; }
 }
