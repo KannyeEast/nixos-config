@@ -24,7 +24,7 @@ in
             internal.system.nvidia.enable = elem "nvidia" hardware.gpu;
         
             hardware.graphics.enable = hardware.gpu != [ ];
-            time.hardwareClockInLocalTime = system.bootloader.dualBoot;
+            time.hardwareClockInLocalTime = system.bootloader.refind.enable;
         };
     };
 }

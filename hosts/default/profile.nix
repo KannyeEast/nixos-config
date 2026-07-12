@@ -11,8 +11,9 @@ in
     {
         config = {
             profile.system = {
-                bootloader.dualBoot = false;
+                # Grub attributes
                 bootloader.settings = { };
+                # Plymouth attributes
                 bootloader.plymouth = {
                     theme = "loader_2";
                     themePackages = [
@@ -20,6 +21,16 @@ in
                             selected_themes = [ "loader_2" ];
                         })
                     ];
+                };
+                
+                # Dual boot - rEFInd
+                bootloader.refind = {
+                    enable = true;
+                    theme.name = "rEFInd-minimal-dark";
+                    theme.source = builtins.fetchGit {
+                        url = "https://github.com/KannyeEast/rEFInd-minimal-dark";
+                        rev = "cd24cb4e6dd25daf52a6f90b6da96fcf4deacb12";
+                    };
                 };
             };
               

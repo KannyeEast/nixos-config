@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-    inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce types recursiveUpdate;
+    inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce types recursiveUpdate optionalString;
 in
 {
     flake.modules.nixos.boot = { config, pkgs, ... }:
@@ -10,6 +10,24 @@ in
         
         createConfig = preset: settings:
             (recursiveUpdate preset settings) // { enable = mkForce true; };
+            
+        refindConfig = pkgs.writeText "refind.conf" ''
+            #
+            # refind.conf
+            # Configuration file for the rEFInd boot menu
+            # https://rodsbooks.com/refind/configfile.html
+            #
+        
+            timeout 20
+            use_nvram false
+            scanfor internal,manual
+            
+            # @TODO: See other default directories we dont want
+            dont_scan_dirs EFI/nixos-boot
+            
+            ${optionalString (bootloader.refind.theme.name != null && bootloader.refind.theme.source != null)
+            "include themes/${bootloader.refind.theme.name}/theme.conf"}
+        '';
     in
     {
         options = {
@@ -23,12 +41,20 @@ in
                 plymouth = mkOption {
                     type = types.attrsOf types.anything;
                     default = { };
-                    description = "Plymouth configuring";
+                    description = "Plymouth configuration";
                 };
-                dualBoot = mkOption {
-                    type = types.bool;
-                    default = false;
-                    description = "Are you dual-booting NixOS";
+                refind = {
+                    enable = mkEnableOption "Enable rEFInd for dual-booting NixOS";
+                    theme.name = mkOption {
+                        type = types.nullOr types.str;
+                        default = null;
+                        description = "rEFInd theme name";
+                    };
+                    theme.source = mkOption {
+                        type = types.nullOr types.path;
+                        default = null;
+                        description = "rEFInd theme config";
+                    };
                 };  
             };
         };
@@ -58,15 +84,25 @@ in
                 };
             })
             
-             (mkIf (iBoot.enable && bootloader.dualBoot) {
+             (mkIf (iBoot.enable && bootloader.refind.enable) {
                 systemd.tmpfiles.settings."10-refind" = {
                     "/boot/EFI/refind/refind_x64.efi"."C+".argument = "${pkgs.refind}/share/refind/refind_x64.efi";
-                    "/boot/EFI/refind/refind.conf"."C+".argument = "${./refind/refind.conf}";
-                    "/boot/EFI/refind/themes"."C+".argument = "${./refind/themes}";
+                    "/boot/EFI/refind/refind.conf"."C+".argument = "${refindConfig}";
                     "/boot/EFI/tools/shellx64.efi"."C+".argument = "${pkgs.edk2-uefi-shell}/shell.efi";
                     "/boot/EFI/tools/memtest86/memtest86.efi"."C+".argument = "${pkgs.memtest86plus}/memtest.efi";
                 };
              })
+            
+            (mkIf (iBoot.enable &&
+                   bootloader.refind.enable &&
+                   bootloader.refind.theme.name != null &&
+                   bootloader.refind.theme.source != null)
+                {
+                    systemd.tmpfiles.settings."10-refind" = {
+                        "/boot/EFI/refind/themes/${bootloader.refind.theme.name}"."C+".argument = "${bootloader.refind.theme.source}";
+                    };  
+                }
+            )
             
             (mkIf (!iBoot.enable) {
                 boot.loader.systemd-boot.enable = true;
