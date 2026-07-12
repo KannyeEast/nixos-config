@@ -1,6 +1,8 @@
 { lib, ... }:
 let
-    inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce types recursiveUpdate optionalString concatMapAttrs;
+    inherit (lib) mkEnableOption mkOption mkMerge mkIf mkForce
+        types recursiveUpdate optionalString concatMapAttrs
+        escapeShellArg makeBinPath;
 in
 {
     flake.modules.nixos.boot = { config, pkgs, ... }:
