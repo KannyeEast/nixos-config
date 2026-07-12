@@ -25,7 +25,7 @@ in
                 
                 # Dual boot - rEFInd
                 bootloader.refind = {
-                    enable = true;
+                    enable = false;
                     theme.name = "rEFInd-minimal-dark";
                     theme.source = builtins.fetchGit {
                         url = "https://github.com/KannyeEast/rEFInd-minimal-dark";
@@ -64,20 +64,39 @@ in
                    extraPackages = [
                         (pkgs.where-is-my-sddm-theme.override {
                             themeConfig.General = {
+                                background = "";                      
+                                backgroundFill = "#0f1115";
                                 backgroundFillMode = "aspect";
-                                blurRadius = 0;
-                                
+                        
+                                font = "Inter";
+                                basicTextColor = "#9aa1b1";
+                                hideCursor = false;
+
                                 passwordCharacter = "•";
-                                passwordFontSize = 32;
-                                passwordInputWidth = 0.25;
+                                passwordMask = true;
+                                passwordFontSize = 28;                
+                                passwordInputWidth = 0.22;
                                 passwordInputRadius = 12;
                                 passwordInputBackground = "#171a21";
+                                passwordInputBorderWidth = 1;
+                                passwordInputBorderColor = "#262b36";
                                 passwordTextColor = "#e6e8ee";
                                 passwordCursorColor = "#8aa2ff";
-                                
-                                basicTextColor = "#7d8494";
-                                showSessionsByDefault = false;
-                                showUsersByDefault = false;
+                                passwordInputCursorVisible = true;
+                                cursorBlinkAnimation = true;
+                        
+                                wrongPasswordBorderColor = "#ff6b7a";
+                                wrongPasswordBorderRadius = 12;
+                        
+                                showUsersByDefault = true;
+                                showUserRealNameByDefault = true;
+                                usersFontSize = 16;
+                        
+                                showSessionsByDefault = true;
+                                sessionsFontSize = 12;
+                        
+                                helpFont = "Inter";
+                                helpFontSize = 11;
                             };
                         })
                     ];
