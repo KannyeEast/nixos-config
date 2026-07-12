@@ -22,14 +22,14 @@ in
                 concatMapAttrs (name: type:
                     if type == "directory"
                     then collect ("${dir}/${name}") "${prefix}${name}/"
-                    else { "efi/refind/themes/${theme.name}/${prefix}${name}" = "${dir}/${name}"; }
+                    else { "EFI/refind/themes/${theme.name}/${prefix}${name}" = "${dir}/${name}"; }
                 ) (builtins.readDir dir);
         in
             if refindTheme
             then collect "${theme.source}" ""
             else { };
             
-        refindConfig = ''
+        refindConfig = pkgs.writeText ''
             #
             # refind.conf
             # Configuration file for the rEFInd boot menu
