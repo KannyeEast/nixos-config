@@ -29,7 +29,7 @@ in
             then collect "${theme.source}" ""
             else { };
             
-        refindConfig = pkgs.writeText ''
+        refindConfig = pkgs.writeText "refind.conf" ''
             #
             # refind.conf
             # Configuration file for the rEFInd boot menu
