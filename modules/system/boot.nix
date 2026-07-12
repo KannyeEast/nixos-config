@@ -10,6 +10,22 @@ in
         
         createConfig = preset: settings:
             (recursiveUpdate preset settings) // { enable = mkForce true; };
+        
+        refindTheme = bootloader.refind.theme.name != null && bootloader.refind.theme.source != null;
+            
+        refindThemeFiles = 
+        let
+            inherit (bootloader.refind) theme;
+            collect = dir: prefix:
+                concatMapAttrs (name: type:
+                    if type == "directory"
+                    then collect ("${dir}/${name}") "${prefix}${name}/"
+                    else { "efi/refind/themes/${theme.name}/${prefix}${name}" = "${dir}/${name}"; }
+                ) (builtins.readDir dir);
+        in
+            if refindTheme
+            then collect "${theme.source}" ""
+            else { };
             
         refindConfig = ''
             #
@@ -25,23 +41,42 @@ in
             # @TODO: See other default directories we dont want
             dont_scan_dirs EFI/nixos-boot
             
-            ${optionalString (bootloader.refind.theme.name != null && bootloader.refind.theme.source != null)
-            "include themes/${bootloader.refind.theme.name}/theme.conf"}
+            ${optionalString refindTheme
+            "include themes/${bootloader.refind.theme.name}/theme.conf"
+            }
         '';
         
-        refindFiles = 
-        let
-            inherit (bootloader.refind) theme;
-            collect = dir: prefix:
-                concatMapAttrs (name: type:
-                    if type == "directory"
-                    then refindFiles ("${dir}/${name}") "${prefix}${name}/"
-                    else { "themes/${theme.name}/${prefix}${name}" = "${dir}/${name}"; }
-                ) (builtins.readDir dir);
-        in
-            if theme.name != null && theme.source != null
-            then collect "${theme.source}" ""
-            else { };
+        refindFiles = refindThemeFiles // {
+            "EFI/refind/refind_x64.efi" = "${pkgs.refind}/share/refind/refind_x64.efi";
+            "EFI/refind/refind.conf"    = refindConfig;
+            
+            "EFI/tools/shellx64.efi"   = "${pkgs.edk2-uefi-shell}/shell.efi";
+            "EFI/tools/memtest86.efi"  = "${pkgs.memtest86-efi}/BOOTX64.efi";
+        };
+        
+        refindInstaller = pkgs.writeShellScript "install-refind" ''
+            set -eu
+            export PATH=${makeBinPath [
+                pkgs.efibootmgr
+                pkgs.util-linux
+                pkgs.coreutils
+                pkgs.gnugrep
+            ]}:$PATH
+            
+            esp=${escapeShellArg esp}
+            
+            part_dev=$(findmnt -no SOURCE --target "$esp")      # e.g. /dev/nvme0n1p1
+            disk=/dev/$(lsblk -no PKNAME "$part_dev")           # e.g. /dev/nvme0n1
+            part=$(cat "/sys/class/block/$(basename "$part_dev")/partition")
+            
+            # Drop stale entries so this stays idempotent across rebuilds.
+            for n in $(efibootmgr | grep -E '^Boot[0-9A-F]{4}\*? +rEFInd$' | cut -c5-8); do
+                efibootmgr -q -b "$n" -B
+            done
+            
+            efibootmgr -q -c -d "$disk" -p "$part" \
+                -L "rEFInd" -l '\EFI\refind\refind_x64.efi'
+        '';
     in
     {
         options = {
@@ -90,7 +125,7 @@ in
                     
                     loader.grub = createConfig {
                         device = "nodev";
-                        useOSProber = true;
+                        useOSProber = false;
                         efiSupport = true;
                     } bootloader.settings;
                     
@@ -98,15 +133,15 @@ in
                 };
             })
             
-            (mkIf (iBoot.enable && bootloader.refind.enable) {
-                boot.loader.refind = {
-                    enable = true;
-                    # efiInstallAsRemovable = true;
-                    extraConfig = refindConfig;
-                    additionalFiles = refindFiles // { 
-                        "efi/memtest86/memtest86.efi" = "${pkgs.memtest86-efi}/BOOTX64.efi";
-                        "efi/tools/shellx64.efi" = "${pkgs.edk2-uefi-shell}/shell.efi";
-                    };
+            (mkIf (iBoot.enable && refind.enable) {
+                environment.systemPackages = [
+                    pkgs.refind
+                    pkgs.efibootmgr 
+                ];
+
+                boot.loader.grub = {
+                    extraFiles = refindFiles;
+                    extraInstallCommands = "${refindInstaller}";
                 };
             })
             
