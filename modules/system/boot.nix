@@ -65,7 +65,7 @@ in
                 pkgs.gnugrep
             ]}:$PATH
             
-            esp=${escapeShellArg esp}
+            esp=${escapeShellArg config.boot.loader.efi.efiSysMountPoint}
             
             part_dev=$(findmnt -no SOURCE --target "$esp")      # e.g. /dev/nvme0n1p1
             disk=/dev/$(lsblk -no PKNAME "$part_dev")           # e.g. /dev/nvme0n1
