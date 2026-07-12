@@ -18,7 +18,7 @@ in
                 signing = {
                     format = "ssh";
                     signByDefault = true;
-                    key = "${config.home.homeDirectory}/.ssh";
+                    key = "${config.home.homeDirectory}/.ssh/id_${user.name}";
                 };
                 
                 settings = {
@@ -28,21 +28,22 @@ in
                     gpg.ssh.allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
 
                     url = {
-                        "ssh://git@github.com/".insteadOf = "https://github.com/:";
+                        "ssh://git@github.com/".insteadOf = "https://github.com/";
                         "https://gitlab.com/".insteadOf = "gitlab:";
                         "https://codeberg.org/".insteadOf = "codeberg:";
                     };
                 };
             };
             
-            programs.shh = {
+            programs.ssh = {
                 enable = true;
-                matchBlocks."github.com" = {
-                    identityFile = [
+                enableDefaultConfig = false;
+                settings."github.com" = {
+                    IdentityFile = [
                         "${config.home.homeDirectory}/.ssh/id_${user.name}"
                         "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO@TEMP: Temporary admin key for ssh auth >> Remove when system stable
                     ];
-                    identitiesOnly = true;
+                    IdentitiesOnly = true;
                 };
             };
             
