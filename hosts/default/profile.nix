@@ -29,7 +29,7 @@ in
                     theme.name = "rEFInd-minimal-dark";
                     theme.source = builtins.fetchGit {
                         url = "https://github.com/KannyeEast/rEFInd-minimal-dark";
-                        rev = "172068ab35708de05d21b0684b7af8f53524a922";
+                        rev = "bfd0d4e802ecf2c0c26903712a6de59f3cbf7d19";
                     };
                 };
             };
@@ -60,9 +60,7 @@ in
                 displayManager = {
                     settings = {
                         theme = "where-is-my-sddm-theme";
-                    };
-                   extraPackages = [
-                        (pkgs.where-is-my-sddm-theme.override {
+                        package = (pkgs.where-is-my-sddm-theme.override {
                             variants = [ "qt6" ];
                             themeConfig.General = {
                                 backgroundFillMode = "aspect";
@@ -80,8 +78,9 @@ in
                                 showSessionsByDefault = false;
                                 showUsersByDefault = false;
                             };
-                        })
-                   ];
+                        });
+                    };
+                   extraPackages = [ ];
                 };
             };
         };

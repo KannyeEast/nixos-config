@@ -13,21 +13,52 @@ in
         createConfig = preset: settings:
             (recursiveUpdate preset settings) // { enable = mkForce true; };
         
-        refindTheme = bootloader.refind.theme.name != null && bootloader.refind.theme.source != null;
-            
-        refindThemeFiles = 
+        # Refind
+        getFiles = src: dest:
         let
-            inherit (bootloader.refind) theme;
             collect = dir: prefix:
                 concatMapAttrs (name: type:
                     if type == "directory"
                     then collect ("${dir}/${name}") "${prefix}${name}/"
-                    else { "EFI/refind/themes/${theme.name}/${prefix}${name}" = "${dir}/${name}"; }
+                    else { "${dest}/${prefix}${name}" = "${dir}/${name}"; }
                 ) (builtins.readDir dir);
         in
+            collect "${src}" "";
+        
+        refindTheme = bootloader.refind.theme.name != null && bootloader.refind.theme.source != null;
+        
+        refindIcons = pkgs.runCommand "refind-icons" {
+            nativeBuildInputs = [ pkgs.librsvg ];
+        } ''
+            mkdir -p $out
+            cp -r ${refindOverride}/share/refind/icons/* $out/
+            chmod -R u+w $out
+            rsvg-convert -w 128 -h 128 \
+                ${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg \
+                -o $out/os_nixos.png
+        '';
+        
+        refindIconsDir = 
+            if refindTheme 
+            then "EFI/refind/themes/${bootloader.refind.theme.name}/icons"
+            else "EFI/refind/icons";
+        
+        refindAssets = 
             if refindTheme
-            then collect "${theme.source}" ""
-            else { };
+            then getFiles bootloader.refind.theme.source "EFI/refind/themes/${bootloader.refind.theme.name}"
+            else getFiles refindIcons "EFI/refind/icons";
+            
+        refindOverride = pkgs.refind.overrideAttrs (old: {
+            postPatch = (old.postPatch or "") + ''
+                substituteInPlace refind/config.c \
+                    --replace-fail \
+                        'SetMem(GlobalConfig.ShowTools, NUM_TOOLS * sizeof(UINTN), 0);' \
+                        'refit_call3_wrapper(gBS->SetMem, GlobalConfig.ShowTools, NUM_TOOLS * sizeof(UINTN), 0);' \
+                    --replace-fail \
+                        '(i < TokenCount) && (i < NUM_TOOLS)' \
+                        '(i < TokenCount) && (i <= NUM_TOOLS)'
+            '';
+        });
             
         refindConfig = pkgs.writeText "refind.conf" ''
             #
@@ -38,21 +69,29 @@ in
         
             timeout 20
             use_nvram false
-            scanfor internal,manual
             
-            dont_scan_dirs EFI/BOOT,EFI/nixos,EFI/NixOS-boot,EFI/refind,EFI/systemd
+            # Specify which entries we want
+            scanfor manual
             
             showtools shell,memtest,about,reboot,shutdown,firmware
             
             ${optionalString refindTheme
-            "include themes/${bootloader.refind.theme.name}/theme.conf"
+                "include themes/${bootloader.refind.theme.name}/theme.conf"}
+            
+            menuentry "NixOS" {
+                icon /${refindIconsDir}/os_nixos.png
+                loader /EFI/NixOS-boot/grubx64.efi
+            }
+            
+            menuentry "Windows" {
+                icon /${refindIconsDir}/os_win.png
+                loader /EFI/Microsoft/Boot/bootmgfw.efi
             }
         '';
         
-        refindFiles = refindThemeFiles // {
-            "EFI/refind/refind_x64.efi" = "${pkgs.refind}/share/refind/refind_x64.efi";
+        refindFiles = refindAssets // {
+            "EFI/refind/refind_x64.efi" = "${refindOverride}/share/refind/refind_x64.efi";
             "EFI/refind/refind.conf"    = refindConfig;
-            
             "EFI/tools/shellx64.efi"   = "${pkgs.edk2-uefi-shell}/shell.efi";
             "EFI/tools/memtest86.efi"  = "${pkgs.memtest86-efi}/BOOTX64.efi";
         };
@@ -138,7 +177,7 @@ in
             
             (mkIf (iBoot.enable && bootloader.refind.enable) {
                 environment.systemPackages = [
-                    pkgs.refind
+                    refindOverride
                     pkgs.efibootmgr 
                 ];
 

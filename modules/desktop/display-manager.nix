@@ -30,6 +30,7 @@ in
             services.displayManager.sddm = createConfig {
                 wayland.enable = true;
                 package = pkgs.kdePackages.sddm;
+                extraPackages = displayManager.extraPackages;
             } displayManager.settings;
             
             environment.systemPackages = displayManager.extraPackages;
