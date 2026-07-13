@@ -41,6 +41,7 @@ in
                 };
             };
             
+            # @TODO: Look for other package combos with niri
             environment.systemPackages = [
                 pkgs.${user.terminal}
                 pkgs.alacritty #@TODO@TEMP: Add fallback terminal until option works
@@ -56,7 +57,15 @@ in
             programs.niri.enable = true;
             programs.niri.useNautilus = true;
             programs.dconf.enable = true;
-            services.gnome.gnome-keyring.enable = true;
+            services = {
+                gnome.gnome-keyring.enable  = true;
+                xserver = {
+                    enable = true;
+                    xkb.layout = user.xkb.layout;
+                    displayManager.gdm.enable = true;
+                    displayManager.gdm.wayland = true;
+                };
+            };
         };
     };
-}   
+}
