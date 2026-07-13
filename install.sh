@@ -96,12 +96,12 @@ spin() {
     pid=$!
 
     while kill -0 "$pid" 2>/dev/null; do
-        printf '\r%s%s%s %s' "$BLUE" "${frames:i++%10:1}" "$NC" "$msg"
+        printf '\r%s%s%s %s' "$BLUE" "${frames:i++%10:1}" "$NC" "$msg" >&2
         sleep 0.08
     done
 
     wait "$pid" || rc=$?
-    printf '\r\033[K'
+    printf '\r\033[K' >&2
 
     cat "$tmp"
     rm -f "$tmp"
@@ -256,7 +256,6 @@ _TIMEZONE=""
 _LOCALE=""
 _LOCALE_EXTRA=""
 
-_MODULES=false
 _HW_MODULES=()
 _STORAGE=""
 _CPU=""
@@ -400,16 +399,6 @@ detectGpu() {
 }
 
 # ── nixos-hardware ───────────────────────────────────────────────────────
-detectPlatform() {
-    # A battery is the only laptop tell that's reliable from the ISO.
-    if compgen -G '/sys/class/power_supply/BAT*' > /dev/null; # @TODO: This can just be an if statement in the module itself
-    then
-        _MODULES=true
-    else
-        _MODULES=false
-    fi
-}
-
 # DMI string: "ROG Zephyrus G16 GU605MY_GU605MY" -> "rog-zephyrus-g16-gu605my-gu605my"
 parseDMI() {
     local s="${1,,}"
@@ -434,14 +423,11 @@ nixosHardwareModules() {
 detectHardwareModules() {
     if compgen -G '/sys/class/power_supply/BAT*' > /dev/null;
     then
-        printHeader "Fetching nixos-hardware modules" 
+        printHeader "nixos-hardware" 
         printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
         
         local modules
-        if ! mapfile -t modules < <(spin "Fetching nixos-hardware modules" nixosHardwareModules); 
-        then
-            printWarn "Could not fetch nixos-hardware's module list"
-        fi
+        mapfile -t modules < <(spin "Fetching modules" nixosHardwareModules); 
     
         if ((${#modules[@]} == 0)); 
         then
@@ -465,7 +451,6 @@ detectHardware() {
     detectStorage
     detectCpu
     detectGpu
-    detectPlatform
     detectHardwareModules
 }
 
