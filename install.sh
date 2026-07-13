@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -i bash -p age bash git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age
+#!nix-shell -i bash -p age bash git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux
 #
 # install.sh - bootstrap a new host for this config.
 #
@@ -91,6 +91,12 @@ ask() {
         done
     fi
     printf -v "$__var" '%s' "$reply"
+}
+
+askOptional() {
+    local __var="$1" question="$2" default="${3:-}" reply
+    read -rp "$(printf '%s?%s %s [%s]: ' "$BLUE" "$NC" "$question" "${default:-none}")" reply
+    printf -v "$__var" '%s' "${reply:-$default}"
 }
 
 askList() {
@@ -204,7 +210,7 @@ validate() {
     fi
 
     [[ $fail -eq 0 ]] || return 1
-    printSuccess "Validated environment. $'\n' All checks have passed"
+    printSuccess "Validated environment"
 }
 
 # ── variables ──────────────────────────────────────────────────────────────
@@ -216,6 +222,8 @@ _USERNAME=""
 _USER_EMAIL=""
 _SYSTEM=""
 _PLATFORM=""
+_STORAGE=""
+_CPU=""
 _GPU=()
 _GPU_ARCH=""
 _HW_MODULES=()
@@ -298,22 +306,43 @@ detectPlatform() {
     printSuccess "platform: $_PLATFORM"
 }
 
+detectStorage() {
+    local src dev rot
+    src="$(findmnt -no SOURCE --target / 2>/dev/null || true)"
+    dev="$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1 || true)"
+    [[ -z $dev ]] && dev="$(lsblk -dno NAME | head -n1)"
+
+    rot="$(cat "/sys/block/$dev/queue/rotational" 2>/dev/null || echo 0)"
+    [[ $rot == 1 ]] && _STORAGE="hdd" || _STORAGE="ssd"
+    printSuccess "storage: $_STORAGE ($dev)"
+}
+
+detectCpu() {
+    case "$(awk -F: '/vendor_id/ {gsub(/ /,"",$2); print $2; exit}' /proc/cpuinfo)" in
+        GenuineIntel) _CPU="intel";;
+        AuthenticAMD) _CPU="amd";;
+        *) _CPU="";;
+    esac
+    printSuccess "cpu: ${_CPU:-unknown}"
+}
+
 detectGpu() {
-    local line
     _GPU=()
- 
-    while read -r line; do
-        case "${line,,}" in
-            *nvidia*) _GPU+=("nvidia") ;;
-            *amd*|*"advanced micro"*|*ati*) _GPU+=("amd") ;;
-            *intel*) _GPU+=("intel") ;;
+    local vid
+    # Class codes: 0300 VGA, 0302 3D, 0380 Display.
+    # The [vvvv:dddd] bracket is vendor:device; the class bracket has no colon.
+    while read -r vid; do
+        case "$vid" in
+            10de) _GPU+=("nvidia") ;;
+            1002) _GPU+=("amd")    ;;
+            8086) _GPU+=("intel")  ;;
         esac
-    done < <(lspci | grep -iE 'vga|3d controller|display controller' || true)
- 
-    if ((${#_GPU[@]}));
-    then
-        mapfile -t _GPU < <(printf '%s\n' "${_GPU[@]}" | awk '!seen[$0]++')
-    fi
+    done < <(lspci -nn \
+        | grep -E '\[(0300|0302|0380)\]' \
+        | grep -oE '\[[0-9a-f]{4}:[0-9a-f]{4}\]' \
+        | cut -c2-5)
+
+    ((${#_GPU[@]})) && mapfile -t _GPU < <(printf '%s\n' "${_GPU[@]}" | awk '!seen[$0]++')
     printSuccess "gpu: ${_GPU[*]:-none}"
 }
 
@@ -364,114 +393,75 @@ nixosHardwareModules() {
 }
 
 detectHwModules() {
-    local vendor product board family
-    vendor="$(dmi sys_vendor)"
-    product="$(dmi product_name)"
-    board="$(dmi board_name)"
-    family="$(dmi product_family)"
- 
-    printInfo "DMI: $vendor / $product / board $board"
- 
+    printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
+
     local modules
     mapfile -t modules < <(nixosHardwareModules)
-    if ((${#modules[@]} == 0));
-    then
-        printWarn "Warning: Could not read nixos-hardware's module list"
-        local mods
-        ask mods "nixos-hardware modules (space separated, empty for none)" ""
+    if ((${#modules[@]} == 0)); then
+        printWarn "could not read nixos-hardware's module list"
+        askOptional mods "nixos-hardware modules (space separated)" ""
         read -ra _HW_MODULES <<< "$mods"
         return 0
     fi
- 
-    # board_name is the model code and appears verbatim in the module
+
+    _HW_MODULES=()
+
+    # 1. Model-specific module. board_name is the model code and appears
+    #    verbatim in the module name: GU605MY -> asus-zephyrus-gu605my
     local boardSlug match=""
-    boardSlug="$(parseDMI "$board")"
+    boardSlug="$(parseDMI "$(dmi board_name)")"
     if [[ -n $boardSlug ]];
     then
         match="$(printf '%s\n' "${modules[@]}" | grep -x ".*-${boardSlug}" | head -n1 || true)"
     fi
- 
-    # Weaker fallback: score by how many DMI tokens appear in the module name.
-    if [[ -z $match ]];
+
+    if [[ -n $match ]] && confirm "Use $match?";
     then
-        local tokens
-        tokens="$(parseDMI "$vendor $family $product" | tr '-' '\n' \
-            | grep -vE '^(inc|corp|co|ltd|computer|notebook|system|product|name|to|be|filled|by|oem|the|and|version|[0-9]{1,2})$' \
-            | grep -E '.{3,}' || true)"
- 
-        match="$(printf '%s\n' "${modules[@]}" | awk -v toks="$tokens" '
-            BEGIN { n = split(toks, t, "\n") }
-            {
-                score = 0
-                for (i = 1; i <= n; i++)
-                    if (t[i] != "" && index($0, t[i]) > 0) score++
-                if (score > 0) printf "%d\t%s\n", score, $0
-            }' | sort -rn | head -n5 | cut -f2)"
+        _HW_MODULES=("$match")
+        printSuccess "modules: ${_HW_MODULES[*]}"
+        askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
+        read -ra _HW_MODULES <<< "$mods"
+        return 0
     fi
- 
-    _HW_MODULES=()
- 
-    if [[ -n $match ]];
+
+    # 2. No model module -> assemble common-* from what we detected.
+    printInfo "no model-specific module; using common-* modules"
+    local want=() m
+
+    [[ $_CPU == intel ]] && want+=("common-cpu-intel")
+    [[ $_CPU == amd   ]] && want+=("common-cpu-amd")
+
+    [[ " ${_GPU[*]} " == *" intel "*  ]] && want+=("common-gpu-intel")
+    [[ " ${_GPU[*]} " == *" amd "*    ]] && want+=("common-gpu-amd")
+    [[ " ${_GPU[*]} " == *" nvidia "* ]] && want+=("common-gpu-nvidia")
+
+    # Arch-specific nvidia module, IF upstream has one under that name.
+    if [[ " ${_GPU[*]} " == *" nvidia "* && -n $_GPU_ARCH ]];
     then
-        local candidates
-        mapfile -t candidates <<< "$match"
-        printSuccess "matched: ${candidates[0]}"
-        if ((${#candidates[@]} > 1));
-        then
-            printInfo "other candidates: ${candidates[*]:1}"
-        fi
-        if confirm "Use ${candidates[0]}?";
-        then
-            _HW_MODULES=("${candidates[0]}")
-        fi
+        want+=("common-gpu-nvidia-$_GPU_ARCH")
+    fi
+
+    # Storage
+    if [[ $_STORAGE == "hdd" ]];
+    then
+        want+=("common-pc-laptop-hdd")
     else
-        printWarn "no nixos-hardware module matches this machine"
+        want+=("common-pc-ssd")
     fi
- 
-    # No model-specific module -> assemble the generic common-* ones from what
-    # we detected. These exist for exactly this case.
-    if ((${#_HW_MODULES[@]} == 0));
-    then
-        printInfo "falling back to common-* modules"
-        local want=() m
- 
-        case "$(dmi sys_vendor)" in
-            *Intel*|*intel*) : ;;
-        esac
-        grep -qi 'GenuineIntel' /proc/cpuinfo && want+=("common-cpu-intel")
-        grep -qi 'AuthenticAMD' /proc/cpuinfo && want+=("common-cpu-amd")
- 
-        [[ " ${_GPU[*]} " == *" intel "* ]] && want+=("common-gpu-intel")
-        [[ " ${_GPU[*]} " == *" amd "*   ]] && want+=("common-gpu-amd")
-        if [[ " ${_GPU[*]} " == *" nvidia "* ]];
+
+    for m in "${want[@]}"; do
+        if printf '%s\n' "${modules[@]}" | grep -qx "$m";
         then
-            want+=("common-gpu-nvidia")
-            [[ -n $_GPU_ARCH ]] && want+=("common-gpu-nvidia-$_GPU_ARCH")
-        fi
- 
-        if [[ $_PLATFORM == laptop ]];
-        then
-            want+=("common-pc-laptop" "common-pc-laptop-ssd")
+            _HW_MODULES+=("$m")
         else
-            want+=("common-pc" "common-pc-ssd")
+            printWarn "skipping $m (not in nixos-hardware)"
         fi
- 
-        # Only keep the ones that actually exist upstream — the arch-suffixed
-        # gpu modules in particular aren't named uniformly.
-        for m in "${want[@]}"; do
-            if printf '%s\n' "${modules[@]}" | grep -qx "$m";
-            then
-                _HW_MODULES+=("$m")
-            else
-                printWarn "skipping $m (no such module)"
-            fi
-        done
-    fi
- 
+    done
+
     printSuccess "modules: ${_HW_MODULES[*]:-none}"
 
     local mods
-    ask mods "nixos-hardware modules" "${_HW_MODULES[*]}"
+    askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
     read -ra _HW_MODULES <<< "$mods"
 }
 
@@ -485,6 +475,8 @@ detectHardware() {
     printHeader "Detecting hardware"
     detectSystem
     detectPlatform
+    detectStorage
+    detectCpu
     detectGpu
     detectGpuArch
     detectHwModules
@@ -511,6 +503,7 @@ printSummary() {
 
 # ── main ──────────────────────────────────────────────────────────────
 main() {
+    clear
     parseArgs "$@"
     validate || exit 1
     cd "$REPO_ROOT"
