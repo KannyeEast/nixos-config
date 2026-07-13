@@ -6,7 +6,7 @@
 set -Eeu -o pipefail
 
 if [[ -z ${IN_NIX_SHELL:-} ]]; then
-    echo "Fetching dependencies..."
+    spin "Fetching dependencies..." sleep 5 
     exec nix-shell \
         -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
         --run "$(printf '%q ' bash "$0" "$@")"
@@ -421,27 +421,71 @@ nixosHardwareModules() {
 }
 
 detectHardwareModules() {
-    if compgen -G '/sys/class/power_supply/BAT*' > /dev/null;
+    compgen -G '/sys/class/power_supply/BAT*' > /dev/null || return 0
+    
+    printHeader "nixos-hardware" 
+    printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
+    
+    local modules
+    mapfile -t modules < <(spin "Fetching modules" nixosHardwareModules); 
+    
+    if ((${#modules[@]} == 0));
     then
-        printHeader "nixos-hardware" 
-        printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
-        
-        local modules
-        mapfile -t modules < <(spin "Fetching modules" nixosHardwareModules); 
-    
-        if ((${#modules[@]} == 0)); 
-        then
-            printWarn "No module list — falling back to manual entry"
-        else
-            printSuccess "Fetched ${#modules[@]} modules"
-        fi
-    
+        printWarn "No module list. Manual entries only"
         local mods
+        printf '%s\n' "https://github.com/NixOS/nixos-hardware"
         askOptional mods "nixos-hardware modules (space separated)" ""
         read -ra _HW_MODULES <<< "$mods"
-    else
         return 0
     fi
+    
+    printSuccess "Fetched ${#modules[@]} modules"
+    
+    local boardSlug match=""
+    boardSlug="$(parseDMI "$(dmi board_name)")"
+    if [[ -n $boardSlug ]];
+    then
+        match="$(printf '%s\n' "${modules[@]}" | grep -x ".*-${boardSlug}" | head -n1 || true)"
+    fi
+    
+    if [[ -n $match ]]; 
+    then
+        printSuccess "Matched model: $match"
+        if confirm "Use $match?";
+        then
+            _HW_MODULES=("$match")
+        fi
+    fi
+    
+    if ((${#_HW_MODULES[@]} == 0));
+    then
+        printInfo "Using common-* modules"
+        local want=() m
+
+        [[ -n $_CPU ]] && want+=("common-cpu-$_CPU")
+
+        for m in "${_GPU[@]}"; do
+            want+=("common-gpu-$m")
+        done
+
+        want+=("common-pc-laptop" "common-pc-laptop-$_STORAGE")
+
+        # Keep only names that actually exist upstream.
+        for m in "${want[@]}"; do
+            if printf '%s\n' "${modules[@]}" | grep -qx "$m";
+            then
+                _HW_MODULES+=("$m")
+            else
+                printWarn "Skipping $m (not in nixos-hardware)"
+            fi
+        done
+    fi
+
+    printSuccess "Modules: ${_HW_MODULES[*]:-none}"
+
+    local mods
+    askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
+    read -ra _HW_MODULES <<< "$mods"
 }
 
 detectHardware() {
