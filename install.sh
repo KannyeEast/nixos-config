@@ -87,6 +87,27 @@ parseArgs() {
 # ── helpers ──────────────────────────────────────────────────────────────
 gitRepo() { git -c safe.directory='*' "$@"; }
 
+spin() {
+    local msg="$1"; shift
+    local frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏' i=0 pid rc=0
+    local tmp; tmp="$(mktemp)"
+
+    "$@" > "$tmp" 2>/dev/null &
+    pid=$!
+
+    while kill -0 "$pid" 2>/dev/null; do
+        printf '\r%s%s%s %s' "$BLUE" "${frames:i++%10:1}" "$NC" "$msg"
+        sleep 0.08
+    done
+
+    wait "$pid" || rc=$?
+    printf '\r\033[K'
+
+    cat "$tmp"
+    rm -f "$tmp"
+    return "$rc"
+}
+
 ask() {
     local __var="$1" question="$2" default="${3:-}" reply
     if [[ -n $default ]]; then
@@ -315,7 +336,6 @@ resolveIdentity() {
 # ── hardware detection ────────────────────────────────────────────────────────────
 # Everything here tries to answer for itself and only asks when it cannot know.
 # Every auto-detected value is still shown and overridable.
- 
 detectSystem() {
     _SYSTEM="$(uname -m)-linux"
     printSuccess "System: $_SYSTEM"
@@ -418,7 +438,7 @@ detectHardwareModules() {
         printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
         
         local modules
-        if ! mapfile -t modules < <(nixosHardwareAttrs); 
+        if ! mapfile -t modules < <(spin "Fetching nixos-hardware modules" nixosHardwareModules); 
         then
             printWarn "Could not fetch nixos-hardware's module list"
         fi
