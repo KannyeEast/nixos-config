@@ -7,9 +7,12 @@ alias c := check
 alias bump := update
 
 # Overview
+[group("default")]
 default:
     @just --list
 
+# List ToDo's
+[group("default")]
 todo:
     @echo TO-DOs in:
     @rg -g '!justfile' -C 5 TODO || echo "Everything's done!"
@@ -66,16 +69,20 @@ inputs:
 # Verify all secrets can be decrypted with current keys
 [group("secrets")]
 check-secrets:
-    @echo "Checking secrets..."
-    @fd -g 'secrets.yaml' hosts -x sh -c \
-    'sops --decrypt "$1" > /dev/null \
-    && echo "OK $1" \
-    || echo "FAIL $1"' -- {}
+    #!/usr/bin/env bash
+    echo "Checking secrets ..."
+    for f in hosts/*/secrets.yaml; do
+        [ -e "$f" ] || continue
+        if sops --decrypt "$f" > /dev/null 2>&1;
+        then echo "OK   $f";
+        else echo "FAIL $f"; fi
+    done
     
 # ── maintenance ──────────────────────────────────────────────────────────────
 # Garbage-collect old generations
 [group("maintenance")]
 clean:
+    rm -f {{flake}}/result {{flake}}/result-*
     nh clean all --ask --keep-since 4d --keep 5
     
 # Format and prune dead code
@@ -93,19 +100,39 @@ fmt:
     fi
 
 # ── git ──────────────────────────────────────────────────────────────────────
-
+# Add changes to be committed
 [group("git")]
 stage:
     git add .
-    
+
+# Commit changes
 [group("git")]
 commit MESSAGE: stage
     git commit -m "{{MESSAGE}}"
-    
+
+# Push changes to repo
 [group("git")]
 push MESSAGE: (commit MESSAGE)
     git push
-    
+
+# Pull changes from the repo
+[group("git")]
+pull:
+    git pull --rebase --autostash
+
+# Sync dev branch to main
+[group("git")]
+sync MESSAGE: (push MESSAGE)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git switch main
+    git rm -rq --ignore-unmatch .
+    git checkout dev -- . ':(exclude)hosts'
+    git checkout dev -- hosts/default
+    git commit -m "Sync from dev" || echo "Nothing to sync."
+    git push origin main
+    git switch -
+
 # ── private helpers ──────────────────────────────────────────────────────────
 # Flakes ignore untracked files — make new files visible without committing them
 [private]

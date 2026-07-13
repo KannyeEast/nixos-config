@@ -50,7 +50,6 @@ in
                 user.terminal
                 terminalAlias
                 pkgs.xwayland-satellite
-                pkgs.alacritty #@TODO@TEMP: Add fallback terminal until option works
             ];
             
             environment.sessionVariables = {
