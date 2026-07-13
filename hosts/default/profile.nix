@@ -39,9 +39,9 @@ in
             };
               
             profile.user = {
-                terminal = "kitty";
-                xkb.layout = "us";
-                xkb.variant = "";
+                terminal = pkgs.kitty;
+                xkb.layout = "us,de";
+                xkb.variant = ",";
                 
                 fonts = {
                     packages = [ ];

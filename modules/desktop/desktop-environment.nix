@@ -6,13 +6,17 @@ in
     flake.modules.nixos.desktopEnvironment = { config, pkgs, ... }:
     let
         inherit (config.profile) user;
+        
+        terminalAlias = pkgs.writeShellScriptBin "terminal" ''
+            exec ${getExe user.terminal} "$@"
+        '';
     in
     {
         options = {
             profile.user = {
                 terminal = mkOption {
-                    type = types.str;
-                    default = "alacritty";
+                    type = types.package;
+                    default = pkgs.alacritty;
                     description = "";
                 };
                 xkb.layout = mkOption {
@@ -43,13 +47,15 @@ in
             
             # @TODO: Look for other package combos with niri
             environment.systemPackages = [
-                pkgs.${user.terminal}
+                user.terminal
+                terminalAlias
+                pkgs.xwayland-satellite
                 pkgs.alacritty #@TODO@TEMP: Add fallback terminal until option works
             ];
             
             environment.sessionVariables = {
                 NIXOS_OZONE_WL = "1";
-                TERMINAL = getExe pkgs.${user.terminal};
+                TERMINAL = user.terminal;
                 XKB_DEFAULT_LAYOUT = user.xkb.layout;
                 XKB_DEFAULT_VARIANT = user.xkb.variant;
             };
