@@ -13,7 +13,7 @@ in
             profile.system = {
                 # Grub attributes
                 bootloader.settings = {
-                    theme = "${pkgs.sleek-grub-theme.override { withStyle = "dark"; }}/grub/themes/sleek";
+                    theme = "${pkgs.sleek-grub-theme.override { withStyle = "dark"; }}";
                     gfxmodeEfi = "1920x1080";
                     splashImage = null;
                 };
