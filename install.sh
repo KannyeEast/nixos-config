@@ -274,7 +274,7 @@ resolveIdentity() {
       fi 
       
       ok=true
-      for role in "${#_ROLES[@]}"; do
+      for role in "${_ROLES[@]}"; do
           if ! printf '%s\n' "${valid[@]}" | grep -qx "$role";
           then
             printError "Error: Unkown role - $role"
