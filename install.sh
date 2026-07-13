@@ -5,13 +5,6 @@
 #
 set -Eeu -o pipefail
 
-if [[ -z ${IN_NIX_SHELL:-} ]]; then
-    spin "Fetching dependencies..." sleep 5 
-    exec nix-shell \
-        -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
-        --run "$(printf '%q ' bash "$0" "$@")"
-fi
-
 # ── init ──────────────────────────────────────────────────────────────
 DRY_RUN=false
 VERBOSE=false
@@ -516,6 +509,16 @@ printSummary() {
 # ── main ──────────────────────────────────────────────────────────────
 main() {
     clear
+    
+    if [[ -z ${IN_NIX_SHELL:-} ]]; then
+        spin "Fetching dependencies..." sleep 5 
+        exec nix-shell \
+            -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
+            --run "$(printf '%q ' bash "$0" "$@")"
+    fi
+    
+    clear
+    
     parseArgs "$@"
     validate || exit 1
     cd "$REPO_ROOT"
