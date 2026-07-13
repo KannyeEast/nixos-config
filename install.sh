@@ -217,19 +217,21 @@ validate() {
 _HOST_ANCHOR=""
 _HOSTNAME=""
 _HOST_DIR=""
+_ROLES=()
+
 _USER_ANCHOR=""
 _USERNAME=""
 _USER_EMAIL=""
+
 _SYSTEM=""
-_PLATFORM=""
+_LOCALE=""
+_TIMEZONE=""
+
+_MODULES=false
+_HW_MODULES=()
 _STORAGE=""
 _CPU=""
 _GPU=()
-_GPU_ARCH=""
-_HW_MODULES=()
-_TIMEZONE=""
-_LOCALE=""
-_ROLES=()
 
 # @TODO: Becomes /persist/etc/ssh once impermanence is setup
 _HOST_KEY_DIR="/etc/ssh"
@@ -259,6 +261,32 @@ resolveIdentity() {
     done
 
     printSuccess "New host: hosts/$_HOSTNAME"
+    
+    local valid=(desktop dev server) input role ok
+    while :; do
+      ask input "Roles (space separated)" "desktop dev server"
+      read -ra _ROLES <<< "$input"
+      
+      if (( ${#_ROLES[@]} == 0 ));
+      then
+          printError "Error: Pick at least one role"
+          continue
+      fi 
+      
+      ok=true
+      for role in "${#_ROLES[@]}"; do
+          if ! printf '%s\n' "${valid[@]}" | grep -qx "$role";
+          then
+            printError "Error: Unkown role - $role"
+            ok=false
+          fi
+      done
+      
+      [[ $ok == false ]] && continue
+      break
+    done
+
+    printSuccess "Roles: ${_ROLES[*]}}"  
 
     while :; do
         ask _USERNAME "Username" "${SUDO_USER:-}"
@@ -279,51 +307,49 @@ resolveIdentity() {
 # ── hardware detection ────────────────────────────────────────────────────────────
 # Everything here tries to answer for itself and only asks when it cannot know.
 # Every auto-detected value is still shown and overridable.
-
-# DMI string: "ROG Zephyrus G16 GU605MY_GU605MY" -> "rog-zephyrus-g16-gu605my-gu605my"
-parseDMI() {
-    local s="${1,,}"
-    s="${s//[^a-z0-9]/-}"
-    sed -E 's/-+/-/g; s/^-//; s/-$//' <<< "$s"
-}
- 
-dmi() { cat "/sys/class/dmi/id/$1" 2>/dev/null || true; }
  
 detectSystem() {
     _SYSTEM="$(uname -m)-linux"
-    printSuccess "system: $_SYSTEM"
+    printSuccess "System: $_SYSTEM"
 }
 
-# @TODO: This should be more of a doModules 
-detectPlatform() {
-    # A battery is the only laptop tell that's reliable from the ISO.
-    if compgen -G '/sys/class/power_supply/BAT*' > /dev/null;
-    then
-        _PLATFORM="laptop"
-    else
-        _PLATFORM="desktop"
-    fi
-    printSuccess "platform: $_PLATFORM"
+detectLocale() {
+    _TIMEZONE="$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')"
+    _LOCALE=${LANG:-en_US.UTF-8}
+    _LOCALE_EXTRA=${LC_CTYPE-en_US.UTF-8}
+    
+    ask _TIMEZONE "Timezone" "${_TIMEZONE:-UTC}"
+    ask _LOCALE "Locale" "$_LOCALE"
+    ask _LOCALE_EXTRA "Extra locale" "$_LOCALE_EXTRA"
 }
 
 detectStorage() {
     local src dev rot
+    
     src="$(findmnt -no SOURCE --target / 2>/dev/null || true)"
     dev="$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1 || true)"
     [[ -z $dev ]] && dev="$(lsblk -dno NAME | head -n1)"
-
-    rot="$(cat "/sys/block/$dev/queue/rotational" 2>/dev/null || echo 0)"
-    [[ $rot == 1 ]] && _STORAGE="hdd" || _STORAGE="ssd"
-    printSuccess "storage: $_STORAGE ($dev)"
+    
+    rot="$(lsbsl -dno ROTA "/dev/$dev" 2>/dev/null || echo 0)"
+    
+    if [[ $rot == 1 ]];
+    then
+      _STORAGE="hdd"
+    else 
+      _STORAGE="ssd"
+    fi
+    
+    printSuccess "Storage: $_STORAGE ($dev)"
 }
 
 detectCpu() {
-    case "$(awk -F: '/vendor_id/ {gsub(/ /,"",$2); print $2; exit}' /proc/cpuinfo)" in
+    case "$(lscpu | grep 'Vendor ID' | awk -F: '{print $2}' | xargs)"
+    in
         GenuineIntel) _CPU="intel";;
         AuthenticAMD) _CPU="amd";;
         *) _CPU="";;
     esac
-    printSuccess "cpu: ${_CPU:-unknown}"
+    printSuccess "CPU: ${_CPU:-unknown}"
 }
 
 detectGpu() {
@@ -346,46 +372,26 @@ detectGpu() {
     printSuccess "gpu: ${_GPU[*]:-none}"
 }
 
-detectGpuArch() {
-    [[ " ${_GPU[*]} " == *" nvidia "* ]] || return 0
- 
-    # lspci prints the chip codename, and its prefix IS the architecture:
-    #   AD107M [GeForce RTX 4070]  ->  ada-lovelace
-    local chip
-    chip="$(lspci | grep -i 'nvidia' | grep -oiE '\b(GB|AD|GA|TU|GV|GP|GM|GK)[0-9]{3}' | head -n1 || true)"
- 
-    case "${chip^^}" in
-        GB*) _GPU_ARCH="blackwell" ;;
-        AD*) _GPU_ARCH="ada-lovelace" ;;
-        GA*) _GPU_ARCH="ampere" ;;
-        TU*) _GPU_ARCH="turing" ;;
-        GV*) _GPU_ARCH="volta" ;;
-        GP*) _GPU_ARCH="pascal" ;;
-        GM*) _GPU_ARCH="maxwell" ;;
-        GK*) _GPU_ARCH="kepler" ;;
-        *)   _GPU_ARCH="" ;;
-    esac
- 
-    if [[ -n $_GPU_ARCH ]];
+# ── nixos-hardware ───────────────────────────────────────────────────────
+detectPlatform() {
+    # A battery is the only laptop tell that's reliable from the ISO.
+    if compgen -G '/sys/class/power_supply/BAT*' > /dev/null; # @TODO: This can just be an if statement in the module itself
     then
-        printSuccess "nvidia arch: $_GPU_ARCH (chip $chip)"
+        _MODULES=true
     else
-        printWarn "Warning: Could not read the Nvidia chip codename"
-        askList _GPU_ARCH "Nvidia architecture" \
-            blackwell ada-lovelace ampere turing volta pascal maxwell kepler
+        _MODULES=false
     fi
 }
 
-detectLocale() {
-    _TIMEZONE="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
-    [[ -n $_TIMEZONE ]] || _TIMEZONE="$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')"
-    ask _TIMEZONE "Timezone" "${_TIMEZONE:-UTC}"
- 
-    ask _LOCALE "Locale" "${LANG:-en_US.UTF-8}"
-    ask _LOCALE_EXTRA "Extra locale" "$_LOCALE"
+# DMI string: "ROG Zephyrus G16 GU605MY_GU605MY" -> "rog-zephyrus-g16-gu605my-gu605my"
+parseDMI() {
+    local s="${1,,}"
+    s="${s//[^a-z0-9]/-}"
+    sed -E 's/-+/-/g; s/^-//; s/-$//' <<< "$s"
 }
+ 
+dmi() { cat "/sys/class/dmi/id/$1" 2>/dev/null || true; }
 
-# ── nixos-hardware ───────────────────────────────────────────────────────
 nixosHardwareModules() {
     nix eval --impure --json --apply builtins.attrNames --expr \
         "(builtins.getFlake \"path:$REPO_ROOT\").inputs.nixos-hardware.nixosModules" \
@@ -465,12 +471,6 @@ detectHwModules() {
     read -ra _HW_MODULES <<< "$mods"
 }
 
-detectRoles() {
-    local roles
-    ask roles "Roles (space separated)" "desktop dev server"
-    read -ra _ROLES <<< "$roles"
-}
-
 detectHardware() {
     printHeader "Detecting hardware"
     detectSystem
@@ -510,7 +510,7 @@ main() {
     
     resolveIdentity
     detectHardware
-    printPlan
+    printSummary
 }
 
 main "$@"
