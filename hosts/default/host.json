@@ -14,12 +14,10 @@
     ]
   },
   "hardware": {
-    "platform": "laptop",
     "gpu": [
       "nvidia",
       "intel"
     ],
-    "gpuArchitecture": "ada-lovelace",
     "modules": [
       "asus-zephyrus-gu605my"
     ]

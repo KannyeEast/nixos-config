@@ -1,9 +1,16 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i bash -p age bash git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux
+#!/usr/bin/env bash
+
 #
 # install.sh - bootstrap a new host for this config.
 #
 set -Eeu -o pipefail
+
+if [[ -z ${IN_NIX_SHELL:-} ]]; then
+    echo "Fetching dependencies..."
+    exec nix-shell \
+        -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
+        --run "$(printf '%q ' bash "$0" "$@")"
+fi
 
 # ── init ──────────────────────────────────────────────────────────────
 DRY_RUN=false
@@ -224,8 +231,9 @@ _USERNAME=""
 _USER_EMAIL=""
 
 _SYSTEM=""
-_LOCALE=""
 _TIMEZONE=""
+_LOCALE=""
+_LOCALE_EXTRA=""
 
 _MODULES=false
 _HW_MODULES=()
@@ -286,7 +294,7 @@ resolveIdentity() {
       break
     done
 
-    printSuccess "Roles: ${_ROLES[*]}}"  
+    printSuccess "Roles: ${_ROLES[*]}"  
 
     while :; do
         ask _USERNAME "Username" "${SUDO_USER:-}"
@@ -316,7 +324,7 @@ detectSystem() {
 detectLocale() {
     _TIMEZONE="$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')"
     _LOCALE=${LANG:-en_US.UTF-8}
-    _LOCALE_EXTRA=${LC_CTYPE-en_US.UTF-8}
+    _LOCALE_EXTRA=${LC_CTYPE:-en_US.UTF-8}
     
     ask _TIMEZONE "Timezone" "${_TIMEZONE:-UTC}"
     ask _LOCALE "Locale" "$_LOCALE"
@@ -330,7 +338,7 @@ detectStorage() {
     dev="$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1 || true)"
     [[ -z $dev ]] && dev="$(lsblk -dno NAME | head -n1)"
     
-    rot="$(lsbsl -dno ROTA "/dev/$dev" 2>/dev/null || echo 0)"
+    rot="$(lsblk -dno ROTA "/dev/$dev" 2>/dev/null || echo 0)"
     
     if [[ $rot == 1 ]];
     then
@@ -353,23 +361,22 @@ detectCpu() {
 }
 
 detectGpu() {
-    _GPU=()
     local vid
-    # Class codes: 0300 VGA, 0302 3D, 0380 Display.
-    # The [vvvv:dddd] bracket is vendor:device; the class bracket has no colon.
+
     while read -r vid; do
         case "$vid" in
             10de) _GPU+=("nvidia") ;;
-            1002) _GPU+=("amd")    ;;
-            8086) _GPU+=("intel")  ;;
+            1002) _GPU+=("amd") ;;
+            8086) _GPU+=("intel") ;;
         esac
-    done < <(lspci -nn \
-        | grep -E '\[(0300|0302|0380)\]' \
-        | grep -oE '\[[0-9a-f]{4}:[0-9a-f]{4}\]' \
-        | cut -c2-5)
+    done < <(lspci -n -mm -d ::03xx | awk -F'"' '{print $4}')
 
-    ((${#_GPU[@]})) && mapfile -t _GPU < <(printf '%s\n' "${_GPU[@]}" | awk '!seen[$0]++')
-    printSuccess "gpu: ${_GPU[*]:-none}"
+    if ((${#_GPU[@]}));
+    then
+        mapfile -t _GPU < <(printf '%s\n' "${_GPU[@]}" | awk '!seen[$0]++')
+    fi
+    
+    printSuccess "GPU: ${_GPU[*]:-none}"
 }
 
 # ── nixos-hardware ───────────────────────────────────────────────────────
@@ -393,109 +400,65 @@ parseDMI() {
 dmi() { cat "/sys/class/dmi/id/$1" 2>/dev/null || true; }
 
 nixosHardwareModules() {
-    nix eval --impure --json --apply builtins.attrNames --expr \
-        "(builtins.getFlake \"path:$REPO_ROOT\").inputs.nixos-hardware.nixosModules" \
-        2>/dev/null | jq -r '.[]' || true
+    local rev ref="github:NixOS/nixos-hardware"
+
+    rev="$(jq -r '.nodes["nixos-hardware"].locked.rev // empty' "$REPO_ROOT/flake.lock" 2>/dev/null || true)"
+    [[ -n $rev ]] && ref="github:NixOS/nixos-hardware/$rev"
+
+    timeout 30 nix eval "$ref#nixosModules" \
+        --apply builtins.attrNames --json \
+        --extra-experimental-features 'nix-command flakes' \
+        | jq -r '.[]'
 }
 
-detectHwModules() {
-    printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
-
-    local modules
-    mapfile -t modules < <(nixosHardwareModules)
-    if ((${#modules[@]} == 0)); then
-        printWarn "could not read nixos-hardware's module list"
+detectHardwareModules() {
+    if compgen -G '/sys/class/power_supply/BAT*' > /dev/null;
+    then
+        printHeader "Fetching nixos-hardware modules" 
+        printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
+        
+        local modules
+        if ! mapfile -t modules < <(nixosHardwareAttrs); 
+        then
+            printWarn "Could not fetch nixos-hardware's module list"
+        fi
+    
+        if ((${#modules[@]} == 0)); 
+        then
+            printWarn "No module list — falling back to manual entry"
+        else
+            printSuccess "Fetched ${#modules[@]} modules"
+        fi
+    
+        local mods
         askOptional mods "nixos-hardware modules (space separated)" ""
         read -ra _HW_MODULES <<< "$mods"
-        return 0
-    fi
-
-    _HW_MODULES=()
-
-    # 1. Model-specific module. board_name is the model code and appears
-    #    verbatim in the module name: GU605MY -> asus-zephyrus-gu605my
-    local boardSlug match=""
-    boardSlug="$(parseDMI "$(dmi board_name)")"
-    if [[ -n $boardSlug ]];
-    then
-        match="$(printf '%s\n' "${modules[@]}" | grep -x ".*-${boardSlug}" | head -n1 || true)"
-    fi
-
-    if [[ -n $match ]] && confirm "Use $match?";
-    then
-        _HW_MODULES=("$match")
-        printSuccess "modules: ${_HW_MODULES[*]}"
-        askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
-        read -ra _HW_MODULES <<< "$mods"
-        return 0
-    fi
-
-    # 2. No model module -> assemble common-* from what we detected.
-    printInfo "no model-specific module; using common-* modules"
-    local want=() m
-
-    [[ $_CPU == intel ]] && want+=("common-cpu-intel")
-    [[ $_CPU == amd   ]] && want+=("common-cpu-amd")
-
-    [[ " ${_GPU[*]} " == *" intel "*  ]] && want+=("common-gpu-intel")
-    [[ " ${_GPU[*]} " == *" amd "*    ]] && want+=("common-gpu-amd")
-    [[ " ${_GPU[*]} " == *" nvidia "* ]] && want+=("common-gpu-nvidia")
-
-    # Arch-specific nvidia module, IF upstream has one under that name.
-    if [[ " ${_GPU[*]} " == *" nvidia "* && -n $_GPU_ARCH ]];
-    then
-        want+=("common-gpu-nvidia-$_GPU_ARCH")
-    fi
-
-    # Storage
-    if [[ $_STORAGE == "hdd" ]];
-    then
-        want+=("common-pc-laptop-hdd")
     else
-        want+=("common-pc-ssd")
+        return 0
     fi
-
-    for m in "${want[@]}"; do
-        if printf '%s\n' "${modules[@]}" | grep -qx "$m";
-        then
-            _HW_MODULES+=("$m")
-        else
-            printWarn "skipping $m (not in nixos-hardware)"
-        fi
-    done
-
-    printSuccess "modules: ${_HW_MODULES[*]:-none}"
-
-    local mods
-    askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
-    read -ra _HW_MODULES <<< "$mods"
 }
 
 detectHardware() {
     printHeader "Detecting hardware"
     detectSystem
-    detectPlatform
+    detectLocale
     detectStorage
     detectCpu
     detectGpu
-    detectGpuArch
-    detectHwModules
-    detectLocale
-    detectRoles
+    detectPlatform
+    detectHardwareModules
 }
 
 # ── summary ──────────────────────────────────────────────────────────────
 printSummary() {
     printHeader "Summary"
     printInfo "host: $_HOSTNAME"
-    printInfo "dir: hosts/$_HOSTNAME"
-    printInfo "user: $_USERNAME <$_USER_EMAIL>"
     printInfo "system: $_SYSTEM"
-    printInfo "platform: $_PLATFORM"
-    printInfo "gpu: ${_GPU[*]:-none} ${_GPU_ARCH:+($_GPU_ARCH)}"
+    printInfo "roles: ${_ROLES[*]:-none}"
+    printInfo "user: $_USERNAME <$_USER_EMAIL>"
+    printInfo "gpu: ${_GPU[*]:-none}"
     printInfo "modules: ${_HW_MODULES[*]:-none}"
     printInfo "locale: $_TIMEZONE / $_LOCALE"
-    printInfo "roles: ${_ROLES[*]:-none}"
     printInfo "host key: $_HOST_KEY_DIR/ssh_host_ed25519_key"
     echo
     confirm "Proceed?" || exit 1

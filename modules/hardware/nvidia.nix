@@ -7,12 +7,6 @@ in
     let
         inherit (config.internal.system) nvidia;
         inherit (host) hardware;
-        
-        listArchitecture = [ "fermi" "kepler" "maxwell" "pascal" "volta" "turing" "ampere" "ada-lovelace" "blackwell" ];
-        indexArchitecture = a: lists.findFirstIndex (x: x == a) (-1) listArchitecture;
-        checkArchitecture = generation: indexArchitecture (hardware.gpuArchitecture or null) >= indexArchitecture generation;
-        
-        hybridLaptop = hardware.platform == "laptop" && builtins.length hardware.gpu > 1;
     in
     {
         options = {
@@ -22,11 +16,8 @@ in
         config = mkIf nvidia.enable {
             hardware.nvidia = {
              open = true;
-             powerManagement.enable = checkArchitecture "turing";
-             powerManagement.finegrained = false;
              nvidiaSettings = true;
-            
-             dynamicBoost.enable = hybridLaptop && checkArchitecture "ampere";
+             modesetting.enable = true;
             };
             
             environment.etc."nvidia/nvidia-application-profiles-rc.d/50-limit-vram-niri.json".text = builtins.toJSON {
