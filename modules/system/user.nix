@@ -33,6 +33,8 @@
             
             programs.zsh.enable = true;
             
+            security.sudo.extraConfig = "Defaults lecture=never";
+            
             nix.settings.trusted-users = [
                 "root"
                 "@wheel"

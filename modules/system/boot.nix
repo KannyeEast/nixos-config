@@ -120,6 +120,7 @@ in
         cat >> "$esp/EFI/refind/refind.conf" <<EOF
         
         menuentry "Windows" {
+            volume "ESP"
             icon   /${refindIconsDir}/os_win.png
             loader /EFI/Microsoft/Boot/bootmgfw.efi
         }

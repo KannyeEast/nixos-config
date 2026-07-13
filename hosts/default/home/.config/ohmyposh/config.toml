@@ -1,0 +1,86 @@
+﻿version = 3
+final_space = true
+console_title_template = '{{ .Shell }} in {{ .Folder }}'
+
+[[blocks]]
+type = 'prompt'
+alignment = 'left'
+newline = true
+
+[[blocks.segments]]
+type = 'text'
+style = 'plain'
+foreground = 'blue'
+template = '{{ .UserName }} '
+
+[[blocks.segments]]
+type = 'os'
+style = 'powerline'
+foreground = 'white'
+template = '{{ if .WSL }}WSL at {{ end }}{{.Icon}}'
+
+[[blocks.segments]]
+type = 'path'
+style = 'plain'
+foreground = 'blue'
+template = ' {{ .Path }} '
+
+[blocks.segments.properties]
+style = 'full'
+
+[[blocks.segments]]
+type = 'git'
+style = 'powerline'
+foreground = 'red'
+template = ":: {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}* {{ end }} {{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}"
+
+[blocks.segments.properties]
+branch_icon = "\ue725 "
+commit_icon = '@'
+fetch_status = true
+
+[[blocks]]
+type = 'rprompt'
+overflow = 'hidden'
+
+[[blocks.segments]]
+type = 'root'
+style = 'plain'
+foreground = 'red'
+template = ' root '
+
+[[blocks.segments]]
+type = 'executiontime'
+style = 'plain'
+foreground = 'yellow'
+template = '{{ div .Ms 1000 }}s '
+
+[blocks.segments.properties]
+threshold = 5000
+
+
+[[blocks]]
+type = 'prompt'
+alignment = 'left'
+newline = true
+
+[[blocks.segments]]
+type = 'status'
+style = 'powerline'
+foreground = 'green'
+foreground_templates = [
+    "{{ if gt .Code 0}}red{{ end }}"
+]
+template = "\u276f"
+
+[blocks.segments.properties]
+always_enabled = true
+
+[transient_prompt]
+foreground = 'green'
+foreground_templates = ["{{ if gt .Code 0}}red{{ end }}"]
+template = "\u276f "
+
+[secondary_prompt]
+foreground = 'blue'
+template = "\u2570\u2500 \u276f\u276f "

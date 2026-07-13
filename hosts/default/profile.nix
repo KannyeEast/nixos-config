@@ -30,16 +30,16 @@ in
                 # Dual boot - rEFInd
                 bootloader.refind = {
                     enable = false;
-                    theme.name = "rEFInd-minimal-dark";
+                    theme.name = "rEFInd-darkflake";
                     theme.source = builtins.fetchGit {
-                        url = "https://github.com/KannyeEast/rEFInd-minimal-dark";
+                        url = "https://github.com/KannyeEast/rEFInd-darkflake";
                         rev = "5e56a8110af88323fe4bc7aa95442ecf5d0ba4ed";
                     };
                 };
             };
               
             profile.user = {
-                terminal = pkgs.kitty;
+                terminal = pkgs.alacritty;
                 xkb.layout = "us,de";
                 xkb.variant = ",";
                 

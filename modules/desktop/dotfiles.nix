@@ -7,13 +7,8 @@
         inherit (config.home) homeDirectory;
         
         # https://gist.github.com/mawkler/195def384fd3f73aeb9a965c82781483
-        mkSymlinks = configsAbsolutePath: configsNixPath:
-        let
-            mkSymLink = nixPath: {
-                name = nixPath;
-                value.source = mkOutOfStoreSymlink "${configsNixPath}/${nixPath}";
-            };
-            
+        mkSymlinks = storePath: realPath:
+        let 
             readDirRecursive = relativePath: nixPath:
             let 
                 entries = builtins.readDir nixPath;
@@ -21,23 +16,26 @@
             in
                 builtins.concatLists (map (name:
                 let
-                    entryType = entries.${name};
                     relativePath' =
                         if relativePath == ""
                         then name
                         else "${relativePath}/${name}";
                     nixPath' = "${nixPath}/${name}";
                 in
-                    if entryType == "directory"
+                    if entries.${name} == "directory"
                     then readDirRecursive relativePath' nixPath'
                     else [ relativePath' ]
                 ) names);
+            
+            mkSymLink = nixPath: lib.nameValuePair nixPath {
+                source = mkOutOfStoreSymlink "${realPath}/${nixPath}";
+            };
         in
-            builtins.listToAttrs (map mkSymLink (readDirRecursive "" configsAbsolutePath));
+            builtins.listToAttrs (map mkSymLink (readDirRecursive "" storePath));
     in
     {
-        xdg.configFile = mkSymlinks
-            ../../hosts/${hostname}/dotfiles
-            "${homeDirectory}/nixos-config/hosts/${hostname}/dotfiles";
+        home.file = mkSymlinks
+            ../../hosts/${hostname}/home
+            "${homeDirectory}/nixos-config/hosts/${hostname}/home";
     };
 }

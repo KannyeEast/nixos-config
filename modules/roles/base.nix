@@ -6,13 +6,15 @@ in
     flake.modules.nixos.base = { ... }:
     {
         imports = [
+            nixos.hardware
+            
             nixos.boot
             nixos.homeManager
+            nixos.impermanence
             nixos.locale
             nixos.system
             nixos.user
             nixos.secrets
-            nixos.hardware
         ];
         
         config = { 

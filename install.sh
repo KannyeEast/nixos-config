@@ -39,16 +39,10 @@ gitRepo() { git -c safe.directory='*' "$@"; }
 # ── flags ──────────────────────────────────────────────────────────────
 showFlags() {
     cat <<EOF
-Usage: ${0##*/} [OPTIONS]
- 
-Bootstrap a (new) host for this flake. Creates or modifies:
-  - host.json
-  - host/user SSH Keys
-  - secrets.yaml with userPassword and privateKey
-  - hardware.nix
+Usage: sudo ${0##*/} [OPTIONS]
  
 Options:
-      --admin-key      PATH  Public half of the admin key (extra sops recipient)
+      --admin-key      PATH  Public half of the admin key
       --password-file  PATH  Read the hashed password from a file instead of prompting
   -n, --dry-run              Print what would happen. Writes nothing
   -v, --verbose              Trace execution
@@ -56,6 +50,14 @@ Options:
  
 Examples:
   sudo ./install.sh --verbose --dry-run
+
+Description: 
+  Bootstrap a (new) host for this flake. Creates or modifies:
+    - host.json
+    - host/user SSH Keys
+    - secrets.yaml with userPassword and privateKey
+    - hardware.nix
+ 
 EOF
 }
 
@@ -154,7 +156,7 @@ validate() {
     fi
 
     [[ $fail -eq 0 ]] || return 1
-    printSuccess "Validatied environment. All checks have passed"
+    printSuccess "Validated environment. $'\n' All checks have passed"
 }
 
 # ── main ──────────────────────────────────────────────────────────────
