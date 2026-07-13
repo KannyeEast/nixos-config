@@ -297,31 +297,35 @@ resolveIdentity() {
 
     printSuccess "New host: hosts/$_HOSTNAME"
     
-    local valid=(desktop dev server) input role ok
-    while :; do
-      ask input "Roles (space separated)" "desktop dev server"
-      read -ra _ROLES <<< "$input"
-      
-      if (( ${#_ROLES[@]} == 0 ));
-      then
-          printError "Error: Pick at least one role"
-          continue
-      fi 
-      
-      ok=true
-      for role in "${_ROLES[@]}"; do
-          if ! printf '%s\n' "${valid[@]}" | grep -qx "$role";
-          then
-            printError "Error: Unkown role - $role"
-            ok=false
-          fi
-      done
-      
-      [[ $ok == false ]] && continue
-      break
-    done
+    local base addons=() addon input ok
+    local validAddons=(dev gaming media)
+    
+    askList base "System type" desktop server
+    _ROLES=("$base")
 
-    printSuccess "Roles: ${_ROLES[*]}"  
+    if [[ $base == desktop ]];
+    then
+        while :; do
+            askOptional input "Addons (${validAddons[*]})" "dev"
+            read -ra addons <<< "$input"
+
+            ok=true
+            for addon in "${addons[@]}"; do
+                if ! printf '%s\n' "${validAddons[@]}" | grep -qx "$addon";
+                then
+                    printError "Error: Unknown addon - $addon"
+                    ok=false
+                fi
+            done
+
+            [[ $ok == false ]] && continue
+            break
+        done
+
+        ((${#addons[@]})) && _ROLES+=("${addons[@]}")
+    fi
+
+    printSuccess "Roles: ${_ROLES[*]}"
 
     while :; do
         ask _USERNAME "Username" "${SUDO_USER:-}"
@@ -465,7 +469,7 @@ detectHardwareModules() {
             printInfo "Declined. Using common modules instead"
         fi
     else
-        printInfo "No dedicated module for '$(dmi product_name)'. Using common modules"
+        printInfo "No dedicated module found for '$(dmi product_name)'. Using common modules"
     fi
     
     if ((${#_HW_MODULES[@]} == 0));
@@ -501,6 +505,7 @@ detectHardwareModules() {
     printSuccess "Modules: ${_HW_MODULES[*]:-none}"
 
     local mods
+    printf '%s\n' "https://github.com/NixOS/nixos-hardware"
     askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
     read -ra _HW_MODULES <<< "$mods"
 }
