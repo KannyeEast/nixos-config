@@ -1,4 +1,4 @@
-﻿# Set flag for debugging
+# Set flag for debugging
 if [ -n "${ZSH_DEBUGRC+1}" ]; then
     zmodload zsh/zprof
 fi

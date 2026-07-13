@@ -1,4 +1,4 @@
-﻿{ inputs, ... }:
+{ inputs, ... }:
 let
     inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
