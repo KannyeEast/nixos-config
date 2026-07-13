@@ -5,6 +5,7 @@ alias s := switch
 alias b := boot
 alias c := check
 alias bump := update
+alias cs := check-secrets
 
 # Overview
 [group("default")]
@@ -70,14 +71,28 @@ inputs:
 [group("secrets")]
 check-secrets:
     #!/usr/bin/env bash
+     set -euo pipefail
     echo "Checking secrets ..."
     for f in hosts/*/secrets.yaml; do
         [ -e "$f" ] || continue
         if sops --decrypt "$f" > /dev/null 2>&1;
-        then echo "OK   $f";
-        else echo "FAIL $f"; fi
+        then echo "OK $f";
+        else echo "FAIL $f";
+    fi
     done
     
+# Re-encrypt secrets to the recipients currently in .sops.yaml. Make sure you run this before removing the old key
+[group("secrets")]
+rekey: && check-secrets
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Rotating secrets..."
+    for f in hosts/*/secrets.yaml; do
+        [ -e "$f" ] || continue
+        echo "Rekeying $f"
+        sops updatekeys -y "$f"
+    done
+
 # ── maintenance ──────────────────────────────────────────────────────────────
 # Garbage-collect old generations
 [group("maintenance")]

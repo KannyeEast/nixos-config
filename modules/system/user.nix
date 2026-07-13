@@ -1,7 +1,4 @@
-{ lib, ... }:
-let
-    inherit (lib) mkOption mkIf types;
-in
+{ ... }:
 {
     flake.modules.nixos.user = { config, pkgs, host, ... }:
     let
