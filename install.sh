@@ -5,6 +5,14 @@
 #
 set -Eeu -o pipefail
 
+if [[ -z ${IN_NIX_SHELL:-} ]];
+then
+    printf '%s⠋%s Fetching dependencies...\n' "$BLUE" "$NC"
+    exec nix-shell \
+        -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
+        --run "$(printf '%q ' bash "$0" "$@")"
+fi
+
 # ── init ──────────────────────────────────────────────────────────────
 DRY_RUN=false
 VERBOSE=false
@@ -88,13 +96,19 @@ spin() {
     "$@" > "$tmp" 2>/dev/null &
     pid=$!
 
+    printf '\033[?25l' >&2                   
     while kill -0 "$pid" 2>/dev/null; do
-        printf '\r%s%s%s %s' "$BLUE" "${frames:i++%10:1}" "$NC" "$msg" >&2
+        printf '\r  %s  %s%s%s ' "$msg" "$BOLD$BLUE" "${frames:i++%10:1}" "$NC" >&2
         sleep 0.08
     done
+    printf '\r\033[K\033[?25h' >&2            
 
     wait "$pid" || rc=$?
-    printf '\r\033[K' >&2
+    if ((rc == 0)); then
+        printf '%s✓%s %s\n' "$GREEN" "$NC" "$msg" >&2
+    else
+        printf '%s✗%s %s\n' "$RED" "$NC" "$msg" >&2
+    fi
 
     cat "$tmp"
     rm -f "$tmp"
@@ -441,18 +455,21 @@ detectHardwareModules() {
         match="$(printf '%s\n' "${modules[@]}" | grep -x ".*-${boardSlug}" | head -n1 || true)"
     fi
     
-    if [[ -n $match ]]; 
+    if [[ -n $match ]];
     then
         printSuccess "Matched model: $match"
         if confirm "Use $match?";
         then
             _HW_MODULES=("$match")
+        else
+            printInfo "Declined. Using common modules instead"
         fi
+    else
+        printInfo "No dedicated module for '$(dmi product_name)'. Using common modules"
     fi
     
     if ((${#_HW_MODULES[@]} == 0));
     then
-        printInfo "Using common-* modules"
         local want=() m
 
         [[ -n $_CPU ]] && want+=("common-cpu-$_CPU")
@@ -461,7 +478,14 @@ detectHardwareModules() {
             want+=("common-gpu-$m")
         done
 
-        want+=("common-pc-laptop" "common-pc-laptop-$_STORAGE")
+        want+=("common-pc-laptop")
+        
+        if [[ $_STORAGE == "hdd" ]];
+        then
+          want+=("common-pc-laptop-hdd")
+        else
+          want+=("common-pc-ssd")
+        fi
 
         # Keep only names that actually exist upstream.
         for m in "${want[@]}"; do
@@ -509,16 +533,7 @@ printSummary() {
 # ── main ──────────────────────────────────────────────────────────────
 main() {
     clear
-    
-    if [[ -z ${IN_NIX_SHELL:-} ]]; then
-        spin "Fetching dependencies..." sleep 5 
-        exec nix-shell \
-            -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
-            --run "$(printf '%q ' bash "$0" "$@")"
-    fi
-    
-    clear
-    
+
     parseArgs "$@"
     validate || exit 1
     cd "$REPO_ROOT"
