@@ -7,7 +7,7 @@ set -Eeu -o pipefail
 
 if [[ -z ${IN_NIX_SHELL:-} ]];
 then
-    printf '%s⠋%s Fetching dependencies...\n' "$BLUE" "$NC"
+    printf 'Fetching dependencies...\n'
     exec nix-shell \
         -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
         --run "$(printf '%q ' bash "$0" "$@")"
