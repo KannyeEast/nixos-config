@@ -62,8 +62,6 @@ in
                 xserver = {
                     enable = true;
                     xkb.layout = user.xkb.layout;
-                    displayManager.gdm.enable = true;
-                    displayManager.gdm.wayland = true;
                 };
             };
         };
