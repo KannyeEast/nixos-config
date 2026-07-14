@@ -18,6 +18,8 @@ in
                 open = true;
                 nvidiaSettings = true;
                 modesetting.enable = true;
+                
+                prime.nvidiaBusId = "PCI:1@0:0:0";
             };
             
             environment.etc."nvidia/nvidia-application-profiles-rc.d/50-limit-vram-niri.json".text = builtins.toJSON {

@@ -19,6 +19,8 @@ in
                 pkgs.vpl-gpu-rt # oneVPL (QSV) runtime
             ];
             
+            hardware.nvidia.intelBusId  = "PCI:0@0:2:0";
+            
             environment.sessionVariables = {
                 LIBVA_DRIVER_NAME = "iHD";
             };
