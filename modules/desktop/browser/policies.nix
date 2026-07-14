@@ -82,7 +82,7 @@
             InstallAddonsPermission.Default = false;
             NetworkPrediction = false;
             NewTabPage = false;
-            NoDefaultBookmarks = true;
+            # NoDefaultBookmarks = true;
             OfferToSaveLogins = false;
             OverrideFirstRunPage = "";
             OverridePostUpdatePage = "";
