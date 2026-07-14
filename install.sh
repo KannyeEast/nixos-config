@@ -893,7 +893,7 @@ verify() {
     then
         printSuccess "host.json is valid"
     else
-        printError "host.json is malformed"; fail=1
+        printError "Error: host.json is malformed"; fail=1
     fi
 
     # 2. secrets decrypt, and contain what the modules expect
@@ -933,7 +933,7 @@ verify() {
         fail=1
     fi
 
-    [[ $fail -eq 0 ]] || { printError "Verification failed — do NOT reboot"; exit 1; }
+    [[ $fail -eq 0 ]] || { printError "Verification failed"; exit 1; }
 }
 
 # ── ownership ──────────────────────────────────────────────────────────────
@@ -1006,7 +1006,7 @@ main() {
     writeDotfiles
     
     gitRepo add --intent-to-add .
-    verify
+    verify 
     fixOwnership
     relocateRepo
     printNextSteps

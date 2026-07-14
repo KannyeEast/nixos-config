@@ -1,26 +1,15 @@
 {
   "hostname": "default",
   "system": "x86_64-linux",
-  "roles": [
-    "desktop",
-    "dev"
-  ],
+  "roles": [ ],
   "user": {
     "name": "user",
-    "email": "idk@man.com",
-    "sshKeys": [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFZBktIq0acbe6o6u6GFzmPm81icbVzTVfraYfCJ2P5I user@default",
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMX+dMqj751lL/srdcHX9HXGxb4uNUpMRzDri+zUfNzk admin@root"
-    ]
+    "email": "",
+    "sshKeys": [ ]
   },
   "hardware": {
-    "gpu": [
-      "nvidia",
-      "intel"
-    ],
-    "modules": [
-      "asus-zephyrus-gu605my"
-    ]
+    "gpu": [ ],
+    "modules": [ ]
   },
   "locale": {
     "timeZone": "America/New_York",
