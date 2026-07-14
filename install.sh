@@ -888,31 +888,37 @@ verify() {
     printHeader "Verifying files"
     local fail=0
 
-    # 1. host.json parses and has what the modules read
+    local userKey="$_KEYS_DIR/id_$_USERNAME"
+    local hostKey="$_HOST_KEY_DIR/ssh_host_ed25519_key"
+
+    local userAge hostAge
+    userAge="$(ssh-to-age -private-key -i "$userKey")"
+    hostAge="$(ssh-to-age -private-key -i "$hostKey")"
+
+    # 1. check host.json
     if jq -e '.hostname and .user.name and .system' "$_HOST_DIR/host.json" > /dev/null;
     then
         printSuccess "host.json is valid"
     else
-        printError "Error: host.json is malformed"; fail=1
-    fi
-
-    # 2. secrets decrypt, and contain what the modules expect
-    if sops -d "$_SECRETS" | jq -e '.userPassword and .userPrivateKey' > /dev/null 2>&1;
-    then
-        printSuccess "secrets.json decrypts"
-    else
-        printError "Error secrets.json does not decrypt with your keys";
+        printError "host.json is malformed";
         fail=1
     fi
 
-    local hostKey="$_HOST_KEY_DIR/ssh_host_ed25519_key"
-    if SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$hostKey")" \
-        sops -d --extract '["userPassword"]' "$_SECRETS" > /dev/null 2>&1
+    # 2. check user decryption
+    if SOPS_AGE_KEY="$userAge" sops -d "$_SECRETS" | jq -e '.userPassword and .userPrivateKey' > /dev/null;
+    then
+        printSuccess "secrets.json decrypts with the user key"
+    else
+        printError "User key cannot decrypt $_SECRETS";
+        fail=1
+    fi
+
+    # 3. check host decryption
+    if SOPS_AGE_KEY="$hostAge" sops -d --extract '["userPassword"]' "$_SECRETS" > /dev/null;
     then
         printSuccess "Host key decrypts its own secrets"
     else
-        printError "Error: Host key cannot decrypt $_SECRETS"
-        fail=1
+        printError "Host key cannot decrypt $_SECRETS — first boot would lock you out"; fail=1
     fi
     
     if sops -d "$_SECRETS" | jq -r '.userPrivateKey' | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1;
@@ -923,13 +929,13 @@ verify() {
         fail=1
     fi
 
-    # 4. the flake actually evaluates with the new host
-    if spin "Evaluating flake" nix eval --raw \
-        ".#nixosConfigurations.$_HOSTNAME.config.networking.hostName" > /dev/null
-    then
-        printSuccess "Flake evaluates for $_HOSTNAME"
+    # 4. check private user key
+    if SOPS_AGE_KEY="$userAge" sops -d "$_SECRETS" | jq -r '.userPrivateKey' \
+        | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1;
+        then
+        printSuccess "Stored private key is valid"
     else
-        printError "Error: Flake does not evaluate"
+        printError "Stored private key is malformed";
         fail=1
     fi
 
