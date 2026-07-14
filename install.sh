@@ -921,14 +921,6 @@ verify() {
         printError "Host key cannot decrypt $_SECRETS — first boot would lock you out"; fail=1
     fi
     
-    if sops -d "$_SECRETS" | jq -r '.userPrivateKey' | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1;
-    then
-        printSuccess "Stored private key is a valid SSH key"
-    else
-        printError "Error: Stored private key is malformed";
-        fail=1
-    fi
-
     # 4. check private user key
     if SOPS_AGE_KEY="$userAge" sops -d "$_SECRETS" | jq -r '.userPrivateKey' \
         | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1;
