@@ -1,4 +1,4 @@
-﻿{ lib, ... }:
+{ lib, ... }:
 let
     inherit (lib) mkMerge mkIf mapAttrs mapAttrsToList listToAttrs nameValuePair
     flatten toUpper concatMapStrings concatStringsSep stringToCharacters;
