@@ -87,6 +87,7 @@ in
                     "google".metaData.hidden = true;
                     "ddg".metaData.hidden = true;
                     "ebay".metaData.hidden = true;
+                    "ecosia".metaData.hidden = true;
                     # @TODO: Add the rest of default engines
                 };
             };

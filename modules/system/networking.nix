@@ -59,6 +59,7 @@ in
                     content = concatStringsSep "\n" (map (f:
                         "${envVar f}='${sops.placeholder.${sopsKey f}}'"
                     ) networkEntries);
+                    format = "json";
                     restartUnits = [ "NetworkManager-ensure-profiles.service" ];
                 };
                 

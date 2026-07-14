@@ -1,6 +1,6 @@
 { inputs, ... }:
 {
-    flake.modules.nixos.secrets = { host, ... }:
+    flake.modules.nixos.secrets = { pkgs, host, ... }:
     let
         inherit (host) hostname user;
     in
@@ -10,6 +10,11 @@
         ];
     
         config = {
+            environment.systemPackages = [ 
+                pkgs.sops 
+                pkgs.ssh-to-age
+            ];
+        
             sops = {
                 defaultSopsFile = ../../hosts/${hostname}/secrets.json;
                 defaultSopsFormat = "json";
@@ -25,6 +30,7 @@
                 secrets = {
                     userPrivateKey = {
                         path = "/home/${user.name}/.ssh/id_${user.name}";
+                        format = "json";
                         owner = user.name;
                         mode = "0600";
                     };
