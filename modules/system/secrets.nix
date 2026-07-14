@@ -12,7 +12,7 @@
         config = {
             sops = {
                 defaultSopsFile = ../../hosts/${hostname}/secrets.json;
-                sops.defaultSopsFormat = "json";
+                defaultSopsFormat = "json";
                 validateSopsFiles = false;
                 
                 age = {
