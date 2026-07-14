@@ -40,14 +40,14 @@ in
               
             profile.user = {
                 terminal = pkgs.alacritty;
-                xkb.layout = "us,de";
-                xkb.variant = ",";
+                xkb.layout = "us";
+                xkb.variant = "";
                 
                 fonts = {
                     packages = [ ];
                     defaults.serif = [ "Noto Serif" ];
-                    defaults.sans  = [ "Noto Sans" ];
-                    defaults.mono  = [ "JetBrains Mono" ];
+                    defaults.sans = [ "Noto Sans" ];
+                    defaults.mono = [ "JetBrains Mono" ];
                 };
             };
                 

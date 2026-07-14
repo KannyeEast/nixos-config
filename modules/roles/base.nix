@@ -12,6 +12,7 @@ in
             nixos.homeManager
             nixos.impermanence
             nixos.locale
+            nixos.networking
             nixos.system
             nixos.user
             nixos.secrets

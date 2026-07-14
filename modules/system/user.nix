@@ -14,6 +14,7 @@
             # Create user profile
             users.users.${user.name} = {
                 isNormalUser = true;
+                uid = 1000;
                 home = "/home/${user.name}";
                 extraGroups = [
                     "wheel"             # sudo/root privileges

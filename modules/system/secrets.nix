@@ -11,17 +11,19 @@
     
         config = {
             sops = {
-                defaultSopsFile = ../../hosts/${hostname}/secrets.yaml;
+                defaultSopsFile = ../../hosts/${hostname}/secrets.json;
+                sops.defaultSopsFormat = "json";
                 validateSopsFiles = false;
                 
                 age = {
+                    # @TODO: This location changes with impermanence setup
                     sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
                     keyFile = "/var/lib/sops-nix/key.txt";
                     generateKey = true;
                 };
                 
                 secrets = {
-                    privateKey = {
+                    userPrivateKey = {
                         path = "/home/${user.name}/.ssh/id_${user.name}";
                         owner = user.name;
                         mode = "0600";

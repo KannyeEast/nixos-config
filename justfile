@@ -6,6 +6,7 @@ alias b := boot
 alias c := check
 alias bump := update
 alias cs := check-secrets
+alias es := edit-secrets
 
 # Overview
 [group("default")]
@@ -21,7 +22,7 @@ todo:
 # ── system ───────────────────────────────────────────────────────────────────
 # Rebuild and activate the configuration
 [group("system")]
-switch *ARGS: _stage
+switch *ARGS: _stage (_closed "zen-beta" "Zen")
     nh os switch --ask {{flake}} -H {{host}} {{ARGS}}
 
 # Build and activate on the next reboot
@@ -73,21 +74,25 @@ check-secrets:
     #!/usr/bin/env bash
      set -euo pipefail
     echo "Checking secrets ..."
-    for f in hosts/*/secrets.yaml; do
+    for f in hosts/*/secrets.json; do
         [ -e "$f" ] || continue
         if sops --decrypt "$f" > /dev/null 2>&1;
         then echo "OK $f";
         else echo "FAIL $f";
     fi
     done
-    
+
+[group("secrets")]
+edit-secrets: check-secrets
+    sops hosts/{{host}}/secrets.json
+
 # Re-encrypt secrets to the recipients currently in .sops.yaml. Make sure you run this before removing the old key
 [group("secrets")]
 rekey: && check-secrets
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Rotating secrets..."
-    for f in hosts/*/secrets.yaml; do
+    for f in hosts/*/secrets.json; do
         [ -e "$f" ] || continue
         echo "Rekeying $f"
         sops updatekeys -y "$f"
@@ -153,3 +158,13 @@ sync MESSAGE: (push MESSAGE)
 [private]
 _stage:
     @git -C {{flake}} add --intent-to-add .
+    
+# Check if PROGRAM is currently running
+[private]
+_closed PATTERN NAME=PATTERN:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if pgrep "{{PATTERN}}" >/dev/null; then
+        echo "Error: {{NAME}} is running. Close it first." >&2
+        exit 1
+    fi

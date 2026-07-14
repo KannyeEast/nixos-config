@@ -1,10 +1,6 @@
 { ... }:
-let
-in
 {
     flake.modules.homeManager.browserUserChrome = { ... }:
-    let
-    in
     {
         config = {
             programs.zen-browser.profiles.default.userChrome = ''

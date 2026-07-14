@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 {
     flake.modules.homeManager.dotfiles = { config, host, ... }:
     let

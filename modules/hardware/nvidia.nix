@@ -15,9 +15,9 @@ in
         
         config = mkIf nvidia.enable {
             hardware.nvidia = {
-             open = true;
-             nvidiaSettings = true;
-             modesetting.enable = true;
+                open = true;
+                nvidiaSettings = true;
+                modesetting.enable = true;
             };
             
             environment.etc."nvidia/nvidia-application-profiles-rc.d/50-limit-vram-niri.json".text = builtins.toJSON {

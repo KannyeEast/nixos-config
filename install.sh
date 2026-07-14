@@ -9,12 +9,11 @@ if [[ -z ${IN_NIX_SHELL:-} ]];
 then
     printf 'Fetching dependencies...\n'
     exec nix-shell \
-        -p age git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
+        -p age curl git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
         --run "$(printf '%q ' bash "$0" "$@")"
 fi
 
 # ── init ──────────────────────────────────────────────────────────────
-DRY_RUN=false
 VERBOSE=false
 ADMIN_KEY=""
 PASSWORD_FILE=""
@@ -49,18 +48,17 @@ Usage: sudo ${0##*/} [OPTIONS]
 Options:
       --admin-key      PATH  Public half of the admin key
       --password-file  PATH  Read the hashed password from a file instead of prompting
-  -n, --dry-run              Print what would happen. Writes nothing
   -v, --verbose              Trace execution
   -h, --help                 This message
  
 Examples:
-  sudo ./install.sh --verbose --dry-run
+  sudo ./install.sh --admin-key /etc/nixos/id_admin.pub
 
 Description: 
   Bootstrap a (new) host for this flake. Creates or modifies:
     - host.json
     - host/user SSH Keys
-    - secrets.yaml with userPassword and privateKey
+    - secrets.json with userPassword, privateKey, and optionally wifi configuration
     - hardware.nix
  
 EOF
@@ -73,7 +71,6 @@ parseArgs() {
         case "$1" in
             --admin-key)     needsArg "$1" "${2:-}"; ADMIN_KEY="$2";     shift 2 ;;
             --password-file) needsArg "$1" "${2:-}"; PASSWORD_FILE="$2"; shift 2 ;;
-            -n|--dry-run)    DRY_RUN=true;  shift ;;
             -v|--verbose)    VERBOSE=true;  shift ;;
             -h|--help)       showFlags; exit 0 ;;
             *)               printError "Error: Unknown option: $1"; showFlags; exit 1 ;;
@@ -159,11 +156,7 @@ confirm() {
 writeFile() {
     local path="$1" content
     content="$(cat)"
-    if [[ $DRY_RUN == true ]]; then
-        printInfo "[dry-run] would write $path:"
-        printf '%s\n' "$content" | sed 's/^/      /'
-        return 0
-    fi
+
     mkdir -p "$(dirname "$path")"
     printf '%s\n' "$content" > "$path"
     printSuccess "wrote $path"
@@ -193,7 +186,7 @@ validate() {
     fi
 
     # Writes /etc/ssh and chowns the user's home.
-    if [[ $DRY_RUN == true || $EUID -eq 0 ]];
+    if [[ $EUID -eq 0 ]];
     then
         printSuccess "Verified privileges"
     else
@@ -258,6 +251,8 @@ _USER_ANCHOR=""
 _USERNAME=""
 _USER_EMAIL=""
 
+_WIFI='{}'
+
 _SYSTEM=""
 _TIMEZONE=""
 _LOCALE=""
@@ -267,6 +262,7 @@ _HW_MODULES=()
 _STORAGE=""
 _CPU=""
 _GPU=()
+
 
 # @TODO: Becomes /persist/etc/ssh once impermanence is setup
 _HOST_KEY_DIR="/etc/ssh"
@@ -341,6 +337,38 @@ resolveIdentity() {
     _HOST_ANCHOR="$_HOSTNAME"
 
     ask _USER_EMAIL "git email" "$(gitRepo config user.email 2>/dev/null || true)"
+}
+
+# ── Wifi ──────────────────────────────────────────────────────────────
+resolveWifi() {
+    printHeader "Wifi"
+    confirm "Add a wifi network?" || return 0
+
+    local name ssid psk
+    while :; do
+        ask name "Profile name (e.g. home)"
+        ask ssid "SSID"
+        read -rsp "  PSK: " psk; echo
+
+        _WIFI="$(jq -n \
+            --argjson existing "$_WIFI" \
+            --arg name "$name" --arg ssid "$ssid" --arg psk "$psk" \
+            '$existing + {
+                ($name): {
+                    wifi: {
+                      ssid: $ssid
+                    },
+                    "wifi-security": { 
+                      "key-mgmt": "wpa-psk", 
+                      psk: $psk
+                    }
+                }
+            }')"
+
+        confirm "Add another?" || break
+    done
+
+    printSuccess "Wifi profiles: $(jq -r 'keys | join(", ")' <<< "$_WIFI")"
 }
 
 # ── hardware detection ────────────────────────────────────────────────────────────
@@ -444,7 +472,7 @@ detectHardwareModules() {
     then
         printWarn "No module list. Manual entries only"
         local mods
-        printf '%s\n' "https://github.com/NixOS/nixos-hardware"
+        printInfo "nixos-hardare: https://github.com/NixOS/nixos-hardware"
         askOptional mods "nixos-hardware modules (space separated)" ""
         read -ra _HW_MODULES <<< "$mods"
         return 0
@@ -505,7 +533,7 @@ detectHardwareModules() {
     printSuccess "Modules: ${_HW_MODULES[*]:-none}"
 
     local mods
-    printf '%s\n' "https://github.com/NixOS/nixos-hardware"
+    printInfo "nixos-hardare: https://github.com/NixOS/nixos-hardware"
     askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
     read -ra _HW_MODULES <<< "$mods"
 }
@@ -529,10 +557,427 @@ printSummary() {
     printInfo "user: $_USERNAME <$_USER_EMAIL>"
     printInfo "gpu: ${_GPU[*]:-none}"
     printInfo "modules: ${_HW_MODULES[*]:-none}"
-    printInfo "locale: $_TIMEZONE / $_LOCALE"
+    printInfo "locale: $_TIMEZONE / $_LOCALE / $_LOCALE_EXTRA "
     printInfo "host key: $_HOST_KEY_DIR/ssh_host_ed25519_key"
     echo
     confirm "Proceed?" || exit 1
+}
+
+# ── keys ─────────────────────────────────────────────────────────────────
+# Key material is generated into a temp dir that dies with the script.
+# The user's private key is never written to a home directory
+# it goes into secrets.json, and sops-nix places it at activation
+
+_KEYS_DIR=""
+_HOST_AGE=""
+_USER_AGE=""
+_USER_PUB=""
+_ADMIN_AGE=""
+_SECRETS=""
+
+cleanup() {
+    [[ -n $_KEYS_DIR && -d $_KEYS_DIR ]] && rm -rf "$_KEYS_DIR"
+    printf '\033[?25h' >&2
+}
+trap cleanup EXIT
+
+setupKeysDir() {
+    _KEYS_DIR="$(mktemp -d)"
+    chmod 700 "$_KEYS_DIR"
+    _SECRETS="hosts/$_HOSTNAME/secrets.json"
+    mkdir -p "$_HOST_DIR"
+}
+
+# ── host key ─────────────────────────────────────────────────────────────
+# NixOS generates this on first boot. On a running system it already exists and can be reused
+generateHostKey() {
+    printHeader "Host key"
+ 
+    local key="$_HOST_KEY_DIR/ssh_host_ed25519_key"
+ 
+    if [[ -f "$key.pub" ]];
+    then
+        printSuccess "Reusing existing host key: $key"
+    else
+        printInfo "Generating host key: $key"
+        install -d -m 755 "$_HOST_KEY_DIR"
+        ssh-keygen -t ed25519 -N "" -C "root@$_HOSTNAME" -f "$key"
+    fi
+ 
+    _HOST_AGE="$(ssh-to-age < "$key.pub")"
+    printSuccess "Host age key: $_HOST_AGE"
+}
+
+# ── user key ─────────────────────────────────────────────────────────────
+generateUserKey() {
+    printHeader "User key"
+ 
+    local key="$_KEYS_DIR/id_$_USERNAME"
+ 
+    ssh-keygen -t ed25519 -N "" -C "$_USERNAME@$_HOSTNAME" -f "$key"
+    chmod 600 "$key"
+ 
+    _USER_PUB="$(cat "$key.pub")"
+    _USER_AGE="$(ssh-to-age < "$key.pub")"
+    printSuccess "User age key: $_USER_AGE"
+}
+
+# ── admin key ────────────────────────────────────────────────────────────
+# Optional extra recipient so you can decrypt this host's secrets from another
+# machine. Without one, only the user and this host can read them
+generateAdminKey() {
+    local pub="${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}"
+ 
+    if [[ -r $pub ]];
+    then
+        _ADMIN_AGE="$(ssh-to-age < "$pub")"
+        printSuccess "Admin age key: $_ADMIN_AGE"
+    else
+        printWarn "No admin key. Secrets will be readable by this host and user only"
+        printInfo "Pass --admin-key or place the key at $REPO_ROOT to add one."
+    fi
+}
+
+# ── .sops.yaml ─────────────────────────────────────────────────────────── 
+writeSopsYaml() {
+    printHeader ".sops.yaml"
+ 
+    if [[ ! -f .sops.yaml ]];
+    then
+       cat > .sops.yaml <<EOF
+keys:
+  - &users:
+  - &hosts:
+creation_rules:
+EOF
+       printSuccess "Created .sops.yaml"
+    fi
+ 
+    # insert LINE before the first line exactly matching MARKER
+    insertBefore() {
+        awk -v l="$1" -v m="$2" '
+            !done && $0 == m { print l; done = 1 }
+            { print }
+            END { if (!done) exit 1 }' .sops.yaml > .sops.yaml.tmp \
+            || { printError ".sops.yaml: marker '$2' not found"; exit 1; }
+        mv .sops.yaml.tmp .sops.yaml
+    }
+ 
+    [[ -n $_ADMIN_AGE ]] && ! grep -q -- "- &admin " .sops.yaml \
+        && insertBefore "    - &admin $_ADMIN_AGE" "  - &hosts:"
+ 
+    insertBefore "    - &$_USER_ANCHOR $_USER_AGE" "  - &hosts:"
+    insertBefore "    - &$_HOST_ANCHOR $_HOST_AGE" "creation_rules:"
+ 
+    {
+        printf '  - path_regex: %s$\n' "${_SECRETS//./\\.}"
+        printf '    key_groups:\n'
+        printf '      - age:\n'
+        [[ -n $_ADMIN_AGE ]] && printf '          - *admin\n'
+        printf '          - *%s\n' "$_USER_ANCHOR"
+        printf '          - *%s\n' "$_HOST_ANCHOR"
+    } >> .sops.yaml
+ 
+    printSuccess "Added recipients and creation rule"
+}
+
+# ── secrets.json ─────────────────────────────────────────────────────────
+writeSecrets() {
+    printHeader "secrets.json"
+
+    local hash
+    if [[ -n $PASSWORD_FILE ]];
+    then
+        hash="$(< "$PASSWORD_FILE")"
+    else
+        printInfo "Set the login password for '$_USERNAME':"
+        hash="$(mkpasswd -m sha-512)"
+    fi
+
+    mkdir -p "$(dirname "$_SECRETS")"
+
+    # --arg handles the newlines in the private key; printf would not.
+    jq -n \
+        --arg pw  "$hash" \
+        --arg key "$(< "$_KEYS_DIR/id_$_USERNAME")" \
+        --argjson wifi "$_WIFI" \
+        '{ userPassword: $pw, userPrivateKey: $key }
+         + (if $wifi == {} then {} else { wifi: $wifi } end)' \
+        > "$_SECRETS"
+
+    sops --encrypt --in-place "$_SECRETS"
+    printSuccess "Encrypted $_SECRETS"
+}
+
+# ── host.json ────────────────────────────────────────────────────────────
+writeHost() {
+    printHeader "host.json"
+ 
+    local adminPub=""
+    [[ -r ${ADMIN_KEY:-$REPO_ROOT/id_admin.pub} ]] \
+        && adminPub="$(< "${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}")"
+ 
+    local rolesJson gpuJson modulesJson keysJson
+    rolesJson="$(printf '%s\n' "${_ROLES[@]}" | jq -R . | jq -sc 'map(select(. != ""))')"
+    gpuJson="$(printf '%s\n' "${_GPU[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')"
+    modulesJson="$(printf '%s\n' "${_HW_MODULES[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')"
+    keysJson="$(printf '%s\n%s\n' "$_USER_PUB" "$adminPub" | jq -R . | jq -sc 'map(select(. != ""))')"
+ 
+    jq -n \
+        --arg hostname "$_HOSTNAME" \
+        --arg system "$_SYSTEM" \
+        --arg name "$_USERNAME" \
+        --arg email "$_USER_EMAIL" \
+        --arg cpu "$_CPU" \
+        --arg storage "$_STORAGE" \
+        --arg tz "$_TIMEZONE" \
+        --arg locale "$_LOCALE" \
+        --arg extra "$_LOCALE_EXTRA" \
+        --argjson roles "$rolesJson" \
+        --argjson gpu "$gpuJson" \
+        --argjson modules "$modulesJson" \
+        --argjson keys "$keysJson" \
+        '{
+            hostname: $hostname,
+            system: $system,
+            roles: $roles,
+            user: {
+                name: $name,
+                email: $email,
+                sshKeys: $keys
+            },
+            hardware: {
+                cpu: $cpu,
+                gpu: $gpu,
+                storage: $storage,
+                modules: $modules
+            },
+            locale: {
+                timeZone: $tz,
+                localeDefault: $locale,
+                localeExtra: $extra
+            }
+        }' > "$_HOST_DIR/host.json"
+ 
+    printSuccess "Wrote $_HOST_DIR/host.json"
+}
+
+# ── hardware.nix ─────────────────────────────────────────────────────────
+# @TODO: remove fileSystems and swapDevices blocks when disko is in place 
+writeHardware() {
+    printHeader "hardware.nix"
+ 
+    local body
+    body="$(nixos-generate-config --show-hardware-config \
+        | sed -e '/^ *#/d' \
+              -e '/^{ config, lib, pkgs, modulesPath, \.\.\. }:$/d' \
+              -e '/^{$/d' \
+              -e '/^}$/d' \
+        | sed -e 's/^./        &/' \
+        | cat -s)"
+ 
+    {
+        cat <<'EOF'
+{ ... }:
+let
+    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
+in
+{
+    flake.modules.nixos."${hostname}Hardware" = { config, lib, pkgs, modulesPath, ... }:
+    {
+EOF
+        printf '%s\n' "$body"
+        cat <<'EOF'
+    };
+}
+EOF
+    } > "$_HOST_DIR/hardware.nix"
+ 
+    printSuccess "Wrote $_HOST_DIR/hardware.nix"
+}
+
+# ── profile.nix ─────────────────────────────────────────────────────────
+writeProfile() {
+    printHeader "profile"
+
+    cat > "$_HOST_DIR/profile.nix" <<'EOF'
+{ ... }:
+let
+    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
+in
+{
+    imports = [
+        (import ../../lib/mkHost.nix ./.)
+    ];
+
+    flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }:
+    {
+        config = {
+            profile.system = {
+                bootloader.settings = { };
+                bootloader.plymouth = { };
+                
+                bootloader.refind = {
+                    enable = false;
+                    theme.name = null;
+                    theme.source = null;
+                };
+            };
+
+            profile.user = {
+                terminal = pkgs.alacritty;
+                xkb.layout = "us";
+                xkb.variant = "";
+                
+                fonts = {
+                    packages = [ ];
+                    defaults.serif = [ ];
+                    defaults.sans = [ ];
+                    defaults.mono = [ ];
+                };
+            };
+
+            profile.desktop = {
+                browser = {
+                    extensions.extra = { };
+                    extensions.exclude = [ ];
+                    bookmarks.extra = [ ];
+                    tabs.extra = { };
+                    tabs.exclude = [ ];
+                    spaces.extra = { };
+                };
+            
+                displayManager.settings = { };
+                displayManager.extraPackages = [ ];
+            };
+        };
+    };
+}
+EOF
+
+    printSuccess "Wrote $_HOST_DIR/profile.nix"
+}
+
+# ── dotfiles ─────────────────────────────────────────────────────────
+writeDotfiles() {
+    printHeader "dotfiles"
+
+    local dest="$_HOST_DIR/home/.config/niri"
+    mkdir -p "$dest"
+
+    # Pinned — 'main' would mean the config changes under you between installs.
+    local rev="v26.04"
+    local url="https://raw.githubusercontent.com/YaLTeR/niri/$rev/resources/default-config.kdl"
+
+    if ! curl -fsSL "$url" -o "$dest/config.kdl"; then
+        printWarn "Could not fetch niri's default config. Skipping"
+        return 0
+    fi
+
+    # `spawn` takes an argv and does NOT expand variables, so the stock
+    # `spawn "$TERMINAL"` silently fails. `terminal` is our alias binary.
+    sed -i \
+        -e 's|Mod+T hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }|Mod+T hotkey-overlay-title="Open a Terminal" { spawn "terminal"; }|' \
+        "$dest/config.kdl"
+
+    printSuccess "Seeded $dest/config.kdl"
+}
+
+# ── verify ──────────────────────────────────────────────────────────────
+verify() {
+    printHeader "Verifying files"
+    local fail=0
+
+    # 1. host.json parses and has what the modules read
+    if jq -e '.hostname and .user.name and .system' "$_HOST_DIR/host.json" > /dev/null;
+    then
+        printSuccess "host.json is valid"
+    else
+        printError "host.json is malformed"; fail=1
+    fi
+
+    # 2. secrets decrypt, and contain what the modules expect
+    if sops -d "$_SECRETS" | jq -e '.userPassword and .userPrivateKey' > /dev/null 2>&1;
+    then
+        printSuccess "secrets.json decrypts"
+    else
+        printError "Error secrets.json does not decrypt with your keys";
+        fail=1
+    fi
+
+    local hostKey="$_HOST_KEY_DIR/ssh_host_ed25519_key"
+    if SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$hostKey")" \
+        sops -d --extract '["userPassword"]' "$_SECRETS" > /dev/null 2>&1
+    then
+        printSuccess "Host key decrypts its own secrets"
+    else
+        printError "Error: Host key cannot decrypt $_SECRETS"
+        fail=1
+    fi
+    
+    if sops -d "$_SECRETS" | jq -r '.userPrivateKey' | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1;
+    then
+        printSuccess "Stored private key is a valid SSH key"
+    else
+        printError "Error: Stored private key is malformed";
+        fail=1
+    fi
+
+    # 4. the flake actually evaluates with the new host
+    if spin "Evaluating flake" nix eval --raw \
+        ".#nixosConfigurations.$_HOSTNAME.config.networking.hostName" > /dev/null
+    then
+        printSuccess "Flake evaluates for $_HOSTNAME"
+    else
+        printError "Error: Flake does not evaluate"
+        fail=1
+    fi
+
+    [[ $fail -eq 0 ]] || { printError "Verification failed — do NOT reboot"; exit 1; }
+}
+
+# ── ownership ──────────────────────────────────────────────────────────────
+fixOwnership() {
+    chown -R 1000:100 "$REPO_ROOT"
+    printSuccess "Ownership set to uid 1000 (${_USERNAME})"
+}
+
+# ── relocate ──────────────────────────────────────────────────────────────
+relocateRepo() {
+    local target="/home/$_USERNAME/nixos-config"
+
+    [[ -e $target ]] && { printError "$target already exists"; return 1; }
+
+    if [[ $REPO_ROOT == "$target" ]];
+    then
+        printSuccess "Repo is already at $target"
+        return 0
+    fi
+
+    printWarn "The dotfiles module expects the repo at $target"
+    printInfo "It is currently at $REPO_ROOT"
+    confirm "Move it?" || {
+        printWarn "Skipped. Home-manager symlinks will not work until you move it"
+        return 0
+    }
+
+    mkdir -p "/home/$_USERNAME"
+    mv "$REPO_ROOT" "$target"
+    chown -R 1000:100 "/home/$_USERNAME"
+
+    REPO_ROOT="$target"
+    cd "$REPO_ROOT"        # our cwd is now a dangling inode
+    printSuccess "Moved repo to $target"
+}
+
+# ── summarize ──────────────────────────────────────────────────────────────
+printNextSteps() {
+    printHeader "Done"
+    printInfo "Review, then commit:"
+    printInfo "git -C $REPO_ROOT add . && git -C $REPO_ROOT commit -m 'feat: add host $_HOSTNAME'"
+    printInfo ""
+    printInfo "Then build:"
+    printInfo "sudo nixos-rebuild switch --flake .#$_HOSTNAME"
 }
 
 # ── main ──────────────────────────────────────────────────────────────
@@ -544,8 +989,27 @@ main() {
     cd "$REPO_ROOT"
     
     resolveIdentity
+    resolveWifi
     detectHardware
     printSummary
+    
+    setupKeysDir
+    generateHostKey
+    generateUserKey
+    generateAdminKey
+    
+    writeSopsYaml
+    writeSecrets
+    writeHost
+    writeHardware
+    writeProfile
+    writeDotfiles
+    
+    gitRepo add --intent-to-add .
+    verify
+    fixOwnership
+    relocateRepo
+    printNextSteps
 }
 
 main "$@"

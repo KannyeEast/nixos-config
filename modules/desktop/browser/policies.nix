@@ -1,7 +1,4 @@
-{ lib, ... }:
-let
-    inherit (lib) mkForce;
-in
+{ ... }:
 {
     flake.modules.homeManager.browserPolicies = { ... }:
     let
@@ -10,7 +7,7 @@ in
     {
         # about:policies#documentation
         programs.zen-browser.policies = {
-            AIControls.Default = "blocked"; 
+            AIControls.Default.Value = "blocked"; 
             AppAutoUpdate = false;
             # Authentication >> Might be useful to look at later
             AutofillAddressEnabled = false;
@@ -48,6 +45,15 @@ in
                 Category = "strict";
                 BaselineExceptions = true;
             };
+            ExtensionSettings = {
+                "*" = {
+                    blocked_install_message = "Modify the nixos-config to install extension";
+                    install_sources = [
+                        "https://addons.mozilla.org/*"
+                    ];
+                    installation_mode = "blocked";
+                };
+            };
             FirefoxHome = {
                 Search = true;
                 Weather = false;
@@ -70,17 +76,16 @@ in
             Homepage = { 
                 URL = "https://kagi.com";
                 Additional = [ "about:blank" ];
-                StartPage = "homepage";
+                StartPage = "previous-session";
             };
             HttpsOnlyMode = "allowed";
-            InstallAddonsPermission = {
-                Allow = [ "https://addons.mozilla.org" "https://addons.mozilla.org^privateBrowsingId=1" ];
-                Default = false;
-            };
+            InstallAddonsPermission.Default = false;
             NetworkPrediction = false;
             NewTabPage = false;
-            NoDefaultBookmarks = mkForce true;
+            NoDefaultBookmarks = true;
             OfferToSaveLogins = false;
+            OverrideFirstRunPage = "";
+            OverridePostUpdatePage = "";
             PasswordManagerEnabled = false;
             Permissions = {
                 Camera = {
@@ -120,7 +125,7 @@ in
                 };
             };
             PictureInPicture.Enabled = false;
-            PopupBlocking.Default = false;
+            PopupBlocking.Default = true;
             PrintingEnabled = true;
             PromptForDownloadLocation = true;
             SanitizeOnShutdown = {
@@ -136,16 +141,44 @@ in
             ShowHomeButton = true;
             SkipTermsOfUse = true;
             StartDownloadsInTempDirectory = true;
+            TranslateEnabled = false;
             VisualSearchEnabled = true;
-        
             Preferences = mkPolicy {
-                "browser.translations.automaticallyPopup" = false;
+                "browser.display.document_color_use" = 0;
                 "browser.tabs.warnOnClose" = false;
+                "browser.urlbar.addons.featureGate" = false;
+                "browser.urlbar.suggest.addons" = false;
+                "browser.urlbar.suggest.engines" = false;
+                "browser.urlbar.suggest.mdn" = false;
+                "browser.urlbar.suggest.topsites" = false;
+                "browser.urlbar.suggest.trending" = false;
+                "browser.urlbar.suggest.weather" = false;
+                "browser.urlbar.suggest.yelp" = false;
+                "browser.urlbar.trending.featureGate" = false;
+                "browser.urlbar.quicksuggest.enabled" = false;
+                
+                "general.smoothScroll" = false;
+            };
+            UserMessaging = {
+                WhatsNew = false;
+                ExtensionRecommendations = false;
+                FeatureRecommendations = false;
+                UrlbarInterventions = false;
+                SkipOnboarding = false;
+                MoreFromMozilla = false;
+                FirefoxLabs = false;
             };
         };
         
-        # @TODO: Still need to look through `Preferences` and `settings`
         programs.zen-browser.profiles.default.settings = {
+            "devtools.chrome.enabled" = true;
+            "devtools.debugger.remote-enabled" = true;
+            
+            "font.name.serif.x-western" = "Bahnschrift";
+            "font.size.variable.x-western" = 16;
+            "font.size.monospace.x-western" = 13;
+            "font.default.x-western" = "serif";
+        
             "zen.pinned-tab-manager.restore-pinned-tabs-to-pinned-url" = true;
             "zen.tabs.ctrl-tab.ignore-pending-tabs" = true;
             "zen.tabs.select-recently-used-on-close" = false;

@@ -40,12 +40,7 @@ in
         
         config = {
             console.keyMap = "us";
-            
-            networking = {
-                hostName = hostname;
-                networkmanager.enable = true;
-            };
-            
+
             #
             # Nix system settings
             #

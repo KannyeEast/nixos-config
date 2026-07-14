@@ -43,6 +43,7 @@ in
                 enableDefaultPackages = true;
                 
                 packages = [
+                    pkgs.bahnschrift
                     pkgs.noto-fonts     
                     pkgs.noto-fonts-cjk-sans 
                     pkgs.noto-fonts-color-emoji 
