@@ -4,7 +4,6 @@
     let
         inherit (host) user;
         inherit (config) sops;
-        inherit (config.profile) user;
     in
     {
         options = {
