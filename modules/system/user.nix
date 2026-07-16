@@ -40,12 +40,14 @@ in
                 shell = user.shell;
             };
             
+            environment.shells = [ user.shell ]; 
+            
             services.openssh = {
                 enable = true;
                 openFirewall = true;
             };
             
-            # programs.${user.shell}.enable = true;
+            programs.${lib.getName user.shell}.enable = true;
             
             security.sudo.extraConfig = "Defaults lecture=never";
             
