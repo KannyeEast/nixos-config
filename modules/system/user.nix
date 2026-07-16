@@ -40,7 +40,7 @@ in
                 shell = user.shell;
             };
             
-            environment.shells = [ user.shell ]; 
+            # environment.shells = [ user.shell ]; 
             
             services.openssh = {
                 enable = true;
