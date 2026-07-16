@@ -1,6 +1,6 @@
 { ... }:
 {
-    flake.modules.nixos.user = { pkgs, host, ... }:
+    flake.modules.nixos.user = { config, pkgs, host, ... }:
     let
         inherit (host) user;
         inherit (config) sops;
