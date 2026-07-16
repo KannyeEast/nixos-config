@@ -346,30 +346,30 @@ resolveWifi() {
 
     cat > "$_KEYS_DIR/wifi-template.json" <<'EOF'
 {
-  <NAME>: {
-    connection: {
-      id: "<NAME>>",
-      permissions: "",
-      type: ""
+  "<NAME>": {
+    "connection": {
+      "id": "<NAME>",
+      "permissions": "",
+      "type": ""
     },
-    ipv4: {
-      dns-search: "",
-      method: "",
+    "ipv4": {
+      "dns-search": "",
+      "method": "",
     },
-    ipv6: {
-      addr-gen-mode: "",
-      dns-search: "",
-      method: ""
+    "ipv6": {
+      "addr-gen-mode": "",
+      "dns-searc"h: "",
+      "method": ""
     },
-    wifi: {
-      mac-address-blacklist: "",
-      mode: "",
-      ssid: "<SSID>"
+    "wifi": {
+      "mac-address-blacklist": "",
+      "mode": "",
+      "ssid": "<SSID>"
     },
-    wifi-security: {
-      auth-alg: "",
-      key-mgmt: "",
-      psk: "<PASSWORD>"
+    "wifi-security": {
+      "auth-alg": "",
+      "key-mgmt": "",
+      "psk": "<PASSWORD>"
     }
   }
 }
