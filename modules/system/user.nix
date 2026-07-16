@@ -45,7 +45,7 @@ in
                 openFirewall = true;
             };
             
-            programs.${user.shell}.enable = true;
+            # programs.${user.shell}.enable = true;
             
             security.sudo.extraConfig = "Defaults lecture=never";
             
