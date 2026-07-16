@@ -354,11 +354,11 @@ resolveWifi() {
     },
     "ipv4": {
       "dns-search": "",
-      "method": "",
+      "method": ""
     },
     "ipv6": {
       "addr-gen-mode": "",
-      "dns-searc"h: "",
+      "dns-search": "",
       "method": ""
     },
     "wifi": {
@@ -379,9 +379,10 @@ EOF
     printInfo "Only ssid and psk are needed required"
     "${EDITOR:-nano}" "$_KEYS_DIR/wifi-template.json"
 
-    if ! jq empty "$_KEYS_DIR/wifi-template.json" 2>/dev/null;
+    if ! jq empty "$_KEYS_DIR/wifi-template.json";
     then
-        printError "Not valid JSON"
+        printError "Not valid JSON:"
+        jq empty "$_KEYS_DIR/wifi-template.json" 2>&1 | sed 's/^/    /' >&2
         return 0
     fi
 
