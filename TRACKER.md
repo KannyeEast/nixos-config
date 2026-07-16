@@ -60,3 +60,8 @@
   - Sops itself works, needs to be polished and flawless implemented 
 - [X] System
 - [X] User
+
+### Host
+- [ ] Installer
+  - Works but needs lots of tweaks
+  - Only for live env, not ISO ATM

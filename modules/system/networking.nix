@@ -26,7 +26,7 @@ in
         # FROM: "wifi/cafe/wifi-security/psk"
         # TO: "WIFI_CAFE_WIFI_SECURITY_PSK"
         pathToEnv = string:
-            toUpper (lib.stringAsChars (c:
+            lib.toUpper (lib.stringAsChars (c:
                 if builtins.match "[A-Za-z0-9]" c != null
                 then c
                 else "_"

@@ -342,32 +342,58 @@ resolveIdentity() {
 # ── Wifi ──────────────────────────────────────────────────────────────
 resolveWifi() {
     printHeader "Wifi"
-    confirm "Add a wifi network?" || return 0
+    confirm "Add wifi networks?" || return 0
 
-    local name ssid psk
-    while :; do
-        ask name "Profile name (e.g. home)"
-        ask ssid "SSID"
-        read -rsp "  PSK: " psk; echo
+    cat > "$_KEYS_DIR/wifi-template.json" <<'EOF'
+{
+  <NAME>: {
+    connection: {
+      id: "<NAME>>",
+      permissions: "",
+      type: ""
+    },
+    ipv4: {
+      dns-search: "",
+      method: "",
+    },
+    ipv6: {
+      addr-gen-mode: "",
+      dns-search: "",
+      method: ""
+    },
+    wifi: {
+      mac-address-blacklist: "",
+      mode: "",
+      ssid: "<SSID>"
+    },
+    wifi-security: {
+      auth-alg: "",
+      key-mgmt: "",
+      psk: "<PASSWORD>"
+    }
+  }
+}
+EOF
 
-        _WIFI="$(jq -n \
-            --argjson existing "$_WIFI" \
-            --arg name "$name" --arg ssid "$ssid" --arg psk "$psk" \
-            '$existing + {
-                ($name): {
-                    wifi: {
-                      ssid: $ssid
-                    },
-                    "wifi-security": { 
-                      "key-mgmt": "wpa-psk", 
-                      psk: $psk
-                    }
-                }
-            }')"
+    printInfo "Your editor will open"
+    printInfo "Only ssid and psk are needed required"
+    "${EDITOR:-nano}" "$_KEYS_DIR/wifi-template.json"
 
-        confirm "Add another?" || break
-    done
+    if ! jq empty "$_KEYS_DIR/wifi-template.json" 2>/dev/null;
+    then
+        printError "Not valid JSON"
+        return 0
+    fi
 
+    _WIFI="$(jq '
+            walk(
+                if type == "object"
+                then with_entries(select(.value != "" and .value != {}))
+                else .
+                end
+            )
+        ' "$_KEYS_DIR/wifi-template.json")"
+        
     printSuccess "Wifi profiles: $(jq -r 'keys | join(", ")' <<< "$_WIFI")"
 }
 
