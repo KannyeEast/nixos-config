@@ -5,7 +5,7 @@ in
 {
     flake.modules.nixos.user = { config, pkgs, host, ... }:
     let
-        inherit (host) user;
+        inherit (config.profile) user;
         inherit (config) sops;
     in
     {
@@ -25,17 +25,17 @@ in
             users.mutableUsers = false;
             
             # Create user profile
-            users.users.${user.name} = {
+            users.users.${host.user.name} = {
                 isNormalUser = true;
                 uid = 1000;
-                home = "/home/${user.name}";
+                home = "/home/${host.user.name}";
                 extraGroups = [
                     "wheel"             # sudo/root privileges
                     "networkmanager"    # network configuration
                 ];
 
                 hashedPasswordFile = sops.secrets.userPassword.path;
-                openssh.authorizedKeys.keys = user.sshKeys;
+                openssh.authorizedKeys.keys = host.user.sshKeys;
                 
                 shell = user.shell;
             };
