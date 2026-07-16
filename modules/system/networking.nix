@@ -42,17 +42,17 @@ in
             
             (mkIf (wifiSecrets != { }) {
                 # Initialize secret for each entry
-                sops.secrets =
-                    wifiPaths
-                    |> map (p: lib.nameValuePair p { })
-                    |> lib.listToAttrs;
+                sops.secrets = lib.pipe wifiPaths [
+                    (map (p: lib.nameValuePair p { }))
+                    lib.listToAttrs
+                ];
                 
                 sops.templates."wifi.env" = {
                     # WIFI_CAFE_WIFI_SECURITY_PSK = "${sops.placeholder."wifi/cafe/wifi-security/psk"}"
-                    content =
-                        wifiPaths
-                        |> map (p: "${pathToEnv p}='${config.sops.placeholder.${p}}'")
-                        |> lib.concatStringsSep "\n";
+                    content = lib.pipe wifiPaths [
+                        (map (p: "${pathToEnv p}='${config.sops.placeholder.${p}}'"))
+                        (lib.concatStringsSep "\n")
+                    ];
                     owner = user.name;
                     restartUnits = [ "NetworkManager-ensure-profiles.service" ];
                 };

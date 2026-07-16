@@ -62,8 +62,7 @@ in
                     download-buffer-size = 500000000;  
                     
                     # Core features
-                    experimental-features = [ "nix-command" "flakes" ];
-                    extra-experimental-features = [ "pipe-operators" ]; 
+                    experimental-features = [ "nix-command" "flakes" "pipe-operators" ];
                     
                     # Substituters for faster downloads
                     substituters = [
