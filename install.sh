@@ -350,7 +350,7 @@ resolveWifi() {
     "connection": {
       "id": "<NAME>",
       "permissions": "",
-      "type": ""
+      "type": "wifi"
     },
     "ipv4": {
       "dns-search": "",
@@ -368,7 +368,7 @@ resolveWifi() {
     },
     "wifi-security": {
       "auth-alg": "",
-      "key-mgmt": "",
+      "key-mgmt": "wpa-psk",
       "psk": "<PASSWORD>"
     }
   }
@@ -853,7 +853,6 @@ in
 
             profile.user = {
                 terminal = pkgs.alacritty;
-                shell = pkgs.zsh;
                 xkb.layout = "us";
                 xkb.variant = "";
                 

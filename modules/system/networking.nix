@@ -34,6 +34,7 @@ in
 
     in
     {
+        # https://networkmanager.dev/docs/api/latest/nm-settings-keyfile.html
         config = mkMerge [
             {
                 networking.hostName = hostname;
