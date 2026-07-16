@@ -37,17 +37,17 @@ in
                 hashedPasswordFile = sops.secrets.userPassword.path;
                 openssh.authorizedKeys.keys = host.user.sshKeys;
                 
-                shell = user.shell;
+                shell = pkgs.zsh;
             };
             
-            # environment.shells = [ user.shell ]; 
+            environment.shells = [ pkgs.zsh ]; 
             
             services.openssh = {
                 enable = true;
                 openFirewall = true;
             };
             
-            programs.${lib.getName user.shell}.enable = true;
+            programs.zsh.enable = true;
             
             security.sudo.extraConfig = "Defaults lecture=never";
             
