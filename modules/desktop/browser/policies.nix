@@ -34,7 +34,7 @@
             DisableFirefoxStudies = true;
             DisableSetDesktopBackground = true;
             DisableTelemetry = true;
-            DisplayBookmarksToolbar = "never";
+            # DisplayBookmarksToolbar = "never";
             DNSOverHTTPS = {
                 Enabled = true;
                 ProviderURL = "https://mozilla.cloudflare-dns.com/dns-query";

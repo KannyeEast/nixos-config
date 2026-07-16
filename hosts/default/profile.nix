@@ -40,6 +40,7 @@ in
               
             profile.user = {
                 terminal = pkgs.alacritty;
+                shell = pkgs.zsh;
                 xkb.layout = "us";
                 xkb.variant = "";
                 

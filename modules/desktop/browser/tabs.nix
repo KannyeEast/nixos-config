@@ -109,6 +109,7 @@ in
                 position = 300;
                 workspace = spaces."Personal Projects".id;
                 isGroup = true;
+                isFolderCollapsed = true;
                 editedTitle = true;
                 folderIcon = "chrome://browser/skin/zen-icons/selectable/folder.svg";
             };

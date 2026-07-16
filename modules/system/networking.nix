@@ -1,48 +1,34 @@
 { lib, ... }:
 let
-    inherit (lib) mkMerge mkIf mapAttrs mapAttrsToList listToAttrs nameValuePair
-    flatten toUpper concatMapStrings concatStringsSep stringToCharacters;
+    inherit (lib) mkMerge mkIf isAttrs toUpper concatMapStrings stringToCharacters
+    mapAttrs mapAttrsToList listToAttrs nameValuePair flatten concatStringsSep;
 in
 {
     flake.modules.nixos.networking = { config, host, ... }:
     let
-        inherit (host) hostname;
+        inherit (host) hostname user;
         inherit (config) sops;
         
-        # Read the structure of the wifi section of the encrypted file   
-        networkAttributes = 
-             (builtins.fromJSON (builtins.readFile sops.defaultSopsFile)).wifi or { };
+        # JSON to nix the wifi section of the encrypted secrets.json or nothing if it doesnt exist
+        wifiSecrets = (builtins.fromJSON (builtins.readFile sops.defaultSopsFile)).wifi or { };
         
-        # Transforms the sops value path to a valid env variable 
-        # "wifi/cafe/wifi-security/psk" -> "WIFI_CAFE_WIFI_SECURITY_PSK"
-        sopsToEnv = s: toUpper (concatMapStrings
-            (c: if builtins.match "[A-Za-z0-9]" c != null then c else "_")
-            (stringToCharacters s)
+        # Flatten a nested attrset into a list of "/"-joined paths
+        # FROM: cafe = { wifi = { ssid=[ENC]; }; wifi-security = { psk=[ENC]; }; };
+        # TO: [ "cafe/wifi/ssid" "cafe/wifi-security/psk" ]
+        flattenPaths = prefix: attrs: flatten (
+            mapAttrsToList (name: value:
+                let path = "${prefix}/${name}";
+                in if isAttrs value then flattenPaths path value else [ path ]
+            ) attrs
         );
         
-        # Do this 3 times as networking.networkmanager.ensureProfiles.profiles is 3 levels deep  
-        # <wifi_name>.connection.id
-        # before flatten:
-        # [ [ [ {net="cafe"; section="wifi"; key="ssid";} 
-        #       {net="cafe"; section="wifi"; key="hidden";} ]
-        #     [ {net="cafe"; section="wifi-security"; key="key-mgmt";}
-        #       {net="cafe"; section="wifi-security"; key="psk";} ] ] ]
-        # 
-        # after flatten:
-        # [ {net="cafe"; section="wifi"; key="ssid";}
-        #   {net="cafe"; section="wifi"; key="hidden";}
-        #   {net="cafe"; section="wifi-security"; key="key-mgmt";}
-        #   {net="cafe"; section="wifi-security"; key="psk";} ]
-        networkEntries = flatten (mapAttrsToList (net: sections:
-            mapAttrsToList (section: keys:
-                mapAttrsToList (key: _: { inherit net section key; }) keys
-            ) sections
-        ) networkAttributes);
+        wifiPaths = wifiSecrets |> flattenPaths "wifi";
         
-        # Where is the file
-        sopsKey = f: "wifi/${f.net}/${f.section}/${f.key}"; 
-        # What is the name of it
-        envVar = f: "WIFI_${sopsToEnv f.net}_${sopsToEnv f.section}_${sopsToEnv f.key}";
+        # Turn a path string into an env var name
+        # FROM: "wifi/cafe/wifi-security/psk"  TO: "WIFI_CAFE_WIFI_SECURITY_PSK"
+        pathToEnv = string: toUpper (concatMapStrings
+            (char: if builtins.match "[A-Za-z0-9]" char != null then char else "_")
+            (stringToCharacters string));
     in
     {
         config = mkMerge [
@@ -51,33 +37,35 @@ in
                 networking.networkmanager.enable = true;
             }
             
-            (mkIf (networkAttributes != { }) {
-                sops.secrets = listToAttrs
-                    (map (f: nameValuePair (sopsKey f) { }) networkEntries);
-                    
+            (mkIf (wifiSecrets != { }) {
+                # Initialize secret for each entry
+                sops.secrets =
+                    wifiPaths
+                    |> map (p: nameValuePair p { })
+                    |> listToAttrs;
+                
                 sops.templates."wifi.env" = {
-                    content = concatStringsSep "\n" (map (f:
-                        "${envVar f}='${sops.placeholder.${sopsKey f}}'"
-                    ) networkEntries);
-                    format = "json";
+                    # FROM: 
+                    # TO: WIFI_CAFE_WIFI_SECURITY_PSK = "${sops.placeholder."wifi/cafe/wifi-security/psk"}"
+                    content =
+                        wifiPaths
+                        |> map (p: "${pathToEnv p}='${sops.placeholder.${p}}'")
+                        |> concatStringsSep "\n";
+                    owner = user.name;
                     restartUnits = [ "NetworkManager-ensure-profiles.service" ];
                 };
                 
                 networking.networkmanager.ensureProfiles = {
                     environmentFiles = [ sops.templates."wifi.env".path ];
                     
-                    profiles = mapAttrs (net: sections:
-                        {
-                            connection = {
-                                id = net;
-                                type = "wifi";
-                            };
-                        } // mapAttrs (section: keys:
+                    profiles = mapAttrs (name: sections:
+                        { connection = { id = name; type = "wifi"; }; }
+                        // mapAttrs (section: keys:
                             mapAttrs (key: _:
-                                "$" + envVar { inherit net section key; }
+                                "$" + pathToEnv "wifi/${name}/${section}/${key}"
                             ) keys
                         ) sections
-                    ) networkAttributes;
+                    ) wifiSecrets;
                 };
             })
         ];

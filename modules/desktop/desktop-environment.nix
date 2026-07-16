@@ -17,7 +17,7 @@ in
                 terminal = mkOption {
                     type = types.package;
                     default = pkgs.alacritty;
-                    description = "";
+                    description = "Preferred user terminal";
                 };
                 xkb.layout = mkOption {
                     type = types.str;

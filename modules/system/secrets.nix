@@ -30,7 +30,6 @@
                 secrets = {
                     userPrivateKey = {
                         path = "/home/${user.name}/.ssh/id_${user.name}";
-                        format = "json";
                         owner = user.name;
                         mode = "0600";
                     };
