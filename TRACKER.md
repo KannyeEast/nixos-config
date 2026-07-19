@@ -6,7 +6,7 @@
   - Needs polish
   - Switch to ryze extensions if applicable
   - Make it more host driven → No default spaces/tabs/bookmarks, etc.
-  - Put extension settings in separate repo and use it as secret to set settings
+  - Put all browser settings into private Repo and let it all be declarative through profile
     - Figure out how to set all extension settings
 - [ ] Audio
   - Not tested

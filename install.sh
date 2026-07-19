@@ -590,10 +590,15 @@ fetchHardwareModules() {
     rev="$(jq -r '.nodes["nixos-hardware"].locked.rev // empty' "$REPO_ROOT/flake.lock" 2>/dev/null || true)"
     [[ -n $rev ]] && ref="github:NixOS/nixos-hardware/$rev"
 
-    timeout 30 nix eval "$ref#nixosModules" \
-        --apply builtins.attrNames --json \
-        --extra-experimental-features 'nix-command flakes' \
-        | jq -r '.[]'
+    local args=("$ref#nixosModules"
+        --apply builtins.attrNames --json
+        --extra-experimental-features 'nix-command flakes')
+
+    local json
+    json="$(timeout 120 nix eval "${args[@]}")" \
+        || json="$(timeout 120 nix eval "${args[@]}" --refresh)" \
+        || return 1
+    jq -r '.[]' <<< "$json"
 }
 
 resolveModules() {
@@ -798,6 +803,22 @@ EOF
             || { printError ".sops.yaml: marker '$2' not found"; exit 1; }
         mv .sops.yaml.tmp .sops.yaml
     }
+
+    # Re-runs for the same host replace their entries instead of stacking
+    # duplicates - duplicate anchors silently resolve to the last one and
+    # leave stale keys lying around
+    printDebug "scrubbing previous $_HOSTNAME entries"
+    awk -v userAnchor="    - &$_USER_ANCHOR " \
+        -v hostAnchor="    - &$_HOST_ANCHOR " \
+        -v rulePrefix="  - path_regex: hosts/$_HOSTNAME/secrets" '
+        index($0, userAnchor) == 1 { next }
+        index($0, hostAnchor) == 1 { next }
+        index($0, rulePrefix) == 1 { skip = 1; next }
+        skip && (/^  - / || /^[^ ]/) { skip = 0 }
+        skip { next }
+        { print }
+    ' .sops.yaml > .sops.yaml.tmp
+    mv .sops.yaml.tmp .sops.yaml
 
     if [[ -n $_ADMIN_AGE ]] && ! grep -q -- "- &admin " .sops.yaml; then
         printDebug "inserting &admin $_ADMIN_AGE"
@@ -1039,10 +1060,25 @@ writeDotfiles() {
     local dest="$_HOST_DIR/home"
     mkdir -p "$dest"
 
-    # Existing dotfiles - copied, not linked: this host owns its copy
+    # Existing dotfiles - copied, not linked: this host owns its copy.
+    # The input is prefilled with the repo location so completing a local
+    # path is quick; clear the line to skip, or paste a git URL
     local src
-    askOptional src "Seed dotfiles from (git URL or local path)" ""
-    if [[ -d $src ]]; then
+    read -r -e -i "$PWD/" \
+        -p "$(printf '%s?%s %s: ' "$BLUE" "$NC" "Seed dotfiles from (git URL or local path, empty = skip)")" src
+
+    # read does not expand a leading ~ - do it here, against the invoking
+    # user's home when running under sudo
+    if [[ $src == "~"* ]]; then
+        local h="${SUDO_USER:-}"
+        if [[ -n $h && $h != root ]]; then h="/home/$h"; else h="$HOME"; fi
+        src="$h${src#\~}"
+        printDebug "expanded source: $src"
+    fi
+
+    if [[ -z $src || ${src%/} == "$PWD" ]]; then
+        printInfo "Not seeding dotfiles"
+    elif [[ -d $src ]]; then
         printDebug "\$ cp -rT $src $dest"
         cp -rT "$src" "$dest"
         rm -rf "$dest/.git"

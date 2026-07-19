@@ -1,9 +1,9 @@
-{ lib, ... }:
+{ inputs, lib, ... }:
 let
     inherit (lib) mkOption types;
 in
 {
-    flake.modules.nixos.browserExtensions = { ... }:
+    flake.modules.nixos.browserExtensions = { , ... }:
     {
         options = {
             profile.desktop.browser = {
@@ -21,9 +21,11 @@ in
         };
     };
     
-    flake.modules.homeManager.browserExtensions = { osConfig, ... }:
+    flake.modules.homeManager.browserExtensions = { pkgs, osConfig, ... }:
     let
         inherit (osConfig.profile.desktop) browser;
+        
+        firefox-addons = inputs.firefox-addons.packages.${pkgs.stdenv.hostPlatform.system};
         
         mkExtensionSettings = builtins.mapAttrs (_: entry:
             if builtins.isAttrs entry
