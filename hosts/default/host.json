@@ -1,6 +1,7 @@
 {
   "hostname": "default",
   "system": "x86_64-linux",
+  "repoPath": "/home/user/nixos-config",
   "roles": [ ],
   "user": {
     "name": "user",

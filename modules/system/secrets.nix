@@ -10,10 +10,12 @@
         ];
     
         config = {
-            environment.systemPackages = [ 
-                pkgs.sops 
+            environment.systemPackages = [
+                pkgs.sops
                 pkgs.ssh-to-age
             ];
+
+            environment.sessionVariables.SOPS_AGE_SSH_PRIVATE_KEY_FILE = "/home/${user.name}/.ssh/id_${user.name}";
         
             sops = {
                 defaultSopsFile = ../../hosts/${hostname}/secrets.json;

@@ -5,7 +5,7 @@ in
 {
     flake.modules.nixos.system = { config, host, ... }:
     let
-        inherit (host) hostname user;
+        inherit (host) hostname user repoPath;
         inherit (config.internal) system;
     in
     {
@@ -49,7 +49,7 @@ in
                 enable = true;
                 clean.enable = true;
                 clean.extraArgs = "--keep-since 4d --keep 5";
-                flake = "/home/${user.name}/nixos-config";
+                flake = repoPath;
             };
             
             nix = {

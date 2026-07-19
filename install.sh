@@ -1029,17 +1029,48 @@ EOF
 }
 
 # ── dotfiles ─────────────────────────────────────────────────────────────
+# hosts/<host>/home mirrors $HOME (see modules/desktop/dotfiles.nix), so a
+# dotfiles source must use the same layout (.zshrc at its root, .config/...).
+# Optionally seeded from an existing repo or folder, then topped up with
+# niri's default config so the first login has working keybindings
 writeDotfiles() {
     printHeader "dotfiles"
 
-    local dest="$_HOST_DIR/home/.config/niri"
+    local dest="$_HOST_DIR/home"
     mkdir -p "$dest"
+
+    # Existing dotfiles - copied, not linked: this host owns its copy
+    local src
+    askOptional src "Seed dotfiles from (git URL or local path)" ""
+    if [[ -d $src ]]; then
+        printDebug "\$ cp -rT $src $dest"
+        cp -rT "$src" "$dest"
+        rm -rf "$dest/.git"
+        printSuccess "Copied dotfiles from $src"
+    elif [[ -n $src ]]; then
+        if run gitRepo clone --depth 1 "$src" "$_KEYS_DIR/dotfiles"; then
+            cp -rT "$_KEYS_DIR/dotfiles" "$dest"
+            rm -rf "$dest/.git"
+            printSuccess "Cloned dotfiles from $src"
+        else
+            printWarn "Could not fetch $src - continuing without"
+        fi
+    fi
+
+    # niri must have its initial keybindings - only seed the default when
+    # the dotfiles source did not bring its own config
+    if [[ -f $dest/.config/niri/config.kdl ]]; then
+        printSuccess "niri config provided by the dotfiles source"
+        return 0
+    fi
+
+    mkdir -p "$dest/.config/niri"
 
     # Pinned - 'main' would mean the config changes under you between installs
     local rev="v26.04"
     local url="https://raw.githubusercontent.com/YaLTeR/niri/$rev/resources/default-config.kdl"
 
-    if ! run curl -fsSL "$url" -o "$dest/config.kdl"; then
+    if ! run curl -fsSL "$url" -o "$dest/.config/niri/config.kdl"; then
         printWarn "Could not fetch niri's default config. Skipping"
         return 0
     fi
@@ -1048,9 +1079,9 @@ writeDotfiles() {
     # `spawn "$TERMINAL"` silently fails. `terminal` is our alias binary
     sed -i \
         -e 's|Mod+T hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }|Mod+T hotkey-overlay-title="Open a Terminal" { spawn "terminal"; }|' \
-        "$dest/config.kdl"
+        "$dest/.config/niri/config.kdl"
 
-    printSuccess "Seeded $dest/config.kdl"
+    printSuccess "Seeded $dest/.config/niri/config.kdl"
 }
 
 # ── verify ───────────────────────────────────────────────────────────────
@@ -1144,30 +1175,31 @@ installRepo() {
     run chown 1000:100 "$home" "$sshDir" "$sshDir/id_$_USERNAME" "$sshDir/id_$_USERNAME.pub"
     printSuccess "Seeded $sshDir/id_$_USERNAME"
 
+    # The repo can live anywhere - its location is recorded in host.json
+    # below. Moving it to the conventional spot is just the tidy default
     if [[ $REPO_ROOT == "$target" ]]; then
         printSuccess "Repo is already at $target"
-        return 0
-    fi
-
-    # Re-runs and pre-existing setups land here - never a hard failure
-    if [[ -e $target ]]; then
+    elif [[ -e $target ]]; then
         printWarn "$target already exists. Leaving the repo at $REPO_ROOT"
-        printInfo "The dotfiles module expects the repo at $target - resolve manually"
-        return 0
+    elif confirm "Move the repo to $target?"; then
+        run mv "$REPO_ROOT" "$target"
+        REPO_ROOT="$target"
+        cd "$REPO_ROOT"        # our old cwd is now a dangling inode
+        printSuccess "Moved repo to $target"
+    else
+        printInfo "Keeping the repo at $REPO_ROOT"
     fi
 
-    printWarn "The dotfiles module expects the repo at $target"
-    printInfo "It is currently at $REPO_ROOT"
-    confirm "Move it?" || {
-        printWarn "Skipped. Home-manager symlinks will not work until you move it"
-        return 0
-    }
-
-    run mv "$REPO_ROOT" "$target"
-
-    REPO_ROOT="$target"
-    cd "$REPO_ROOT"        # our old cwd is now a dangling inode
-    printSuccess "Moved repo to $target"
+    # Record the runtime location in host.json - the single edit point the
+    # modules (dotfiles symlinks, nh) read the repo path from.
+    # Stripping TARGET_ROOT turns the install-time path into the boot-time one
+    local hostJson="$REPO_ROOT/hosts/$_HOSTNAME/host.json"
+    local runtimePath="${REPO_ROOT#"$TARGET_ROOT"}"
+    printDebug "repoPath: $runtimePath (from $REPO_ROOT)"
+    jq --arg p "$runtimePath" '.repoPath = $p' "$hostJson" > "$hostJson.tmp"
+    mv "$hostJson.tmp" "$hostJson"
+    chown 1000:100 "$hostJson"
+    printSuccess "Recorded repo location: $runtimePath"
 }
 
 # ── provision ────────────────────────────────────────────────────────────
