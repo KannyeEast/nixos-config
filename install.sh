@@ -61,11 +61,15 @@ _HW_MODULES=()
 
 _KEYS_DIR=""
 _HOST_KEY_DIR="/etc/ssh"
+_HOST_KEY_FILE=""
 _HOST_AGE=""
 _USER_AGE=""
 _USER_PUB=""
 _ADMIN_AGE=""
 _SECRETS=""
+
+_DISKO_PENDING=false    # disks not formatted/mounted yet (USE_DISKO only)
+_APPLIED=""             # what installSystem did: installed/switch/boot/skipped
 
 # ── logging ──────────────────────────────────────────────────────────────
 RED=$'\033[0;31m'
@@ -235,11 +239,15 @@ Examples:
   sudo ./install.sh --root /mnt
 
 Description:
-  Bootstrap a (new) host for this flake. Creates or modifies:
+  Bootstrap a (new) host for this flake and install it. Creates or modifies:
     - host.json
     - host/user SSH Keys
     - secrets.json with userPassword, privateKey, and optionally wifi configuration
     - hardware.nix
+
+  Then applies it (each step asks first):
+    - mounted target: nixos-install
+    - running system: nixos-rebuild switch/boot
 
 EOF
 }
@@ -339,6 +347,13 @@ resolveTarget() {
         printDebug "installer ISO detected via /etc/os-release"
         if findmnt -M /mnt > /dev/null 2>&1; then
             TARGET_ROOT="/mnt"
+            printDebug "target mount: $(findmnt -no SOURCE,FSTYPE -M /mnt)"
+        elif [[ $USE_DISKO == true ]]; then
+            # disko formats and mounts later (provisionTarget), after the
+            # host's disko.nix exists
+            TARGET_ROOT="/mnt"
+            _DISKO_PENDING=true
+            printInfo "Nothing mounted at /mnt - disko will format and mount during install"
         else
             printError "Running from the installer ISO but no target is mounted at /mnt"
             printInfo "Partition and mount the target first, or pass --root <PATH>"
@@ -426,6 +441,7 @@ resolveIdentity() {
 
     _USER_ANCHOR="${_USERNAME}_${_HOSTNAME}"
     _HOST_ANCHOR="$_HOSTNAME"
+    printDebug "sops anchors: &$_USER_ANCHOR (user), &$_HOST_ANCHOR (host)"
 
     ask _USER_EMAIL "git email" "$(gitRepo config user.email 2>/dev/null || true)"
 }
@@ -531,7 +547,10 @@ detectHardware() {
     printSuccess "Storage: $_STORAGE ($dev)"
 
     # CPU
-    case "$(lscpu | grep 'Vendor ID' | awk -F: '{print $2}' | xargs)" in
+    local vendor
+    vendor="$(lscpu | grep 'Vendor ID' | awk -F: '{print $2}' | xargs)"
+    printDebug "lscpu vendor: ${vendor:-?}"
+    case "$vendor" in
         GenuineIntel) _CPU="intel" ;;
         AuthenticAMD) _CPU="amd" ;;
         *) _CPU="" ;;
@@ -539,8 +558,10 @@ detectHardware() {
     printSuccess "CPU: ${_CPU:-unknown}"
 
     # GPU - PCI display class, deduplicated, may be multiple (hybrid laptops)
+    printDebug "\$ lspci -n -mm -d ::03xx"
     local vid
     while read -r vid; do
+        printDebug "pci display vendor: $vid"
         case "$vid" in
             10de) _GPU+=("nvidia") ;;
             1002) _GPU+=("amd") ;;
@@ -692,16 +713,26 @@ generateKeys() {
     printHeader "Keys"
 
     # Host key - reused when present. On the ISO it is written to the
-    # mounted target so first boot decrypts with the exact key in use here
-    local hostKey="$_HOST_KEY_DIR/ssh_host_ed25519_key"
-    if [[ -f "$hostKey.pub" ]]; then
-        printSuccess "Host key: reusing $hostKey"
+    # mounted target so first boot decrypts with the exact key in use here.
+    # With disko pending there is no target yet: generate into the temp dir,
+    # provisionTarget places it once the disks are mounted
+    if [[ $_DISKO_PENDING == true ]]; then
+        _HOST_KEY_FILE="$_KEYS_DIR/ssh_host_ed25519_key"
+        printDebug "no target mounted yet - host key deferred to $_HOST_KEY_FILE"
     else
-        install -d -m 755 "$_HOST_KEY_DIR"
-        run ssh-keygen -t ed25519 -N "" -C "root@$_HOSTNAME" -f "$hostKey"
-        printSuccess "Host key: generated $hostKey"
+        _HOST_KEY_FILE="$_HOST_KEY_DIR/ssh_host_ed25519_key"
     fi
-    _HOST_AGE="$(ssh-to-age < "$hostKey.pub")"
+
+    if [[ -f "$_HOST_KEY_FILE.pub" ]]; then
+        printSuccess "Host key: reusing $_HOST_KEY_FILE"
+    else
+        [[ $_DISKO_PENDING == true ]] || install -d -m 755 "$_HOST_KEY_DIR"
+        run ssh-keygen -t ed25519 -N "" -C "root@$_HOSTNAME" -f "$_HOST_KEY_FILE"
+        printSuccess "Host key: generated $_HOST_KEY_FILE"
+    fi
+    printDebug "fingerprint: $(ssh-keygen -lf "$_HOST_KEY_FILE.pub")"
+    printDebug "\$ ssh-to-age < $_HOST_KEY_FILE.pub"
+    _HOST_AGE="$(ssh-to-age < "$_HOST_KEY_FILE.pub")"
     printInfo "host age:  $_HOST_AGE"
 
     # User key
@@ -709,6 +740,8 @@ generateKeys() {
     run ssh-keygen -t ed25519 -N "" -C "$_USERNAME@$_HOSTNAME" -f "$userKey"
     chmod 600 "$userKey"
     _USER_PUB="$(< "$userKey.pub")"
+    printDebug "fingerprint: $(ssh-keygen -lf "$userKey.pub")"
+    printDebug "\$ ssh-to-age < $userKey.pub"
     _USER_AGE="$(ssh-to-age < "$userKey.pub")"
     printSuccess "User key: generated"
     printInfo "user age:  $_USER_AGE"
@@ -766,11 +799,16 @@ EOF
         mv .sops.yaml.tmp .sops.yaml
     }
 
-    [[ -n $_ADMIN_AGE ]] && ! grep -q -- "- &admin " .sops.yaml \
-        && insertBefore "    - &admin $_ADMIN_AGE" "  - &hosts:"
+    if [[ -n $_ADMIN_AGE ]] && ! grep -q -- "- &admin " .sops.yaml; then
+        printDebug "inserting &admin $_ADMIN_AGE"
+        insertBefore "    - &admin $_ADMIN_AGE" "  - &hosts:"
+    fi
 
+    printDebug "inserting &$_USER_ANCHOR $_USER_AGE"
     insertBefore "    - &$_USER_ANCHOR $_USER_AGE" "  - &hosts:"
+    printDebug "inserting &$_HOST_ANCHOR $_HOST_AGE"
     insertBefore "    - &$_HOST_ANCHOR $_HOST_AGE" "creation_rules:"
+    printDebug "appending creation rule for ${_SECRETS//./\\.}\$"
 
     {
         printf '  - path_regex: %s$\n' "${_SECRETS//./\\.}"
@@ -800,6 +838,7 @@ writeSecrets() {
 
     # --rawfile keeps the key byte-for-byte. "$(< file)" would strip the
     # trailing newline and OpenSSH rejects private keys without it
+    printDebug "\$ jq -n --arg pw ... --rawfile key ... > $_SECRETS"
     jq -n \
         --arg pw  "$hash" \
         --rawfile key "$_KEYS_DIR/id_$_USERNAME" \
@@ -872,9 +911,12 @@ writeHardwareNix() {
     printHeader "hardware.nix"
 
     local genArgs=(--show-hardware-config)
-    [[ -n $TARGET_ROOT ]] && genArgs+=(--root "$TARGET_ROOT")
+    # --root needs mounted filesystems - with disko pending detect from the
+    # live system instead (same machine, and disko owns fileSystems anyway)
+    [[ -n $TARGET_ROOT && $_DISKO_PENDING == false ]] && genArgs+=(--root "$TARGET_ROOT")
 
     local body
+    printDebug "\$ nixos-generate-config ${genArgs[*]}"
     body="$(nixos-generate-config "${genArgs[@]}" \
         | sed -e '/^ *#/d' \
               -e '/^{ config, lib, pkgs, modulesPath, \.\.\. }:$/d' \
@@ -1018,13 +1060,16 @@ verify() {
     local fail=0
 
     local userKey="$_KEYS_DIR/id_$_USERNAME"
-    local hostKey="$_HOST_KEY_DIR/ssh_host_ed25519_key"
+    local hostKey="$_HOST_KEY_FILE"
 
     local userAge hostAge
+    printDebug "\$ ssh-to-age -private-key -i $userKey"
     userAge="$(ssh-to-age -private-key -i "$userKey")"
+    printDebug "\$ ssh-to-age -private-key -i $hostKey"
     hostAge="$(ssh-to-age -private-key -i "$hostKey")"
 
     # 1. host.json shape
+    printDebug "\$ jq -e '.hostname and .user.name and .system' $_HOST_DIR/host.json"
     if jq -e '.hostname and .user.name and .system' "$_HOST_DIR/host.json" > /dev/null; then
         printSuccess "host.json is valid"
     else
@@ -1033,6 +1078,7 @@ verify() {
     fi
 
     # 2. user key decrypts
+    printDebug "\$ SOPS_AGE_KEY=<user> sops -d $_SECRETS"
     if SOPS_AGE_KEY="$userAge" sops -d "$_SECRETS" | jq -e '.userPassword and .userPrivateKey' > /dev/null; then
         printSuccess "secrets.json decrypts with the user key"
     else
@@ -1041,6 +1087,7 @@ verify() {
     fi
 
     # 3. host key decrypts - this is the lockout check
+    printDebug "\$ SOPS_AGE_KEY=<host> sops -d --extract '[\"userPassword\"]' $_SECRETS"
     if SOPS_AGE_KEY="$hostAge" sops -d --extract '["userPassword"]' "$_SECRETS" > /dev/null; then
         printSuccess "Host key decrypts its own secrets"
     else
@@ -1091,10 +1138,10 @@ installRepo() {
     # symlink once it activates successfully - until then the seed is what
     # lets the user decrypt and debug
     local sshDir="$home/.ssh"
-    install -d -m 700 "$sshDir"
-    install -m 600 "$_KEYS_DIR/id_$_USERNAME" "$sshDir/id_$_USERNAME"
-    install -m 644 "$_KEYS_DIR/id_$_USERNAME.pub" "$sshDir/id_$_USERNAME.pub"
-    chown 1000:100 "$home" "$sshDir" "$sshDir/id_$_USERNAME" "$sshDir/id_$_USERNAME.pub"
+    run install -d -m 700 "$sshDir"
+    run install -m 600 "$_KEYS_DIR/id_$_USERNAME" "$sshDir/id_$_USERNAME"
+    run install -m 644 "$_KEYS_DIR/id_$_USERNAME.pub" "$sshDir/id_$_USERNAME.pub"
+    run chown 1000:100 "$home" "$sshDir" "$sshDir/id_$_USERNAME" "$sshDir/id_$_USERNAME.pub"
     printSuccess "Seeded $sshDir/id_$_USERNAME"
 
     if [[ $REPO_ROOT == "$target" ]]; then
@@ -1123,20 +1170,95 @@ installRepo() {
     printSuccess "Moved repo to $target"
 }
 
+# ── provision ────────────────────────────────────────────────────────────
+# Disko pending only: format and mount the disks declared in the host's
+# disko.nix (which exists by now), then place the deferred host key.
+# Inactive while USE_DISKO=false
+provisionTarget() {
+    [[ $_DISKO_PENDING == true ]] || return 0
+
+    printHeader "Disks"
+    printWarn "disko will DESTROY the disks declared in hosts/$_HOSTNAME/disko.nix"
+    confirm "Format and mount now?" || { printError "No mounted target - cannot continue"; exit 1; }
+
+    # --yes-wipe-all-disks: disko's own prompt would hang inside run()
+    local cmd=(nix run github:nix-community/disko/latest --
+        --mode destroy,format,mount --yes-wipe-all-disks
+        --flake "$REPO_ROOT#$_HOSTNAME")
+    printInfo "Running: ${cmd[*]}"
+    "${cmd[@]}"
+    printSuccess "Disks formatted and mounted at $TARGET_ROOT"
+
+    run install -d -m 755 "$_HOST_KEY_DIR"
+    run install -m 600 "$_KEYS_DIR/ssh_host_ed25519_key" "$_HOST_KEY_DIR/ssh_host_ed25519_key"
+    run install -m 644 "$_KEYS_DIR/ssh_host_ed25519_key.pub" "$_HOST_KEY_DIR/ssh_host_ed25519_key.pub"
+    _HOST_KEY_FILE="$_HOST_KEY_DIR/ssh_host_ed25519_key"
+    _DISKO_PENDING=false
+    printSuccess "Placed the host key on the target"
+}
+
+# ── install ──────────────────────────────────────────────────────────────
+# Apply the configuration. The command depends on the environment:
+#   mounted target (ISO/--root) -> nixos-install
+#   running system              -> nixos-rebuild switch or boot
+# Output streams directly - this is the long part and progress matters
+installSystem() {
+    printHeader "Install"
+
+    local flake="$REPO_ROOT#$_HOSTNAME"
+
+    if [[ -n $TARGET_ROOT ]]; then
+        # --no-root-passwd: users are declarative (mutableUsers = false)
+        local cmd=(nixos-install --root "$TARGET_ROOT" --no-root-passwd --flake "$flake")
+        printInfo "Command: ${cmd[*]}"
+        if ! confirm "Install now?"; then
+            _APPLIED="skipped"
+            return 0
+        fi
+        "${cmd[@]}"
+        _APPLIED="installed"
+        printSuccess "Installed $_HOSTNAME to $TARGET_ROOT"
+    else
+        local action
+        askList action "Apply the configuration" \
+            "switch - build and activate now" \
+            "boot   - activate on next reboot" \
+            "skip   - just print the command"
+        action="${action%% *}"
+
+        if [[ $action == skip ]]; then
+            _APPLIED="skipped"
+            return 0
+        fi
+
+        local cmd=(nixos-rebuild "$action" --flake "$flake")
+        printInfo "Command: ${cmd[*]}"
+        "${cmd[@]}"
+        _APPLIED="$action"
+        printSuccess "nixos-rebuild $action finished"
+    fi
+}
+
 # ── next steps ───────────────────────────────────────────────────────────
 printNextSteps() {
     printHeader "Done"
-    printInfo "Review, then commit:"
+    printInfo "Review and commit:"
     printInfo "git -C $REPO_ROOT add . && git -C $REPO_ROOT commit -m 'feat: add host $_HOSTNAME'"
-    printInfo ""
-    if [[ -n $TARGET_ROOT ]]; then
-        printInfo "Then install (users are declarative, so no root password prompt):"
-        printInfo "nixos-install --root $TARGET_ROOT --no-root-passwd --flake $REPO_ROOT#$_HOSTNAME"
-        printInfo "Then: reboot"
-    else
-        printInfo "Then build:"
-        printInfo "sudo nixos-rebuild switch --flake $REPO_ROOT#$_HOSTNAME"
-    fi
+
+    case "$_APPLIED" in
+        installed) printInfo "Then reboot into $_HOSTNAME" ;;
+        boot)      printInfo "Then reboot to activate the configuration" ;;
+        switch)    printInfo "The configuration is live" ;;
+        *)
+            if [[ -n $TARGET_ROOT ]]; then
+                printInfo "Install skipped. Run when ready:"
+                printInfo "nixos-install --root $TARGET_ROOT --no-root-passwd --flake $REPO_ROOT#$_HOSTNAME"
+            else
+                printInfo "Build skipped. Run when ready:"
+                printInfo "sudo nixos-rebuild switch --flake $REPO_ROOT#$_HOSTNAME"
+            fi
+            ;;
+    esac
 }
 
 # ── main ─────────────────────────────────────────────────────────────────
@@ -1175,7 +1297,11 @@ main() {
 
     # check
     verify
+
+    # install
+    provisionTarget
     installRepo
+    installSystem
     printNextSteps
 }
 
