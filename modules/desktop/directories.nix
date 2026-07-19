@@ -1,30 +1,30 @@
 { ... }:
 {
-    flake.modules.homeManager.directories = { host, ... }:
+    flake.modules.homeManager.directories = { config, ... }:
     let 
-        inherit (host) user;
+        inherit (config) home;
     in
     {
         xdg.userDirs = {
             enable = true;
             createDirectories = true;
             
-            desktop = "home/${user.name}/Desktop";
-            documents = "home/${user.name}/Documents";
-            download = "home/${user.name}/Downloads";
-            music = "home/${user.name}/Music";
-            pictures = "home/${user.name}/Pictures";
-            publicShare = "home/${user.name}/Public";
-            templates = "home/${user.name}/Templates";
-            videos = "home/${user.name}/Videos";
+            desktop = "${home.homeDirectory}/Desktop";
+            documents = "${home.homeDirectory}/Documents";
+            download = "${home.homeDirectory}/Downloads";
+            music = "${home.homeDirectory}/Music";
+            pictures = "${home.homeDirectory}/Pictures";
+            publicShare = "${home.homeDirectory}/Public";
+            templates = "${home.homeDirectory}/Templates";
+            videos = "${home.homeDirectory}/Videos";
             
             extraConfig = {
-                games = "home/${user.name}/Games";
+                # games = "${home.homeDirectory}/Games";
                 # misc = "${home}/Misc";
                 # projects = "${home}/Projects";
-                screencasts = "home/${user.name}/Videos/screencasts";
-                screenshots = "home/${user.name}/Pictures/screenshots";
-                wallpapers = "home/${user.name}/Pictures/wallpapers";
+                screencasts = "${home.homeDirectory}/Videos/screencasts";
+                screenshots = "${home.homeDirectory}/Pictures/screenshots";
+                wallpapers = "${home.homeDirectory}/Pictures/wallpapers";
             };
         };
     };

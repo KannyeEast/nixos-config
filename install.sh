@@ -681,8 +681,10 @@ printSummary() {
 # ── keys ─────────────────────────────────────────────────────────────────
 # All three recipients of secrets.json in one place:
 #   host  - decrypts at activation (sops-nix, via sshKeyPaths)
-#   user  - generated into the temp dir, only persisted inside secrets.json;
-#           sops-nix places it in ~/.ssh at activation
+#   user  - generated into the temp dir, stored in secrets.json, and seeded
+#           into the target ~/.ssh by installRepo. sops-nix owns that path
+#           and replaces the seeded file with a symlink into /run/secrets
+#           on its first successful activation
 #   admin - one global recipient for the whole repo, the user decides who
 #           that is. An existing &admin anchor in .sops.yaml is the source
 #           of truth, a key file only seeds the anchor the first time
@@ -1070,18 +1072,30 @@ verify() {
     [[ $fail -eq 0 ]] || { printError "Verification failed"; exit 1; }
 }
 
-# ── repo placement ───────────────────────────────────────────────────────
-# Hand the repo to the new user: uid 1000 ownership (pinned in
-# modules/system/user.nix - single-user config) and the location the
-# dotfiles module expects
+# ── handover ─────────────────────────────────────────────────────────────
+# Hand everything to the new user: uid 1000 ownership (pinned in
+# modules/system/user.nix - single-user config), a bootstrap copy of the
+# user key, and the repo at the location the dotfiles module expects
 installRepo() {
-    printHeader "Repo"
+    printHeader "Handover"
 
     run chown -R 1000:100 "$REPO_ROOT"
     printSuccess "Ownership: uid 1000 ($_USERNAME)"
 
     local home="$TARGET_ROOT/home/$_USERNAME"
     local target="$home/nixos-config"
+
+    # Seed the user key. Chicken-and-egg otherwise: the only other copy
+    # lives inside secrets.json, which needs this key (or the host key) to
+    # open. sops-nix owns this path and swaps the file for a /run/secrets
+    # symlink once it activates successfully - until then the seed is what
+    # lets the user decrypt and debug
+    local sshDir="$home/.ssh"
+    install -d -m 700 "$sshDir"
+    install -m 600 "$_KEYS_DIR/id_$_USERNAME" "$sshDir/id_$_USERNAME"
+    install -m 644 "$_KEYS_DIR/id_$_USERNAME.pub" "$sshDir/id_$_USERNAME.pub"
+    chown 1000:100 "$home" "$sshDir" "$sshDir/id_$_USERNAME" "$sshDir/id_$_USERNAME.pub"
+    printSuccess "Seeded $sshDir/id_$_USERNAME"
 
     if [[ $REPO_ROOT == "$target" ]]; then
         printSuccess "Repo is already at $target"
@@ -1101,12 +1115,6 @@ installRepo() {
         printWarn "Skipped. Home-manager symlinks will not work until you move it"
         return 0
     }
-
-    # Only chown a home we created - an existing user's home is not touched
-    if [[ ! -d $home ]]; then
-        mkdir -p "$home"
-        chown 1000:100 "$home"
-    fi
 
     run mv "$REPO_ROOT" "$target"
 
