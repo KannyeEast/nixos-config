@@ -3,7 +3,7 @@ let
     inherit (lib) mkOption types;
 in
 {
-    flake.modules.nixos.browserExtensions = { , ... }:
+    flake.modules.nixos.browserExtensions = { ... }:
     {
         options = {
             profile.desktop.browser = {
