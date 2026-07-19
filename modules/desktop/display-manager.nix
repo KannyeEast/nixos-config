@@ -28,7 +28,10 @@ in
         
         config = { 
             services.displayManager.sddm = createConfig {
-                wayland.enable = true;
+                wayland = {
+                    enable = true;
+                    compositor = "kwin";
+                };
                 package = pkgs.kdePackages.sddm;
                 extraPackages = displayManager.extraPackages;
             } displayManager.settings;

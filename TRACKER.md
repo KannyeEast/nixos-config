@@ -4,6 +4,10 @@
 ### Desktop
 - [ ] Browser
   - Needs polish
+  - Switch to ryze extensions if applicable
+  - Make it more host driven → No default spaces/tabs/bookmarks, etc.
+  - Put extension settings in separate repo and use it as secret to set settings
+    - Figure out how to set all extension settings
 - [ ] Audio
   - Not tested
 - [ ] Bluetooth
@@ -13,8 +17,8 @@
   - Not implemented
 - [X] Directories
 - [X] SDDM
-- [X] Dotfiles
-  - Maybe needs rewrite
+- [ ] Dotfiles
+  - Doesnt actually work
 - [X] Fonts
 - [X] Packages
 
@@ -50,6 +54,7 @@
   - Works, maybe make own refind package?
 - [X] Git
   - Works, authorization could be improved
+  - YubiKeys?
 - [X] Home Manager
 - [ ] Impermanence
   - Not implemented, next on the list
@@ -64,4 +69,5 @@
 ### Host
 - [ ] Installer
   - Works but needs lots of tweaks
+  - Secrets/Key management is not working correctly
   - Only for live env, not ISO ATM
