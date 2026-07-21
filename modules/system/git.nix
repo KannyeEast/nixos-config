@@ -43,6 +43,10 @@ in
                 enable = true;
                 enableDefaultConfig = false;
                 settings."github.com" = {
+                    # @TODO: Dedicated forge key (id_git) shared across hosts via a
+                    # shared sops file (secrets/shared.json) instead of registering
+                    # every per-host key on GitHub. Auth only - signing stays on the
+                    # per-host user key
                     IdentityFile = [
                         "${config.home.homeDirectory}/.ssh/id_${user.name}"
                         "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO@TEMP: Temporary admin key for ssh auth >> Remove when system stable

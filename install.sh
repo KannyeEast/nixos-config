@@ -4,21 +4,35 @@
 # install.sh - bootstrap a new host for this config
 #
 
-# @TODO: 
-# - Clean install methods 
-#   - install from fresh nixos install
-#   - install from bootable USB
-#   - install via nixos-anywhere
-# - Implement impermanence & disko
-#   - Automatic disko generation or pull/copy existing config
-#     - Make sure any pulls follow the flake-parts
+# Prompt pattern everywhere: detect -> offer -> override.
+# Fetch what the machine can tell us, present it as a pick list, always keep
+# a manual/import escape hatch (hardware modules, wifi, dotfiles, disko)
+#
+# @TODO:
+# - Install methods
+#   - [x] running NixOS system (nixos-rebuild via installSystem)
+#   - [~] installer ISO: works when pre-partitioned (--root/provisionTarget),
+#         needs disko for bare disks + a custom ISO with the repo baked in
+#         ('just iso')
+#   - [ ] nixos-anywhere (remote): split the gather/generate phase from the
+#         apply phase so host files can be generated on any machine and
+#         deployed remotely. Requires disko
+# - Disko (same detect -> offer -> override flow)
+#   - detect disks (lsblk), ask layout: btrfs+impermanence (default) |
+#     simple ext4 | import an existing disko.nix (path or URL)
+#   - generated/imported config must be wrapped in the flake-parts host
+#     module ("${hostname}Disko" - see hosts/default/disko.nix)
+#   - generate the initrd rollback hook next to the layout (it references
+#     the subvolume names)
+#   - activation is a 4-string flip: USE_DISKO + PERSIST_DIR here,
+#     sshKeyPaths in secrets.nix, hostKeys in impermanence.nix
 
 set -Eeu -o pipefail
 
 if [[ -z ${IN_NIX_SHELL:-} ]]; then
     printf 'Fetching dependencies...\n'
     exec nix-shell \
-        -p age curl git jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
+        -p age curl git iw jq mkpasswd nixos-install-tools openssh pciutils sops ssh-to-age util-linux \
         --run "$(printf '%q ' bash "$0" "$@")"
 fi
 
@@ -468,36 +482,61 @@ resolveLocale() {
 }
 
 # ── wifi ─────────────────────────────────────────────────────────────────
-# Guided per-network prompts. The editor is an opt-in escape hatch for
-# advanced NetworkManager keys, never the entry point. Plaintext psk
-# material only touches _KEYS_DIR (dies with the script) and ends up
-# encrypted in secrets.json
+# detect -> offer -> override: scan the air, pick an SSID, type it when
+# hidden. The editor is an opt-in escape hatch for advanced NetworkManager
+# keys, never the entry point. Plaintext psk material only touches
+# _KEYS_DIR (dies with the script) and ends up encrypted in secrets.json
+
+# SSIDs in range, strongest first (spin target).
+# nmcli when NetworkManager runs (live system, graphical ISO), iw as the
+# daemonless fallback (minimal ISO)
+scanWifi() {
+    if command -v nmcli > /dev/null && nmcli -t general status > /dev/null 2>&1; then
+        nmcli --terse --fields SIGNAL,SSID dev wifi list --rescan yes 2>/dev/null \
+            | awk -F: 'length($2) && !seen[$2]++' \
+            | sort -t: -k1 -rn | cut -d: -f2- | sed 's/\\:/:/g'
+        return 0
+    fi
+
+    local dev
+    dev="$(iw dev 2>/dev/null | awk '/Interface/ { print $2; exit }')"
+    [[ -n $dev ]] || return 0
+    ip link set "$dev" up 2>/dev/null || true
+    iw dev "$dev" scan 2>/dev/null \
+        | awk -F'SSID: ' '/\tSSID: / && length($2) && !seen[$2]++ { print $2 }'
+}
+
 resolveWifi() {
     printHeader "Wifi"
     confirm "Add wifi networks?" || return 0
 
+    # One scan, reused across the loop - the manual entry covers the rest
+    local networks=()
+    mapfile -t networks < <(spin "Scanning networks" scanWifi | head -12)
+    printDebug "scan found ${#networks[@]} networks"
+
     local name ssid psk psk2 profile edited n=0
 
     while :; do
-        ask name "Network name"
+        if ((${#networks[@]})); then
+            askList ssid "SSID" "${networks[@]}" "<hidden or not listed>"
+            [[ $ssid == "<hidden or not listed>" ]] && ask ssid "SSID"
+        else
+            printInfo "No scan results (no wifi interface, radio off, or scanning needs the daemon)"
+            ask ssid "SSID"
+        fi
+
+        ask name "Connection name" "$ssid"
 
         if jq -e --arg n "$name" 'has($n)' <<< "$_WIFI" > /dev/null; then
             printError "'$name' is already configured"
             continue
         fi
 
-        ask ssid "SSID" "$name"
-
         while :; do
             read -rsp "$(printf '%s?%s Password (hidden): ' "$BLUE" "$NC")" psk
             printf '\n'
-            read -rsp "$(printf '%s?%s Password (repeat): ' "$BLUE" "$NC")" psk2
-            printf '\n'
 
-            if [[ -z $psk || $psk != "$psk2" ]]; then
-                printError "Empty or mismatched. Try again"
-                continue
-            fi
             if (( ${#psk} < 8 )); then
                 printError "WPA-PSK needs 8-63 characters"
                 continue
@@ -884,6 +923,10 @@ writeSecrets() {
     fi
 
     mkdir -p "$(dirname "$_SECRETS")"
+
+    # @TODO: Also store hostPrivateKey here. The repo then doubles as the key
+    # vault: reinstalling an existing host = admin key extracts it to /etc/ssh,
+    # rebuild, done - same host identity, no rekeying ('just adopt')
 
     # --rawfile keeps the key byte-for-byte. "$(< file)" would strip the
     # trailing newline and OpenSSH rejects private keys without it

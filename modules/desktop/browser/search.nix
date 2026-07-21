@@ -1,6 +1,4 @@
 { ... }:
-let
-in
 {
     flake.modules.homeManager.browserSearch = { pkgs, ... }:
     let

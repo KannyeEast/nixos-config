@@ -3,6 +3,11 @@ let
     inherit (config.flake.modules) nixos homeManager;
 in
 {
+    # @TODO: Settings-testing round: audit which extensions read storage.managed
+    # (unzip xpi, rg 'storage\.managed') and declare their settings via
+    # extensions.settings. Verify default_area pinning still applies.
+    # @TODO: After hoisting (containers/tabs done, search split): move the
+    # host-side browser data to the private repo and feed it through the profile
     flake.modules.nixos.browser = { ... }:
     {
         imports = [

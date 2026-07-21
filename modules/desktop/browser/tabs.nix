@@ -3,6 +3,9 @@ let
     inherit (lib) mkOption types;
 in
 {
+    # @TODO: Hoist the hardcoded bookmarks/pins/spaces to the host profile
+    # (extensions.nix pattern) - personal workflow data, private repo later.
+    # The extra/exclude options then collapse into plain host-declared data
     flake.modules.nixos.browserTabs = { ... }:
     {
          options = {

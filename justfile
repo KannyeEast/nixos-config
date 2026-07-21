@@ -95,6 +95,9 @@ edit-secrets:
     sops hosts/{{host}}/secrets.json
 
 # Re-encrypt secrets to the recipients currently in .sops.yaml. Make sure you run this before removing the old key
+# @TODO: Widen the glob once secrets/shared.json exists (currently hosts/* only)
+# @TODO: 'adopt HOST' recipe - reinstall an existing host: extract hostPrivateKey
+# with the admin key, place at /etc/ssh, rebuild (needs hostPrivateKey in secrets)
 [group("secrets")]
 rekey: && check-secrets
     #!/usr/bin/env bash
