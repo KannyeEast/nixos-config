@@ -27,6 +27,10 @@ in
                     init.defaultBranch = "main";
                     gpg.ssh.allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
 
+                    alias = {
+                        # @TODO: Make git aliases
+                    };
+
                     url = {
                         "ssh://git@github.com/".insteadOf = "https://github.com/";
                         "https://gitlab.com/".insteadOf = "gitlab:";

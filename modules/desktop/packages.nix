@@ -2,9 +2,9 @@
 {
     flake.modules.nixos.packages = { pkgs, ... }:
     {
-        config = { 
+        config = {
             environment.systemPackages = [
-                pkgs.keepassxc                         
+                pkgs.keepassxc
             ];
         };
     };

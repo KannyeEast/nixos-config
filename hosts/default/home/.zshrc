@@ -3,14 +3,12 @@ if [ -n "${ZSH_DEBUGRC+1}" ]; then
     zmodload zsh/zprof
 fi
 
-
-
 # Set the directory we want to store zinit and plugins
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
 # Download zinit if not already there
 if [ ! -d "$ZINIT_HOME" ]; then
-    mkdir -p "${dirname $ZINIT_HOME}"
+    mkdir -p "$(dirname "$ZINIT_HOME")"
     git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
 fi
 
@@ -73,15 +71,7 @@ alias lls='eza --icons -a -lT -L 1 --git --header'
 
 alias grep='grep --color=auto'
 
-alias v='nvim'
-alias vi='nvim'
-alias vim='nvim'
-
 alias c='clear'
-
-alias dotcommit="git add . && git commit -m '.' && git push origin main"
-
-alias rebuild='sudo nixos-rebuild switch --flake ~/.nixos# --show-trace'
 
 alias debug_zsh='time ZSH_DEBUGRC=1 zsh -i -c exit'
 
@@ -114,8 +104,6 @@ zshaddhistory() {
    }
    whence ${${(z)1}[$j]} >| /dev/null || return 1
  }
-
-
 
 # Set flag for debugging
 if [ -n "${ZSH_DEBUGRC+1}" ]; then

@@ -7,7 +7,7 @@ in
     in
     {
         config = {
-            # @TODO: Do shell stuff here
+            # @TODO: Custom quickshell
              environment.systemPackages = [
                 pkgs.kdePackages.qtsvg 
                 pkgs.kdePackages.qtmultimedia 

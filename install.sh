@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 
 #
-# install.sh - bootstrap a new host for this config.
+# install.sh - bootstrap a new host for this config
 #
-# Works from a running NixOS system or from the installer ISO with the
-# target mounted (auto-detected at /mnt, or passed with --root).
-#
+
+# @TODO: 
+# - Clean install methods 
+#   - install from fresh nixos install
+#   - install from bootable USB
+#   - install via nixos-anywhere
+# - Implement impermanence & disko
+#   - Automatic disko generation or pull/copy existing config
+#     - Make sure any pulls follow the flake-parts
+
 set -Eeu -o pipefail
 
 if [[ -z ${IN_NIX_SHELL:-} ]]; then
@@ -461,63 +468,84 @@ resolveLocale() {
 }
 
 # ── wifi ─────────────────────────────────────────────────────────────────
-# The template holds a plaintext psk, so it lives in _KEYS_DIR and dies
-# with the script. The cleaned profiles end up encrypted in secrets.json
+# Guided per-network prompts. The editor is an opt-in escape hatch for
+# advanced NetworkManager keys, never the entry point. Plaintext psk
+# material only touches _KEYS_DIR (dies with the script) and ends up
+# encrypted in secrets.json
 resolveWifi() {
     printHeader "Wifi"
     confirm "Add wifi networks?" || return 0
 
-    local template="$_KEYS_DIR/wifi-template.json"
-    cat > "$template" <<'EOF'
-{
-  "<NAME>": {
-    "connection": {
-      "id": "<NAME>",
-      "permissions": "",
-      "type": "wifi"
-    },
-    "ipv4": {
-      "dns-search": "",
-      "method": ""
-    },
-    "ipv6": {
-      "addr-gen-mode": "",
-      "dns-search": "",
-      "method": ""
-    },
-    "wifi": {
-      "mac-address-blacklist": "",
-      "mode": "",
-      "ssid": "<SSID>"
-    },
-    "wifi-security": {
-      "auth-alg": "",
-      "key-mgmt": "wpa-psk",
-      "psk": "<PASSWORD>"
-    }
-  }
-}
-EOF
+    local name ssid psk psk2 profile edited n=0
 
-    printInfo "Your editor will open"
-    printInfo "Only ssid and psk are required"
-    "${EDITOR:-nano}" "$template"
+    while :; do
+        ask name "Network name"
 
-    if ! jq empty "$template"; then
-        printError "Not valid JSON:"
-        jq empty "$template" 2>&1 | sed 's/^/    /' >&2
-        return 0
-    fi
+        if jq -e --arg n "$name" 'has($n)' <<< "$_WIFI" > /dev/null; then
+            printError "'$name' is already configured"
+            continue
+        fi
 
-    # Drop every field that was left empty
-    _WIFI="$(jq '
-            walk(
-                if type == "object"
-                then with_entries(select(.value != "" and .value != {}))
-                else .
-                end
-            )
-        ' "$template")"
+        ask ssid "SSID" "$name"
+
+        while :; do
+            read -rsp "$(printf '%s?%s Password (hidden): ' "$BLUE" "$NC")" psk
+            printf '\n'
+            read -rsp "$(printf '%s?%s Password (repeat): ' "$BLUE" "$NC")" psk2
+            printf '\n'
+
+            if [[ -z $psk || $psk != "$psk2" ]]; then
+                printError "Empty or mismatched. Try again"
+                continue
+            fi
+            if (( ${#psk} < 8 )); then
+                printError "WPA-PSK needs 8-63 characters"
+                continue
+            fi
+            break
+        done
+
+        profile="$(jq -n --arg id "$name" --arg ssid "$ssid" --arg psk "$psk" '{
+            connection: { id: $id, type: "wifi" },
+            wifi: { ssid: $ssid },
+            "wifi-security": { "key-mgmt": "wpa-psk", psk: $psk }
+        }')"
+
+        # Every other keyfile setting, on request only
+        # https://networkmanager.dev/docs/api/latest/nm-settings-keyfile.html
+        if confirm "Edit advanced settings for '$name'?"; then
+            local file="$_KEYS_DIR/wifi-$n.json"
+            jq -n --argjson p "$profile" '{
+                connection: { id: "", permissions: "", type: "wifi" },
+                ipv4: { "dns-search": "", method: "" },
+                ipv6: { "addr-gen-mode": "", "dns-search": "", method: "" },
+                wifi: { "mac-address-blacklist": "", mode: "", ssid: "" },
+                "wifi-security": { "auth-alg": "", "key-mgmt": "wpa-psk", psk: "" }
+            } * $p' > "$file"
+
+            "${EDITOR:-nano}" "$file"
+
+            # Keep whatever was filled in, drop the blanks
+            if edited="$(jq '
+                    walk(
+                        if type == "object"
+                        then with_entries(select(.value != "" and .value != {}))
+                        else .
+                        end
+                    )
+                ' "$file" 2>/dev/null)"; then
+                profile="$edited"
+            else
+                printWarn "Not valid JSON - keeping the basic profile for '$name'"
+            fi
+        fi
+
+        _WIFI="$(jq --arg name "$name" --argjson p "$profile" '. + { ($name): $p }' <<< "$_WIFI")"
+        printSuccess "Added '$name' (ssid: $ssid)"
+        n=$((n + 1))
+
+        confirm "Add another network?" || break
+    done
 
     printSuccess "Wifi profiles: $(jq -r 'keys | join(", ")' <<< "$_WIFI")"
 }
@@ -1030,8 +1058,8 @@ in
 
             profile.desktop = {
                 browser = {
-                    extensions.extra = { };
-                    extensions.exclude = [ ];
+                    extensions.install = { };
+                    extensions.settings = { };
                     bookmarks.extra = [ ];
                     tabs.extra = { };
                     tabs.exclude = [ ];

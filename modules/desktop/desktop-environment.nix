@@ -14,11 +14,6 @@ in
     {
         options = {
             profile.user = {
-                terminal = mkOption {
-                    type = types.package;
-                    default = pkgs.alacritty;
-                    description = "Preferred user terminal";
-                };
                 xkb.layout = mkOption {
                     type = types.str;
                     default = "us";
@@ -47,14 +42,12 @@ in
             
             # @TODO: Look for other package combos with niri
             environment.systemPackages = [
-                user.terminal
                 terminalAlias
                 pkgs.xwayland-satellite
             ];
             
             environment.sessionVariables = {
                 NIXOS_OZONE_WL = "1";
-                TERMINAL = user.terminal;
                 XKB_DEFAULT_LAYOUT = user.xkb.layout;
                 XKB_DEFAULT_VARIANT = user.xkb.variant;
             };

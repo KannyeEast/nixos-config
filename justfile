@@ -1,10 +1,11 @@
 flake := env("NH_FLAKE", justfile_directory())
 host := shell("hostname -s")
 
+alias bump := update
+alias deploy := switch
 alias s := switch
 alias b := boot
 alias c := check
-alias bump := update
 alias cs := check-secrets
 alias es := edit-secrets
 
@@ -32,15 +33,20 @@ boot *ARGS: _stage
 
 # Build without activating
 [group("system")]
-build *ARGS: _stage
+build *ARGS: _stage && diff
     nh os build {{flake}} -H {{host}} {{ARGS}}
+
+# Show what switching would change
+[group("system")]
+diff:
+    nix store diff-closures /run/current-system {{flake}}/result
 
 # Boot the config in a VM
 [group("system")]
 vm: _stage
     nixos-rebuild build-vm --flake {{flake}}#{{host}}
     ./result/bin/run-{{host}}-vm
-    
+     
 # Roll back to the previous generation
 [group("system")]
 rollback:
@@ -72,7 +78,7 @@ inputs:
 [group("secrets")]
 check-secrets:
     #!/usr/bin/env bash
-     set -euo pipefail
+    set -euo pipefail
     echo "Checking secrets ..."
     for f in hosts/*/secrets.json; do
         [ -e "$f" ] || continue
@@ -82,8 +88,10 @@ check-secrets:
     fi
     done
 
+# Edit this host's secrets
 [group("secrets")]
-edit-secrets: check-secrets
+edit-secrets:
+    @sops --decrypt hosts/{{host}}/secrets.json > /dev/null
     sops hosts/{{host}}/secrets.json
 
 # Re-encrypt secrets to the recipients currently in .sops.yaml. Make sure you run this before removing the old key

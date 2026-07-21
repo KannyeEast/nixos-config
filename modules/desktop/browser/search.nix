@@ -41,10 +41,12 @@ in
                     
                     "Home Manager Options" = {
                         urls = [{
-                            template = "https://home-manager-options.extranix.com/";
+                            template = "https://search.nixos.org/packages";
                             params = [
-                                { name = "query";   value = "{searchTerms}"; }
-                                { name = "release"; value = "master"; }
+                                { name = "channel"; value = "unstable"; }
+                                { name = "type"; value = "options"; }
+                                { name = "query"; value = "{searchTerms}"; }
+                                { name = "source"; value = "home_manager"; }
                             ];
                         }];
                         icon = nixIcon;
@@ -88,7 +90,6 @@ in
                     "ddg".metaData.hidden = true;
                     "ebay".metaData.hidden = true;
                     "ecosia".metaData.hidden = true;
-                    # @TODO: Add the rest of default engines
                 };
             };
         };

@@ -13,6 +13,7 @@ in
             nixos.impermanence
             nixos.locale
             nixos.networking
+            nixos.shell
             nixos.system
             nixos.user
             nixos.secrets

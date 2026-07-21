@@ -4,7 +4,6 @@
 ### Desktop
 - [ ] Browser
   - Needs polish
-  - Switch to ryze extensions if applicable
   - Make it more host driven → No default spaces/tabs/bookmarks, etc.
   - Put all browser settings into private Repo and let it all be declarative through profile
     - Figure out how to set all extension settings
@@ -17,8 +16,7 @@
   - Not implemented
 - [X] Directories
 - [X] SDDM
-- [ ] Dotfiles
-  - Doesnt actually work
+- [X] Dotfiles
 - [X] Fonts
 - [X] Packages
 
@@ -59,8 +57,7 @@
 - [ ] Impermanence
   - Not implemented, next on the list
 - [X] Locale
-- [ ] Networking
-  - Fix secrets
+- [X] Networking
 - [X] Secrets
   - Sops itself works, needs to be polished and flawless implemented 
 - [X] System
@@ -69,5 +66,5 @@
 ### Host
 - [ ] Installer
   - Works but needs lots of tweaks
-  - Secrets/Key management is not working correctly
-  - Only for live env, not ISO ATM
+  - Better wifi prompt.
+  - Only for live env tested. ISO install doesnt work
