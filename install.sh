@@ -336,15 +336,19 @@ listNixosHardwareModules() {
         --json --apply builtins.attrNames
         --extra-experimental-features 'nix-command flakes')
 
-    local json=""
-    if ! json="$(timeout 120 nix eval "${args[@]}" 2>&1)"; then
-        printDebug "nix eval failed, retrying with --refresh: $json"
-        if ! json="$(timeout 120 nix eval "${args[@]}" --refresh 2>&1)"; then
+    local json="" err
+    err="$(mktemp)"
+
+    if ! json="$(timeout 120 nix eval "${args[@]}" 2>"$err")"; then
+        printDebug "nix eval failed, retrying with --refresh: $(cat "$err")"
+        if ! json="$(timeout 120 nix eval "${args[@]}" --refresh 2>"$err")"; then
             printWarn "Could not fetch nixos-hardware modules"
-            printDebug "$json"
+            printDebug "$(cat "$err")"
+            rm -f "$err"
             return 1
         fi
     fi
+    rm -f "$err"
 
     jq -r '.[]' <<< "$json" | sort
 }
