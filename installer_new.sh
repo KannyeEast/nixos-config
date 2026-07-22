@@ -29,22 +29,23 @@ parseArgs() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --method)
-                [[ -n ${2:-} ]] || { printf '--method needs a value\n' >&2; exit 1; }
+                [[ -n ${2:-} ]] || { printf -- '--method needs a value\n' >&2; exit 1; }
                 METHOD="$2"; shift 2 ;;
             --root)
-                [[ -n ${2:-} ]] || die "--root needs a path"
+                [[ -n ${2:-} ]] || { printf -- '--root needs a path\n' >&2; exit 1; }
                 TARGET_ROOT="${2%/}"
                 shift 2 ;;
             --admin-key)
-                [[ -n ${2:-} ]] || die "--admin-key needs a path"
+                [[ -n ${2:-} ]] || { printf -- '--admin-key needs a path\n' >&2; exit 1; }
                 ADMIN_KEY="$2"
                 shift 2 ;;
             -v|--verbose) VERBOSE=true; shift ;;
             -h|--help) showFlags; exit 0 ;;
-            *) die "Unknown option: $1" ;;
+            *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
         esac
     done
 }
+
 
 parseArgs "$@"
 
@@ -680,7 +681,9 @@ resolveTarget() {
     HOST_KEY_DIR="${TARGET_ROOT}/etc/ssh"
     printDebug "host key dir: $HOST_KEY_DIR"
 
-    [[ -n $TARGET_ROOT ]] && printSuccess "Install target: $TARGET_ROOT"
+    if [[ -n $TARGET_ROOT ]]; then
+        printSuccess "Install target: $TARGET_ROOT"
+    fi
 }
 
 # ── generate keys ────────────────────────────────────────────────────────
@@ -721,9 +724,14 @@ generateKeys() {
     local pub="${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}"
     local existing="" derived=""
 
-    [[ -f .sops.yaml ]] \
-        && existing="$(sed -n 's/^[[:space:]]*- &admin \(age1[0-9a-z]*\).*/\1/p' .sops.yaml | head -n1)"
-    [[ -r $pub ]] && derived="$(ssh-to-age < "$pub")"
+    if [[ -f .sops.yaml ]]; then
+        existing="$(sed -n 's/^[[:space:]]*- &admin \(age1[0-9a-z]*\).*/\1/p' .sops.yaml | head -n1)"
+    fi
+    
+    if [[ -r $pub ]]; then
+        derived="$(ssh-to-age < "$pub")"
+    fi
+    
     printDebug "admin: existing anchor ${existing:-none}, derived ${derived:-none}"
 
     if [[ -n $existing ]]; then
@@ -827,8 +835,10 @@ writeHostJson() {
     printStep
 
     local adminPub=""
-    [[ -r ${ADMIN_KEY:-$REPO_ROOT/id_admin.pub} ]] \
-        && adminPub="$(< "${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}")"
+    
+    if [[ -r ${ADMIN_KEY:-$REPO_ROOT/id_admin.pub} ]]; then
+        adminPub="$(< "${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}")"
+    fi
 
     local rolesJson gpuJson modulesJson keysJson
     rolesJson=$(printf '%s\n' "$ROLE" "${ADDONS[@]}" | jq -R . | jq -sc 'map(select(. != ""))')
@@ -880,7 +890,10 @@ writeHardwareNix() {
     printStep
 
     local genArgs=(--show-hardware-config)
-    [[ -n $TARGET_ROOT ]] && genArgs+=(--root "$TARGET_ROOT")
+    
+    if [[ -n $TARGET_ROOT ]]; then
+        genArgs+=(--root "$TARGET_ROOT")
+    fi
 
     local body
     printDebug "nixos-generate-config ${genArgs[*]}"
@@ -1190,7 +1203,8 @@ printNextSteps() {
 # ── main ─────────────────────────────────────────────────────────────────
 main() {
     clear
-
+    
+    parseArgs "$@"
     validate
     resolveTarget
 
