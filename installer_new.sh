@@ -6,11 +6,47 @@
 
 set -Eeuo pipefail
 
-# ── method ───────────────────────────────────────────────────────────────
-#   local  - this machine, running NixOS   (rebuild in place)
-#   iso    - installer ISO, mounted target (nixos-install)
-#   remote - another machine               (nixos-anywhere)
+# ── flags ────────────────────────────────────────────────────────────────
 METHOD="${INSTALLER_METHOD:-}"
+VERBOSE=false
+TARGET_ROOT=""
+ADMIN_KEY=""
+
+showFlags() {
+    cat <<EOF
+Usage: sudo ./installer.sh [OPTIONS]
+
+Options:
+      --method <TYPE>     local | iso | remote (nixos-anywhere)
+      --root <PATH>       iso: the mounted target (default: /mnt)
+      --admin-key <PATH>  Public half of the admin SSH key
+  -v, --verbose           Show every command and its output
+  -h, --help              This message
+EOF
+}
+
+parseArgs() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --method)
+                [[ -n ${2:-} ]] || { printf '--method needs a value\n' >&2; exit 1; }
+                METHOD="$2"; shift 2 ;;
+            --root)
+                [[ -n ${2:-} ]] || die "--root needs a path"
+                TARGET_ROOT="${2%/}"
+                shift 2 ;;
+            --admin-key)
+                [[ -n ${2:-} ]] || die "--admin-key needs a path"
+                ADMIN_KEY="$2"
+                shift 2 ;;
+            -v|--verbose) VERBOSE=true; shift ;;
+            -h|--help) showFlags; exit 0 ;;
+            *) die "Unknown option: $1" ;;
+        esac
+    done
+}
+
+parseArgs "$@"
 
 # ── modular package registry ─────────────────────────────────────────────
 # Each "module" registers its packages. The method picks which modules
@@ -60,39 +96,6 @@ if [[ -z ${IN_NIX_SHELL:-} ]]; then
         --run "INSTALLER_METHOD=$METHOD $(printf '%q ' bash "$0" "$@")"
 fi
 
-# ── flags ────────────────────────────────────────────────────────────────
-VERBOSE=false
-TARGET_ROOT=""
-
-showFlags() {
-    cat <<EOF
-Usage: sudo ./installer.sh [OPTIONS]
-
-Options:
-      --root <PATH>       iso: the mounted target (default: /mnt)
-      --admin-key <PATH>  Public half of the admin SSH key
-  -v, --verbose           Show every command and its output
-  -h, --help              This message
-EOF
-}
-
-parseArgs() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --root)
-                [[ -n ${2:-} ]] || die "--root needs a path"
-                TARGET_ROOT="${2%/}"
-                shift 2 ;;
-            --admin-key)
-                [[ -n ${2:-} ]] || die "--admin-key needs a path"
-                ADMIN_KEY="$2"
-                shift 2 ;;
-            -v|--verbose) VERBOSE=true; shift ;;
-            -h|--help) showFlags; exit 0 ;;
-            *) die "Unknown option: $1" ;;
-        esac
-    done
-}
 
 # ── logging ──────────────────────────────────────────────────────────────
 # Color palette with terminal detection (no escape codes when piped)
@@ -253,7 +256,6 @@ HOST_AGE=""
 USER_AGE=""
 USER_PUB=""
 ADMIN_AGE=""
-ADMIN_KEY=""
 HOST_ANCHOR=""
 USER_ANCHOR=""
 SECRETS=""
@@ -1120,7 +1122,7 @@ installSystem() {
 
         iso)
             # ISO: nixos-install to mounted target
-            local cmd=(nixos-install --root "$TARGET_ROOT" --no-root-passwd --flake "$flake")
+            local cmd=(nixos-install --root "$TARGET_ROOT" --flake "$flake")
             printInfo "Command: ${cmd[*]}"
             if ! formConfirm "Install now?" "y"; then
                 APPLIED="skipped"
@@ -1189,7 +1191,6 @@ printNextSteps() {
 main() {
     clear
 
-    parseArgs "$@"
     validate
     resolveTarget
 
