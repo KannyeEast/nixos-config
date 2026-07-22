@@ -371,6 +371,7 @@ listSupportedLocales() {
         locale -a 2>/dev/null | grep -i utf | sort -u
         return
     fi
+}
 
     # Source 3: Common locales fallback (curated short list)
     cat <<'EOF'
