@@ -328,20 +328,26 @@ formConfirm() {
 # Queries the flake input for all available nixosModules, returns them
 # as nixos-hardware paths (e.g. "framework/13/common", "lenovo/thinkpad/x220")
 listNixosHardwareModules() {
-    # Try evaluating the nixos-hardware input from this flake
-    nix eval --json "$REPO_ROOT#inputs.nixos-hardware.nixosModules" \
-        --apply 'builtins.attrNames' 2>/dev/null \
-        | jq -r '.[]' 2>/dev/null \
-        | sort \
-        || true
+    local result
 
-    # Fallback: evaluate nixos-hardware directly from GitHub
-    if [[ -z ${REPLY:-} ]]; then
-        nix eval --json "github:NixOS/nixos-hardware#nixosModules" \
-            --apply 'builtins.attrNames' 2>/dev/null \
-            | jq -r '.[]' 2>/dev/null \
-            | sort \
-            || true
+    # Source 1: Try the flake's own nixos-hardware input
+    result=$(nix eval --json "$REPO_ROOT#inputs.nixos-hardware.nixosModules" \
+        --apply 'builtins.attrNames' 2>/dev/null \
+        | jq -r '.[]' 2>/dev/null | sort || true)
+
+    if [[ -n $result ]]; then
+        echo "$result"
+        return
+    fi
+
+    # Source 2: Evaluate nixos-hardware directly from GitHub
+    result=$(nix eval --json "github:NixOS/nixos-hardware#nixosModules" \
+        --apply 'builtins.attrNames' 2>/dev/null \
+        | jq -r '.[]' 2>/dev/null | sort || true)
+
+    if [[ -n $result ]]; then
+        echo "$result"
+        return
     fi
 }
 
