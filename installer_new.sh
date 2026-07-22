@@ -17,7 +17,7 @@ METHOD="${INSTALLER_METHOD:-}"
 # to enable.
 declare -A MODULE_PKGS=(
     [base]="gum git jq"
-    [locales]="glibc.locales"
+    [locales]="glibcLocales"
     [secrets]="age mkpasswd openssh sops ssh-to-age"
     [iso]="nixos-install-tools"
     [remote]="nixos-anywhere"
