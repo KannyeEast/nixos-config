@@ -97,24 +97,20 @@ if [[ -z ${IN_NIX_SHELL:-} ]]; then
         --run "INSTALLER_METHOD=$METHOD $(printf '%q ' bash "$0" "$@")"
 fi
 
-parseArgs "$@"
 
 # ── logging ──────────────────────────────────────────────────────────────
-# Catppuccin Mocha — cohesive, looks good on dark terminals
+# Color palette with terminal detection (no escape codes when piped)
 if [[ -t 1 && ${TERM:-} != dumb ]]; then
-    C_BLUE="#89b4fa"     C_MAUVE="#cba6f7"    C_GREEN="#a6e3a1"
-    C_RED="#f38ba8"      C_PEACH="#fab387"    C_OVERLAY="#6c7086"
-    C_TEXT="#cdd6f4"     C_SUBTEXT="#a6adc8"
-    BOLD=$'\033[1m'      DIM=$'\033[2m'       NC=$'\033[0m'
+    RED=$'\033[31m';     GREEN=$'\033[32m';   YELLOW=$'\033[33m'
+    BLUE=$'\033[34m';    MAGENTA=$'\033[35m'; CYAN=$'\033[36m'
+    BOLD=$'\033[1m';     DIM=$'\033[2m';      NC=$'\033[0m'
+    RED_B=$'\033[91m';   GREEN_B=$'\033[92m'; YELLOW_B=$'\033[93m'
+    BLUE_B=$'\033[94m';  CYAN_B=$'\033[96m'
 else
-    C_BLUE="" C_MAUVE="" C_GREEN="" C_RED="" C_PEACH="" C_OVERLAY=""
-    C_TEXT="" C_SUBTEXT="" BOLD="" DIM="" NC=""
+    RED=''; GREEN=''; YELLOW=''; BLUE=''; MAGENTA=''; CYAN=''
+    BOLD=''; DIM=''; NC=''
+    RED_B=''; GREEN_B=''; YELLOW_B=''; BLUE_B=''; CYAN_B=''
 fi
-
-export GUM_LOG_PREFIX_FOREGROUND="#6c7086"
-export GUM_LOG_KEY_FOREGROUND="#cba6f7"
-export GUM_LOG_VALUE_FOREGROUND="#89b4fa"
-export GUM_LOG_MESSAGE_FOREGROUND="#cdd6f4"
 
 # ── step tracking ────────────────────────────────────────────────────────
 STEP_NUM=0
@@ -126,31 +122,19 @@ printStep() {
     (( STEP_NUM++ )) || true
     local prefix=""
     [[ $STEP_TOTAL -gt 0 ]] && prefix=" ${DIM}[$STEP_NUM/$STEP_TOTAL]${NC}"
-    printf '\n%s%s── %s ──%s\n' "$BOLD\033[38;2;137;180;250m" "$prefix" "$*" "$NC"
+    printf '\n%s%s── %s ──%s\n' "$BOLD$CYAN_B" "$prefix" "$*" "$NC"
 }
 
 printHeader() {
-    printf '\n%s── %s ──%s\n' "$BOLD\033[38;2;166;227;161m" "$*" "$NC"
+    printf '\n%s── %s ──%s\n' "$BOLD$GREEN_B" "$*" "$NC"
 }
 
-printSuccess() { printf '\033[38;2;166;227;161m%s✓%s %s\n' "$BOLD" "$NC" "$*"; }
-printError() { printf '\033[38;2;243;139;168m%s✗%s %s\n' "$BOLD" "$NC" "$*" >&2; }
-printWarn() { printf '\033[38;2;250;179;135m%s⚠%s  %s\n' "$BOLD" "$NC" "$*"; }
-printInfo() { printf '\033[38;2;137;180;250m%sℹ%s  %s\n' "$BOLD" "$NC" "$*"; }
-printDebug() {
-    [[ $VERBOSE == true ]] || return 0
-    gum log --level debug --prefix "debug" "$*"
-}
-printDebugKV() {
-    [[ $VERBOSE == true ]] || return 0
-    gum log --structured --level debug \
-        repo "$REPO_ROOT" target "${TARGET_ROOT:-none}"
-}
-printCmd() {
-    [[ $VERBOSE == true ]] || return 0
-    gum log --level info --prefix "cmd" "$*"
-}
-
+printSuccess() { printf '%s%s✓%s %s\n' "$GREEN_B" "$BOLD" "$NC" "$*"; }
+printError() { printf '%s%s✗%s %s\n' "$RED_B"   "$BOLD" "$NC" "$*" >&2; }
+printWarn() { printf '%s%s⚠%s  %s\n' "$YELLOW_B" "$BOLD" "$NC" "$*"; }
+printInfo() { printf '%s%sℹ%s  %s\n' "$BLUE_B"  "$BOLD" "$NC" "$*"; }
+printDebug() { [[ $VERBOSE == true ]] || return 0; printf '%s  · %s%s\n' "$DIM" "$*" "$NC" >&2; }
+printCmd() { [[ $VERBOSE == true ]] || return 0; printf '%s  » %s%s\n' "$MAGENTA" "$*" "$NC" >&2; }
 
 die() {
     printError "$1"
@@ -175,33 +159,6 @@ run() {
     fi
 
     rm -f "$out"
-    return "$rc"
-}
-
-# spin MSG CMD — gum spinner with fallback; stdout passed through
-spin() {
-    local msg="$1"; shift
-    local rc=0
-
-    if [[ $VERBOSE == true ]]; then
-        printCmd "$*"
-        "$@" || rc=$?
-        return "$rc"
-    fi
-
-    # gum spin --show-output prints command output to stderr after completion
-    # We redirect stderr to a temp file to capture errors
-    local err
-    err="$(mktemp)"
-    gum spin --spinner dot --title "$msg" -- "$@" 2>"$err" || rc=$?
-
-    if (( rc == 0 )); then
-        printSuccess "$msg"
-    else
-        printError "$msg"
-        sed 's/^/    /' "$err" >&2
-    fi
-    rm -f "$err"
     return "$rc"
 }
 
@@ -259,20 +216,10 @@ APPLIED=""
 
 # ── form helpers (gum wrappers) ──────────────────────────────────────────
 # formHeader TEXT — styled section divider inside the form
- readonly ACCENT="#89b4fa"
- readonly ACCENT_DIM="#6c7086"
-
 formHeader() {
-    gum style \
-        --bold \
-        --foreground="$ACCENT" \
-        --border="rounded" \
-        --border-foreground="$ACCENT" \
-        --padding="0 2" \
-        --margin="1 0 0 0" \
-        "$*"
+    gum style --bold --foreground="#7DD3FC" --border="rounded" \
+        --border-foreground="#7DD3FC" --padding="0 2" --margin="1 0" "$*"
 }
-
 
 # formInput VAR LABEL [DEFAULT] [PLACEHOLDER]
 # Required text input. Loops until non-empty.
@@ -284,8 +231,7 @@ formInput() {
             --prompt="  " \
             --placeholder="${placeholder:-$label}" \
             --header="$label" \
-            --header.foreground="$ACCENT" \
-            --cursor.foreground="$ACCENT" \
+            --header.foreground="#7DD3FC" \
             --width=60) || die "Cancelled"
         [[ -n $value ]] && break
         printWarn "$label cannot be empty"
@@ -303,8 +249,7 @@ formInputOpt() {
         --prompt="  " \
         --placeholder="$placeholder" \
         --header="$label" \
-        --header.foreground="$ACCENT" \
-        --cursor.foreground="$ACCENT" \
+        --header.foreground="#7DD3FC" \
         --width=60) || true
     printf -v "$__var" '%s' "$value"
 }
@@ -319,8 +264,7 @@ formPassword() {
             --prompt="  " \
             --placeholder="$label" \
             --header="$label" \
-            --header.foreground="$ACCENT" \
-            --cursor.foreground="$ACCENT" \
+            --header.foreground="#7DD3FC" \
             --password \
             --width=60) || die "Cancelled"
         [[ -n $pw && ${#pw} -ge 8 ]] || { printWarn "Min 8 characters"; continue; }
@@ -328,8 +272,7 @@ formPassword() {
             --prompt="  " \
             --placeholder="Repeat $label" \
             --header="Repeat $label" \
-            --header.foreground="$ACCENT" \
-            --cursor.foreground="$ACCENT" \
+            --header.foreground="#7DD3FC" \
             --password \
             --width=60) || die "Cancelled"
         [[ $pw == "$pw2" ]] && break
@@ -339,16 +282,14 @@ formPassword() {
 }
 
 # formChoose VAR LABEL OPT...  — single select, first option pre-selected
-
 formChoose() {
     local __var="$1" label="$2"; shift 2
     local options=("$@")
     local selected
     selected=$(gum choose \
         --header="$label" \
-        --header.foreground="$ACCENT" \
+        --header.foreground="#7DD3FC" \
         --selected="${options[0]}" \
-        --cursor.foreground="$ACCENT" \
         --height=15 \
         "${options[@]}") || die "Cancelled"
     printf -v "$__var" '%s' "$selected"
@@ -361,8 +302,7 @@ formMulti() {
     local selected
     selected=$(gum choose --no-limit \
         --header="$label" \
-        --header.foreground="$ACCENT" \
-        --cursor.foreground="$ACCENT" \
+        --header.foreground="#7DD3FC" \
         --height=15 \
         "${options[@]}") || true
     local -n __ref="$__var"
@@ -476,7 +416,7 @@ validateUsername() {
 
 # ── gather form ──────────────────────────────────────────────────────────
 gatherForm() {
-    printStep "Gather Configuration"
+    printStep
 
     while :; do
         # ── Identity ──────────────────────────────────────────────────
@@ -517,7 +457,7 @@ gatherForm() {
                 --header="Search for your model (type to filter)" \
                 --header.foreground="#7DD3FC" \
                 --height=20 \
-                --placeholder="e.g. acer-aspire, thinkpad, framework, dell-xps...") || true
+                --placeholder="e.g. apple-macbook-pro-8-1, asus-rog-strix-x570e, ...") || true
             [[ -n $specific ]] && HW_MODULES+=("$specific")
         fi
         
@@ -646,7 +586,7 @@ showSummary() {
     (( wifi_count > 0 )) && wifi_str="$wifi_count network(s)"
 
     gum style --border="rounded" --padding="1 2" --margin="1 0" \
-        --border-foreground="$ACCENT" --foreground="$C_TEXT" <<EOF
+        --border-foreground="#7DD3FC" <<EOF
   Hostname       $HOSTNAME
   Architecture   $SYSTEM
   Role           $ROLE${addons_str:+ + $addons_str}
@@ -655,14 +595,14 @@ showSummary() {
   HW modules     $modules_str
   Timezone       $TIMEZONE
   Locale         $LOCALE / $LOCALE_EXTRA
-  Wi-Fi          $wifi_str
+  Wi-Fi          ${wifi_str:-skip}
   Dotfiles       ${DOTFILES_SRC:-skip}
 EOF
 }
 
 # ── validate environment ─────────────────────────────────────────────────
 validate() {
-    printStep "Validate Environment"
+    printStep
     local fail=0
 
     check() {
@@ -702,8 +642,7 @@ validate() {
     [[ $fail -eq 0 ]] || die "Fix the above and rerun"
 
     cd "$REPO_ROOT"
-    gum log --structured --level debug \
-        repo "$REPO_ROOT" target "${TARGET_ROOT:-none}" method "$METHOD"
+    printDebug "repo: $REPO_ROOT | target: ${TARGET_ROOT:-none}"
 }
 
 # ── resolve target ───────────────────────────────────────────────────────
@@ -728,7 +667,7 @@ resolveTarget() {
 #           target ~/.ssh by installRepo
 #   admin - one global recipient
 generateKeys() {
-    printStep "Generate Keys"
+    printStep
     formHeader "Key Generation"
 
     # Host key; reused when present
@@ -738,17 +677,16 @@ generateKeys() {
         printSuccess "Host key: reusing $HOST_KEY_FILE"
     else
         run install -d -m 755 "$HOST_KEY_DIR"
-        spin "Generating host key..." ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$HOST_KEY_FILE"
+        run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$HOST_KEY_FILE"
         printSuccess "Host key: generated"
     fi
-    gum log --structured --level debug \
-        keyType host fingerprint "$(ssh-keygen -lf "$HOST_KEY_FILE.pub")"
+    printDebug "fingerprint: $(ssh-keygen -lf "$HOST_KEY_FILE.pub")"
     HOST_AGE="$(ssh-to-age < "$HOST_KEY_FILE.pub")"
     printInfo "host age: $HOST_AGE"
 
     # User key
     local userKey="$KEYS_DIR/id_$USERNAME"
-    spin "Generating user key..." ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$userKey"
+    run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$userKey"
     chmod 600 "$userKey"
     USER_PUB="$(< "$userKey.pub")"
     printDebug "fingerprint: $(ssh-keygen -lf "$userKey.pub")"
@@ -788,7 +726,7 @@ generateKeys() {
 
 # ── write .sops.yaml ─────────────────────────────────────────────────────
 writeSopsYaml() {
-    printStep "Write .sops.yaml"
+    printStep
 
     if [[ ! -f .sops.yaml ]]; then
         cat > .sops.yaml <<'EOF'
@@ -845,7 +783,7 @@ EOF
 
 # ── write secrets.json ───────────────────────────────────────────────────
 writeSecrets() {
-    printStep "Write secrets.json"
+    printStep
 
     local hash
     printInfo "Set the login password for '$USERNAME':"
@@ -862,13 +800,13 @@ writeSecrets() {
          + (if $wifi == {} then {} else { wifi: $wifi } end)' \
         > "$SECRETS"
 
-    spin "Encrypting secrets..." sops --encrypt --in-place "$SECRETS"
+    run sops --encrypt --in-place "$SECRETS"
     printSuccess "Encrypted $SECRETS"
 }
 
 # ── write host.json ──────────────────────────────────────────────────────
 writeHostJson() {
-    printStep "Write host.json"
+    printStep
 
     local adminPub=""
     
@@ -923,7 +861,7 @@ writeHostJson() {
 
 # ── write hardware.nix ───────────────────────────────────────────────────
 writeHardwareNix() {
-    printStep "Write hardware.nix"
+    printStep
 
     local genArgs=(--show-hardware-config)
     
@@ -933,11 +871,11 @@ writeHardwareNix() {
 
     local body
     printDebug "nixos-generate-config ${genArgs[*]}"
-    body="$(spin "Detecting hardware..." nixos-generate-config "${genArgs[@]}" \
-          | sed -e '/^ *#/d' \
-                -e '/^{ config, lib, pkgs, modulesPath, \.\.\. }:$/d' \
-                -e '/^{$/d' \
-                -e '/^}$/d')"
+    body="$(nixos-generate-config "${genArgs[@]}" \
+        | sed -e '/^ *#/d' \
+              -e '/^{ config, lib, pkgs, modulesPath, \.\.\. }:$/d' \
+              -e '/^{$/d' \
+              -e '/^}$/d')"
 
     body="$(sed -e 's/^./        &/' <<< "$body" | cat -s)"
 
@@ -965,7 +903,7 @@ EOF
 
 # ── write profile.nix ────────────────────────────────────────────────────
 writeProfileNix() {
-    printStep "Write profile.nix"
+    printStep
 
     mkdir -p "$HOST_DIR"
 
@@ -1012,7 +950,7 @@ EOF
 
 # ── write dotfiles ───────────────────────────────────────────────────────
 writeDotfiles() {
-    printStep "Write dotfiles"
+    printStep
 
     if [[ -z $DOTFILES_SRC ]]; then
         printInfo "No dotfiles source — skipping"
@@ -1024,11 +962,11 @@ writeDotfiles() {
 
     if [[ -d $DOTFILES_SRC ]]; then
         printDebug "cp -rT $DOTFILES_SRC $dest"
-        spin "Copying dotfiles..." cp -rT "$DOTFILES_SRC" "$dest"
+        cp -rT "$DOTFILES_SRC" "$dest"
         rm -rf "$dest/.git"
         printSuccess "Copied dotfiles from $DOTFILES_SRC"
     else
-        if spin "Cloning dotfiles..." gitRepo clone --depth 1 "$DOTFILES_SRC" "$KEYS_DIR/dotfiles"; then
+        if run gitRepo clone --depth 1 "$DOTFILES_SRC" "$KEYS_DIR/dotfiles"; then
             cp -rT "$KEYS_DIR/dotfiles" "$dest"
             rm -rf "$dest/.git"
             printSuccess "Cloned dotfiles from $DOTFILES_SRC"
@@ -1041,7 +979,7 @@ writeDotfiles() {
 # ── verify ───────────────────────────────────────────────────────────────
 # Every failure mode that could lock you out, checked byte-exact
 verify() {
-    printStep "Verify"
+    printStep
     local fail=0
 
     local userKey="$KEYS_DIR/id_$USERNAME"
@@ -1100,7 +1038,7 @@ verify() {
 
 # ── handover ─────────────────────────────────────────────────────────────
 installRepo() {
-    printStep "Install repo to target"
+    printStep
 
     run chown -R 1000:100 "$REPO_ROOT"
     printSuccess "Ownership: uid 1000 ($USERNAME)"
@@ -1142,7 +1080,7 @@ installRepo() {
 
 # ── install ──────────────────────────────────────────────────────────────
 installSystem() {
-    printStep "Install system"
+    printStep
     local flake="$REPO_ROOT#$HOSTNAME"
 
     case "$METHOD" in
@@ -1158,13 +1096,13 @@ installSystem() {
             if [[ $action == skip ]]; then
                 APPLIED="skipped"
                 printInfo "Run when ready:"
-                printInfo "  sudo nixos-rebuild switch --flake $flake"  
+                printInfo "  sudo nixos-rebuild switch --flake $flake"
                 return 0
             fi
 
             local cmd=(nixos-rebuild "$action" --flake "$flake")
             printInfo "Command: ${cmd[*]}"
-            spin "Building and activating..." "${cmd[@]}"
+            "${cmd[@]}"
             APPLIED="$action"
             printSuccess "nixos-rebuild $action finished"
             ;;
@@ -1179,7 +1117,7 @@ installSystem() {
                 printInfo "  ${cmd[*]}"
                 return 0
             fi
-            spin "Installing $HOSTNAME..." "${cmd[@]}"
+            "${cmd[@]}"
             APPLIED="installed"
             printSuccess "Installed $HOSTNAME to $TARGET_ROOT"
             ;;
@@ -1197,7 +1135,7 @@ installSystem() {
                 printInfo "  ${cmd[*]}"
                 return 0
             fi
-            spin "Deploying $HOSTNAME..." "${cmd[@]}"
+            "${cmd[@]}"
             APPLIED="deployed"
             printSuccess "Deployed $HOSTNAME to $target"
             ;;
@@ -1239,8 +1177,8 @@ printNextSteps() {
 # ── main ─────────────────────────────────────────────────────────────────
 main() {
     clear
-    setStepTotal 12
     
+    parseArgs "$@"
     validate
     resolveTarget
 
@@ -1250,7 +1188,6 @@ main() {
 
     # Phase 1: gather all info via gum form
     gatherForm
-    spin "Staging files..." gitRepo add --intent-to-add .
 
     # Phase 2: write files
     generateKeys
