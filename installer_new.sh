@@ -285,7 +285,6 @@ formInput() {
         value=$(gum input \
             --prompt="  " \
             --placeholder="${placeholder:-$label}" \
-            --value="$default" \
             --header="$label" \
             --header.foreground="#7DD3FC" \
             --width=60) || die "Cancelled"
@@ -294,6 +293,7 @@ formInput() {
     done
     printf -v "$__var" '%s' "$value"
 }
+
 
 # formInputOpt VAR LABEL [PLACEHOLDER]
 # Optional text input — empty is allowed.
@@ -371,6 +371,11 @@ formMulti() {
 # formConfirm LABEL [DEFAULT] — returns 0 for yes, 1 for no
 formConfirm() {
     local label="$1" default="${2:-n}"
+    case "$default" in
+        y|yes|1) default=true ;;
+        n|no|0) default=false ;;
+        *) default=false ;;
+    esac
     gum confirm --default="$default" "$label"
 }
 
@@ -491,7 +496,7 @@ gatherForm() {
 
         # ── Hardware ──────────────────────────────────────────────────
         formHeader "Hardware"
-        formMulti GPU "Select GPU driver(s)" "nvidia" "amd" "intel" "none"
+        formMulti GPU "Select GPU driver(s)" "nvidia" "amd" "intel"
         
         # Common modules — all shown, user toggles what applies
         formMulti HW_MODULES "Common hardware modules (toggle what applies)" \
@@ -514,17 +519,42 @@ gatherForm() {
         # ── Locale ────────────────────────────────────────────────────
         formHeader "Locale"
         # Timezone: collect all IANA zones, pipe to gum filter
-        local zones
-        zones=$(timedatectl list-timezones 2>/dev/null \
-            || find /usr/share/zoneinfo -type f -printf '%P\n' 2>/dev/null \
-               | grep -v -E '^(posix|right|Etc)/' | sort)
+        local zones=""
+        # Source 1: timedatectl (works on running NixOS, not in nix-shell)
+        zones=$(timedatectl list-timezones 2>/dev/null || true)
+        
+        # Source 2: find in zoneinfo (standard Linux path)
+        if [[ -z $zones ]]; then
+            zones=$(find /usr/share/zoneinfo -type f -printf '%P\n' 2>/dev/null \
+                | grep -v -E '^(posix|right|Etc)/' | sort || true)
+        fi
+        
+        # Source 3: NixOS-specific zoneinfo path
+        if [[ -z $zones ]]; then
+            local tzdir
+            tzdir=$(nix-build --no-out-link '<nixpkgs>' -A tzdata 2>/dev/null || true)
+            if [[ -n $tzdir ]]; then
+                zones=$(find "$tzdir/share/zoneinfo" -type f -printf '%P\n' 2>/dev/null \
+                    | grep -v -E '^(posix|right|Etc)/' | sort || true)
+            fi
+        fi
+        
+        # Source 4: hardcoded fallback with common zones
+        if [[ -z $zones ]]; then
+            zones="America/New_York America/Chicago America/Denver America/Los_Angeles
+        America/Toronto America/Mexico_City
+        Europe/London Europe/Paris Europe/Berlin Europe/Madrid Europe/Rome
+        Europe/Amsterdam Europe/Stockholm Europe/Moscow
+        Asia/Tokyo Asia/Shanghai Asia/Singapore Asia/Dubai Asia/Kolkata
+        Australia/Sydney Pacific/Auckland
+        UTC"
+        fi
         
         TIMEZONE=$(echo "$zones" | gum filter \
             --header="Timezone (type to filter)" \
             --header.foreground="#7DD3FC" \
             --height=15 \
-            --placeholder="e.g. America/New_York, Europe/London..." \
-            --value="America/New_York") || die "Cancelled"
+            --placeholder="e.g. America/New_York, Europe/London...") || die "Cancelled"
                 
         # Locales: filter through glibc's supported locale list
         # The list is at https://sourceware.org/git/?p=glibc.git;a=blob;f=localedata/SUPPORTED
@@ -533,8 +563,7 @@ gatherForm() {
             --header="Default locale (type to filter)" \
             --header.foreground="#7DD3FC" \
             --height=15 \
-            --placeholder="e.g. en_US.UTF-8, de_DE.UTF-8..." \
-            --value="en_US.UTF-8") || die "Cancelled"
+            --placeholder="e.g. en_US.UTF-8, de_DE.UTF-8...") || die "Cancelled"
             
         LOCALE_EXTRA=$LOCALE
 
