@@ -98,19 +98,60 @@ if [[ -z ${IN_NIX_SHELL:-} ]]; then
 fi
 
 
-# ── logging ──────────────────────────────────────────────────────────────
-# Color palette with terminal detection (no escape codes when piped)
+# ── palette ──────────────────────────────────────────────────────────────
+# One place to retheme. These are the only hex values in the script
+ACCENT="#b4befe"    # lavender  - headers, cursors, borders
+ACCENT2="#89dceb"   # sky       - filter matches
+OK="#a6e3a1"        # green
+WARN="#f9e2af"      # yellow
+ERR="#f38ba8"       # red
+MUTED="#6c7086"     # overlay   - placeholders, dim text
+FG="#cdd6f4"        # text
+SEL="#313244"       # surface   - selected-row background
+
 if [[ -t 1 && ${TERM:-} != dumb ]]; then
-    RED=$'\033[31m';     GREEN=$'\033[32m';   YELLOW=$'\033[33m'
-    BLUE=$'\033[34m';    MAGENTA=$'\033[35m'; CYAN=$'\033[36m'
-    BOLD=$'\033[1m';     DIM=$'\033[2m';      NC=$'\033[0m'
-    RED_B=$'\033[91m';   GREEN_B=$'\033[92m'; YELLOW_B=$'\033[93m'
-    BLUE_B=$'\033[94m';  CYAN_B=$'\033[96m'
+    BOLD=$'\033[1m'; DIM=$'\033[2m'; NC=$'\033[0m'
+    # 24-bit SGR from a #rrggbb, for the plain printf helpers
+    sgr() { local h=${1#\#}; printf '\033[38;2;%d;%d;%dm' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"; }
+    C_OK="$(sgr "$OK")"; C_WARN="$(sgr "$WARN")"; C_ERR="$(sgr "$ERR")"
+    C_INFO="$(sgr "$ACCENT")"; C_STEP="$(sgr "$ACCENT2")"; C_HEAD="$(sgr "$OK")"
+    C_CMD="$(sgr "$MUTED")"
 else
-    RED=''; GREEN=''; YELLOW=''; BLUE=''; MAGENTA=''; CYAN=''
     BOLD=''; DIM=''; NC=''
-    RED_B=''; GREEN_B=''; YELLOW_B=''; BLUE_B=''; CYAN_B=''
+    C_OK=''; C_WARN=''; C_ERR=''; C_INFO=''; C_STEP=''; C_HEAD=''; C_CMD=''
 fi
+
+# ── gum theme ────────────────────────────────────────────────────────────
+# Applies to every gum call - the helpers no longer pass style flags
+export GUM_INPUT_PROMPT="  "
+export GUM_INPUT_WIDTH="60"
+export GUM_INPUT_CURSOR_FOREGROUND="$ACCENT"
+export GUM_INPUT_PROMPT_FOREGROUND="$ACCENT"
+export GUM_INPUT_HEADER_FOREGROUND="$ACCENT"
+export GUM_INPUT_PLACEHOLDER_FOREGROUND="$MUTED"
+
+export GUM_CHOOSE_CURSOR="❯ "
+export GUM_CHOOSE_HEADER_FOREGROUND="$ACCENT"
+export GUM_CHOOSE_CURSOR_FOREGROUND="$ACCENT"
+export GUM_CHOOSE_SELECTED_FOREGROUND="$OK"
+export GUM_CHOOSE_ITEM_FOREGROUND="$FG"
+
+export GUM_FILTER_INDICATOR="❯"
+export GUM_FILTER_HEADER_FOREGROUND="$ACCENT"
+export GUM_FILTER_INDICATOR_FOREGROUND="$ACCENT"
+export GUM_FILTER_MATCH_FOREGROUND="$ACCENT2"
+export GUM_FILTER_PLACEHOLDER_FOREGROUND="$MUTED"
+export GUM_FILTER_PROMPT_FOREGROUND="$ACCENT"
+
+export GUM_CONFIRM_PROMPT_FOREGROUND="$ACCENT"
+export GUM_CONFIRM_SELECTED_BACKGROUND="$ACCENT"
+export GUM_CONFIRM_SELECTED_FOREGROUND="#1e1e2e"
+export GUM_CONFIRM_UNSELECTED_FOREGROUND="$MUTED"
+
+export GUM_SPIN_SPINNER_FOREGROUND="$ACCENT"
+export GUM_FILE_HEADER_FOREGROUND="$ACCENT"
+export GUM_FILE_CURSOR_FOREGROUND="$ACCENT"
+export GUM_FILE_DIRECTORY_FOREGROUND="$ACCENT"
 
 # ── step tracking ────────────────────────────────────────────────────────
 STEP_NUM=0
@@ -122,19 +163,16 @@ printStep() {
     (( STEP_NUM++ )) || true
     local prefix=""
     [[ $STEP_TOTAL -gt 0 ]] && prefix=" ${DIM}[$STEP_NUM/$STEP_TOTAL]${NC}"
-    printf '\n%s%s── %s ──%s\n' "$BOLD$CYAN_B" "$prefix" "$*" "$NC"
+    printf '\n%s%s── %s ──%s\n' "$BOLD$C_STEP" "$prefix" "$*" "$NC"
 }
 
-printHeader() {
-    printf '\n%s── %s ──%s\n' "$BOLD$GREEN_B" "$*" "$NC"
-}
-
-printSuccess() { printf '%s%s✓%s %s\n' "$GREEN_B" "$BOLD" "$NC" "$*"; }
-printError() { printf '%s%s✗%s %s\n' "$RED_B"   "$BOLD" "$NC" "$*" >&2; }
-printWarn() { printf '%s%s⚠%s  %s\n' "$YELLOW_B" "$BOLD" "$NC" "$*"; }
-printInfo() { printf '%s%sℹ%s  %s\n' "$BLUE_B"  "$BOLD" "$NC" "$*"; }
-printDebug() { [[ $VERBOSE == true ]] || return 0; printf '%s  · %s%s\n' "$DIM" "$*" "$NC" >&2; }
-printCmd() { [[ $VERBOSE == true ]] || return 0; printf '%s  » %s%s\n' "$MAGENTA" "$*" "$NC" >&2; }
+printHeader()  { printf '\n%s── %s ──%s\n' "$BOLD$C_HEAD" "$*" "$NC"; }
+printSuccess() { printf '%s%s✓%s %s\n' "$C_OK"   "$BOLD" "$NC" "$*"; }
+printError()   { printf '%s%s✗%s %s\n' "$C_ERR"  "$BOLD" "$NC" "$*" >&2; }
+printWarn()    { printf '%s%s⚠%s  %s\n' "$C_WARN" "$BOLD" "$NC" "$*"; }
+printInfo()    { printf '%s%sℹ%s  %s\n' "$C_INFO" "$BOLD" "$NC" "$*"; }
+printDebug()   { [[ $VERBOSE == true ]] || return 0; printf '%s  · %s%s\n' "$DIM" "$*" "$NC" >&2; }
+printCmd()     { [[ $VERBOSE == true ]] || return 0; printf '%s  » %s%s\n' "$C_CMD" "$*" "$NC" >&2; }
 
 die() {
     printError "$1"
@@ -215,102 +253,53 @@ DOTFILES_SRC=""
 APPLIED=""
 
 # ── form helpers (gum wrappers) ──────────────────────────────────────────
-# formHeader TEXT — styled section divider inside the form
 formHeader() {
-    gum style --bold --foreground="#7DD3FC" --border="rounded" \
-        --border-foreground="#7DD3FC" --padding="0 2" --margin="1 0" "$*"
+    gum style --bold --foreground="$ACCENT" \
+        --border=rounded --border-foreground="$ACCENT" \
+        --padding="0 2" --margin="1 0" "$*"
 }
 
-# formInput VAR LABEL [DEFAULT] [PLACEHOLDER]
-# Required text input. Loops until non-empty.
 formInput() {
-    local __var="$1" label="$2" default="${3:-}" placeholder="${4:-$3}"
-    local value
+    local __var="$1" label="$2" placeholder="${4:-${3:-$2}}" value
     while :; do
-        value=$(gum input \
-            --prompt="  " \
-            --placeholder="${placeholder:-$label}" \
-            --header="$label" \
-            --header.foreground="#7DD3FC" \
-            --width=60) || die "Cancelled"
+        value=$(gum input --header="$label" --placeholder="$placeholder") || die "Cancelled"
         [[ -n $value ]] && break
         printWarn "$label cannot be empty"
     done
     printf -v "$__var" '%s' "$value"
 }
 
-
-# formInputOpt VAR LABEL [PLACEHOLDER]
-# Optional text input — empty is allowed.
 formInputOpt() {
-    local __var="$1" label="$2" placeholder="${3:-$label}"
-    local value
-    value=$(gum input \
-        --prompt="  " \
-        --placeholder="$placeholder" \
-        --header="$label" \
-        --header.foreground="#7DD3FC" \
-        --width=60) || true
+    local __var="$1" label="$2" placeholder="${3:-$2}" value
+    value=$(gum input --header="$label" --placeholder="$placeholder") || true
     printf -v "$__var" '%s' "$value"
 }
 
-# formPassword VAR LABEL
-# Password input — masked, asked twice, minimum 8 chars.
 formPassword() {
-    local __var="$1" label="$2"
-    local pw pw2
+    local __var="$1" label="$2" pw pw2
     while :; do
-        pw=$(gum input \
-            --prompt="  " \
-            --placeholder="$label" \
-            --header="$label" \
-            --header.foreground="#7DD3FC" \
-            --password \
-            --width=60) || die "Cancelled"
+        pw=$(gum input --password --header="$label" --placeholder="$label") || die "Cancelled"
         [[ -n $pw && ${#pw} -ge 8 ]] || { printWarn "Min 8 characters"; continue; }
-        pw2=$(gum input \
-            --prompt="  " \
-            --placeholder="Repeat $label" \
-            --header="Repeat $label" \
-            --header.foreground="#7DD3FC" \
-            --password \
-            --width=60) || die "Cancelled"
+        pw2=$(gum input --password --header="Repeat $label" --placeholder="Repeat $label") || die "Cancelled"
         [[ $pw == "$pw2" ]] && break
         printWarn "Mismatch — try again"
     done
     printf -v "$__var" '%s' "$pw"
 }
 
-# formChoose VAR LABEL OPT...  — single select, first option pre-selected
 formChoose() {
     local __var="$1" label="$2"; shift 2
-    local options=("$@")
     local selected
-    selected=$(gum choose \
-        --header="$label" \
-        --header.foreground="#7DD3FC" \
-        --selected="${options[0]}" \
-        --height=15 \
-        "${options[@]}") || die "Cancelled"
+    selected=$(gum choose --header="$label" --selected="$1" --height=15 "$@") || die "Cancelled"
     printf -v "$__var" '%s' "$selected"
 }
 
-# formMulti VAR LABEL OPT...  — multi-select, returns bash array via nameref
 formMulti() {
     local __var="$1" label="$2"; shift 2
-    local options=("$@")
     local selected
-    selected=$(gum choose --no-limit \
-        --header="$label" \
-        --header.foreground="#7DD3FC" \
-        --height=15 \
-        "${options[@]}") || true
+    selected=$(gum choose --no-limit --header="$label" --height=15 "$@") || true
     local -n __ref="$__var"
-    if [[ -n $selected ]]; then
-        mapfile -t __ref <<< "$selected"
-    else
-        __ref=()
-    fi
+    [[ -n $selected ]] && mapfile -t __ref <<< "$selected" || __ref=()
 }
 
 # formConfirm LABEL [DEFAULT] — returns 0 for yes, 1 for no
@@ -596,9 +585,8 @@ showSummary() {
     modules_str="${HW_MODULES[*]:-none}"
     addons_str="${ADDONS[*]:-none}"
 
-    local wifi_count
+    local wifi_count wifi_str
     wifi_count="$(jq -r 'keys | length' <<< "$WIFI" 2>/dev/null || echo 0)"
-    local wifi_str="none"
     (( wifi_count > 0 )) && wifi_str="$wifi_count network(s)"
 
     gum style --border="rounded" --padding="1 2" --margin="1 0" \
