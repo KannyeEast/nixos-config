@@ -1,15 +1,11 @@
 { lib, ... }:
 let
-    inherit (lib) mkOption types getExe;
+    inherit (lib) mkOption types;
 in
 {
     flake.modules.nixos.desktopEnvironment = { config, pkgs, ... }:
     let
         inherit (config.profile) user;
-        
-        terminalAlias = pkgs.writeShellScriptBin "terminal" ''
-            exec ${getExe user.terminal} "$@"
-        '';
     in
     {
         options = {
@@ -42,7 +38,6 @@ in
             
             # @TODO: Look for other package combos with niri
             environment.systemPackages = [
-                terminalAlias
                 pkgs.xwayland-satellite
             ];
             

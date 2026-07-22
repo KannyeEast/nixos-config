@@ -1,43 +1,8 @@
-{ lib, ... }:
-let
-    inherit (lib) mkOption types;
-in
+{ ... }:
 {
-    # @TODO: Hoist the hardcoded bookmarks/pins/spaces to the host profile
-    # (extensions.nix pattern) - personal workflow data, private repo later.
-    # The extra/exclude options then collapse into plain host-declared data
-    flake.modules.nixos.browserTabs = { ... }:
-    {
-         options = {
-            profile.desktop.browser = {
-                bookmarks.extra = mkOption {
-                    type = types.listOf types.attrs;
-                    default = [ ];
-                    description = "Bookmarks added on top of base config";
-                };
-                tabs.extra = mkOption {
-                    type = types.attrsOf types.attrs;
-                    default = { };
-                    description = "Tabs added on top of base config";
-                };
-                tabs.exclude = mkOption {
-                    type = types.listOf types.str;
-                    default = [ ];
-                    description = "Tabs removed from base config";               
-                };                            
-                spaces.extra = mkOption {
-                    type = types.attrsOf types.attrs;
-                    default = { };
-                    description = "Spaces added on top of base config";
-                };
-            };
-        };
-    };
-    
-    flake.modules.homeManager.browserTabs = { osConfig, ... }:
+    flake.modules.homeManager.browserTabs = { ... }:
     let
-        inherit (osConfig.profile.desktop) browser;
-        
+
         bookmarks = [
             {
                 name = "Streaming Sites";
@@ -151,13 +116,13 @@ in
         config = {
             programs.zen-browser.profiles.default = {
                 bookmarks.force = true;
-                bookmarks.settings = bookmarks ++ browser.bookmarks.extra;
-                
+                bookmarks.settings = bookmarks;
+
                 pinsForce = true;
-                pins = removeAttrs pins browser.tabs.exclude // browser.tabs.extra;
-                
+                pins = pins;
+
                 spacesForce = true;
-                spaces = spaces // browser.spaces.extra;
+                spaces = spaces;
             };
         };
     };

@@ -1,31 +1,15 @@
-{ lib, ... }:
-let
-    inherit (lib) mkOption types;
-in
+{ ... }:
 {
-    flake.modules.nixos.shell = { config, pkgs, ... }:
-    let
-        inherit (config.profile) user;
-    in
+    flake.modules.nixos.shell = { pkgs, ... }:
     {
-        options = {
-            profile.user = {
-                terminal = mkOption {
-                    type = types.package;
-                    default = pkgs.alacritty;
-                    description = "Preferred user terminal";
-                };
-            };
-        };
-        
         config = {
             environment.sessionVariables = {
-                TERMINAL = user.terminal;
-                EDITOR = emacs;
+                TERMINAL = "alacritty";
+                EDITOR = "emacs";
             };
         
             environment.systemPackages = [
-                user.terminal
+                pkgs.alacritty
                 pkgs.emacs
                 
                 pkgs.bat

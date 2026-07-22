@@ -73,6 +73,7 @@ _LOCALE=""
 _LOCALE_EXTRA=""
 
 _WIFI='{}'
+_DOTFILES_SRC=""
 
 _SYSTEM=""
 _STORAGE=""
@@ -390,106 +391,201 @@ resolveTarget() {
     fi
 }
 
-# ── identity ─────────────────────────────────────────────────────────────
-# Hostname, roles, username, git email — everything the host is named by
-resolveIdentity() {
-    printHeader "Identity"
+# ── gather ───────────────────────────────────────────────────────────────
+# The gather phase is a form, not a questionnaire: detection silently
+# prefills, sections are filled in any order, and nothing touches the disk
+# until the form is confirmed. One editor per section, all built from
+# ask/askList/confirm
 
-    # The ISO's own hostname/user are meaningless defaults
-    local defHost defUser
-    defHost="$(hostname)"
-    defUser="${SUDO_USER:-}"
-    [[ $defHost == nixos ]] && defHost=""
-    [[ $defUser == root || $defUser == nixos ]] && defUser=""
+# Silent detection - results appear in the form, not as narration
+detect() {
+    _SYSTEM="$(uname -m)-linux"
+    _TIMEZONE="$(readlink -f /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||')"
+    _LOCALE="${LANG:-en_US.UTF-8}"
+    _LOCALE_EXTRA="${LC_CTYPE:-en_US.UTF-8}"
 
+    # Username/email defaults - the ISO's own identity is meaningless
+    local u="${SUDO_USER:-}"
+    [[ -n $u && $u != root && $u != nixos ]] && _USERNAME="$u"
+    _USER_EMAIL="$(gitRepo config user.email 2>/dev/null || true)"
+
+    # Storage - probe the disk behind the target; on the ISO '/' is the
+    # live medium. -e 7,11 keeps loop/rom devices out of the fallback
+    local src dev
+    src="$(findmnt -no SOURCE --target "${TARGET_ROOT:-/}" 2>/dev/null || true)"
+    dev="$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1 || true)"
+    [[ -z $dev ]] && dev="$(lsblk -dno NAME -e 7,11 | head -n1)"
+    if [[ "$(lsblk -dno ROTA "/dev/$dev" 2>/dev/null)" == "1" ]]; then
+        _STORAGE="hdd"
+    else
+        _STORAGE="ssd"
+    fi
+
+    case "$(lscpu | awk -F: '/Vendor ID/ { print $2; exit }' | xargs)" in
+        GenuineIntel) _CPU="intel" ;;
+        AuthenticAMD) _CPU="amd" ;;
+    esac
+
+    # PCI display class, deduplicated (hybrid laptops have two)
+    local vid
+    while read -r vid; do
+        case "$vid" in
+            10de) _GPU+=("nvidia") ;;
+            1002) _GPU+=("amd") ;;
+            8086) _GPU+=("intel") ;;
+        esac
+    done < <(lspci -n -mm -d ::03xx | awk -F'"' '{ print $4 }')
+    ((${#_GPU[@]})) && mapfile -t _GPU < <(printf '%s\n' "${_GPU[@]}" | awk '!seen[$0]++')
+
+    printDebug "detected: $_SYSTEM | ${_CPU:-?} | ${_GPU[*]:-no gpu} | $_STORAGE | $_TIMEZONE"
+    return 0
+}
+
+# 1) hostname, roles, user, email
+editIdentity() {
     while :; do
-        ask _HOSTNAME "Hostname" "$defHost"
-
+        ask _HOSTNAME "Hostname" "$_HOSTNAME"
         if [[ ! $_HOSTNAME =~ ^[a-z][a-z0-9-]{0,62}$ ]]; then
-            printError "Error: Invalid hostname. Only lowercase letters, digits and hyphens are allowed"
-            continue
+            printError "Only lowercase letters, digits and hyphens"
+        elif [[ -d $REPO_ROOT/hosts/$_HOSTNAME ]]; then
+            printError "hosts/$_HOSTNAME already exists"
+        else
+            break
         fi
-
-        _HOST_DIR="$REPO_ROOT/hosts/$_HOSTNAME"
-
-        if [[ -d $_HOST_DIR ]]; then
-            printError "Error: hosts/$_HOSTNAME already exists"
-            continue
-        fi
-
-        break
     done
-
+    _HOST_DIR="$REPO_ROOT/hosts/$_HOSTNAME"
     _SECRETS="hosts/$_HOSTNAME/secrets.json"
-    printSuccess "New host: hosts/$_HOSTNAME"
+    _HOST_ANCHOR="$_HOSTNAME"
 
-    local base addons=() addon input ok
-    local validAddons=(dev gaming media)
-
+    local base input addon
     askList base "System type" desktop server
     _ROLES=("$base")
 
     if [[ $base == desktop ]]; then
-        while :; do
-            askOptional input "Addons (${validAddons[*]})" "dev"
-            read -ra addons <<< "$input"
-
-            ok=true
-            for addon in "${addons[@]}"; do
-                if ! printf '%s\n' "${validAddons[@]}" | grep -qx "$addon"; then
-                    printError "Error: Unknown addon - $addon"
-                    ok=false
-                fi
-            done
-
-            [[ $ok == false ]] && continue
-            break
+        askOptional input "Addons (dev gaming media)" "dev"
+        for addon in $input; do
+            case "$addon" in
+                dev|gaming|media) _ROLES+=("$addon") ;;
+                *) printWarn "Skipping unknown addon: $addon" ;;
+            esac
         done
-
-        ((${#addons[@]})) && _ROLES+=("${addons[@]}")
     fi
 
-    printSuccess "Roles: ${_ROLES[*]}"
-
     while :; do
-        ask _USERNAME "Username" "$defUser"
-        if [[ ! $_USERNAME =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
-            printError "Error: Invalid username. Only lowercase letters, digits, hyphens, and underscores are allowed"
-            continue
-        fi
-        break
+        ask _USERNAME "Username" "$_USERNAME"
+        [[ $_USERNAME =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && break
+        printError "Only lowercase letters, digits, hyphens and underscores"
     done
-
     _USER_ANCHOR="${_USERNAME}_${_HOSTNAME}"
-    _HOST_ANCHOR="$_HOSTNAME"
-    printDebug "sops anchors: &$_USER_ANCHOR (user), &$_HOST_ANCHOR (host)"
 
-    ask _USER_EMAIL "git email" "$(gitRepo config user.email 2>/dev/null || true)"
+    ask _USER_EMAIL "Git email" "$_USER_EMAIL"
 }
 
-# ── locale ───────────────────────────────────────────────────────────────
-# Detected from the running environment, every value overridable
-resolveLocale() {
-    printHeader "Locale"
-
-    _TIMEZONE="$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')"
-    _LOCALE=${LANG:-en_US.UTF-8}
-    _LOCALE_EXTRA=${LC_CTYPE:-en_US.UTF-8}
-
+# 2) timezone and locales
+editLocale() {
     ask _TIMEZONE "Timezone" "${_TIMEZONE:-UTC}"
     ask _LOCALE "Locale" "$_LOCALE"
     ask _LOCALE_EXTRA "Extra locale" "$_LOCALE_EXTRA"
 }
 
-# ── wifi ─────────────────────────────────────────────────────────────────
-# detect -> offer -> override: scan the air, pick an SSID, type it when
-# hidden. The editor is an opt-in escape hatch for advanced NetworkManager
-# keys, never the entry point. Plaintext psk material only touches
-# _KEYS_DIR (dies with the script) and ends up encrypted in secrets.json
+# 3) the detected values, editable - detection only prefills
+editHardware() {
+    ask _SYSTEM "System" "$_SYSTEM"
+    askOptional _CPU "CPU (intel/amd)" "$_CPU"
+    ask _STORAGE "Storage (ssd/hdd)" "$_STORAGE"
 
-# SSIDs in range, strongest first (spin target).
-# nmcli when NetworkManager runs (live system, graphical ISO), iw as the
-# daemonless fallback (minimal ISO)
+    local gpus
+    askOptional gpus "GPU (intel/amd/nvidia, space separated)" "${_GPU[*]:-}"
+    read -ra _GPU <<< "$gpus"
+}
+
+# 4) nixos-hardware modules. Laptops only, by choice: the common-* set is
+# tuned for them and guessing for desktops risks more than it fixes
+
+dmi() { cat "/sys/class/dmi/id/$1" 2>/dev/null || true; }
+
+# Module names from the flake-locked nixos-hardware revision (spin target).
+# A killed download leaves a truncated tarball in nix's cache - the retry
+# passes --refresh to bypass it
+fetchHardwareModules() {
+    local rev ref="github:NixOS/nixos-hardware"
+    rev="$(jq -r '.nodes["nixos-hardware"].locked.rev // empty' "$REPO_ROOT/flake.lock" 2>/dev/null || true)"
+    [[ -n $rev ]] && ref="github:NixOS/nixos-hardware/$rev"
+
+    local args=("$ref#nixosModules"
+        --apply builtins.attrNames --json
+        --extra-experimental-features 'nix-command flakes')
+
+    local json
+    json="$(timeout 120 nix eval "${args[@]}")" \
+        || json="$(timeout 120 nix eval "${args[@]}" --refresh)" \
+        || return 1
+    jq -r '.[]' <<< "$json"
+}
+
+editModules() {
+    compgen -G '/sys/class/power_supply/BAT*' > /dev/null \
+        || { printInfo "nixos-hardware modules are laptop-only by design (no battery found)"; return 0; }
+
+    printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
+
+    local modules=()
+    mapfile -t modules < <(spin "Fetching modules" fetchHardwareModules)
+
+    if ((${#modules[@]} == 0)); then
+        printWarn "No module list - manual entry (https://github.com/NixOS/nixos-hardware)"
+        local mods
+        askOptional mods "Modules (space separated)" "${_HW_MODULES[*]:-}"
+        read -ra _HW_MODULES <<< "$mods"
+        return 0
+    fi
+
+    # Dedicated board module ("...-gu605my") or the common-* fallback
+    local slug match="" want=() m
+    slug="$(dmi board_name)"
+    slug="${slug,,}"
+    slug="${slug//[^a-z0-9]/-}"
+    slug="$(sed -E 's/-+/-/g; s/^-//; s/-$//' <<< "$slug")"
+    [[ -n $slug ]] && match="$(printf '%s\n' "${modules[@]}" | grep -x ".*-${slug}" | head -n1 || true)"
+
+    if [[ -n $match ]] && confirm "Use dedicated module '$match'?"; then
+        want=("$match")
+    else
+        [[ -n $_CPU ]] && want+=("common-cpu-$_CPU")
+        for m in "${_GPU[@]}"; do
+            want+=("common-gpu-$m")
+        done
+        want+=("common-pc-laptop")
+        if [[ $_STORAGE == "hdd" ]]; then
+            want+=("common-pc-laptop-hdd")
+        else
+            want+=("common-pc-ssd")
+        fi
+
+        # Keep only names that actually exist upstream
+        local ok=()
+        for m in "${want[@]}"; do
+            if printf '%s\n' "${modules[@]}" | grep -qx "$m"; then
+                ok+=("$m")
+            else
+                printWarn "Skipping $m (not in nixos-hardware)"
+            fi
+        done
+        want=("${ok[@]}")
+    fi
+
+    local mods
+    askOptional mods "Modules" "${want[*]}"
+    read -ra _HW_MODULES <<< "$mods"
+}
+
+# 5) wifi: detect -> offer -> override. Scan the air, pick an SSID, type
+# it when hidden. The editor is an opt-in escape hatch for advanced
+# NetworkManager keys. Plaintext psk material only touches _KEYS_DIR
+# (dies with the script) and ends up encrypted in secrets.json
+
+# SSIDs in range, strongest first (spin target). nmcli when
+# NetworkManager runs, iw as the daemonless fallback (minimal ISO)
 scanWifi() {
     if command -v nmcli > /dev/null && nmcli -t general status > /dev/null 2>&1; then
         nmcli --terse --fields SIGNAL,SSID dev wifi list --rescan yes 2>/dev/null \
@@ -506,11 +602,10 @@ scanWifi() {
         | awk -F'SSID: ' '/\tSSID: / && length($2) && !seen[$2]++ { print $2 }'
 }
 
-resolveWifi() {
-    printHeader "Wifi"
+editWifi() {
     confirm "Add wifi networks?" || return 0
 
-    # One scan, reused across the loop - the manual entry covers the rest
+    # One scan, reused across the loop - manual entry covers the rest
     local networks=()
     mapfile -t networks < <(spin "Scanning networks" scanWifi | head -12)
     printDebug "scan found ${#networks[@]} networks"
@@ -536,7 +631,13 @@ resolveWifi() {
         while :; do
             read -rsp "$(printf '%s?%s Password (hidden): ' "$BLUE" "$NC")" psk
             printf '\n'
+            read -rsp "$(printf '%s?%s Password (repeat): ' "$BLUE" "$NC")" psk2
+            printf '\n'
 
+            if [[ -z $psk || $psk != "$psk2" ]]; then
+                printError "Empty or mismatched. Try again"
+                continue
+            fi
             if (( ${#psk} < 8 )); then
                 printError "WPA-PSK needs 8-63 characters"
                 continue
@@ -585,190 +686,83 @@ resolveWifi() {
 
         confirm "Add another network?" || break
     done
-
-    printSuccess "Wifi profiles: $(jq -r 'keys | join(", ")' <<< "$_WIFI")"
 }
 
-# ── hardware ─────────────────────────────────────────────────────────────
-# Pure detection, no prompts: system, storage, cpu, gpu
-detectHardware() {
-    printHeader "Hardware"
+# 6) dotfiles seed source, copied by writeDotfiles - not linked: this
+# host owns its copy
+editDotfiles() {
+    # Prefilled with the repo location so completing a local path is
+    # quick; clear the line to skip, or paste a git URL
+    local src
+    read -r -e -i "${_DOTFILES_SRC:-$PWD/}" \
+        -p "$(printf '%s?%s %s: ' "$BLUE" "$NC" "Seed dotfiles from (git URL or local path, empty = skip)")" src
 
-    _SYSTEM="$(uname -m)-linux"
-    printSuccess "System: $_SYSTEM"
+    # read does not expand a leading ~ - do it here, against the
+    # invoking user's home when running under sudo
+    if [[ $src == "~"* ]]; then
+        local h="${SUDO_USER:-}"
+        if [[ -n $h && $h != root ]]; then h="/home/$h"; else h="$HOME"; fi
+        src="$h${src#\~}"
+    fi
 
-    # Storage - on the ISO '/' is the live medium, so probe the target mount.
-    # -e 7,11 keeps loop and rom devices out of the fallback
-    local src dev rot
-    src="$(findmnt -no SOURCE --target "${TARGET_ROOT:-/}" 2>/dev/null || true)"
-    dev="$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1 || true)"
-    [[ -z $dev ]] && dev="$(lsblk -dno NAME -e 7,11 | head -n1)"
-    printDebug "root source: ${src:-?} -> disk: ${dev:-?}"
-
-    rot="$(lsblk -dno ROTA "/dev/$dev" 2>/dev/null || echo 0)"
-    if [[ $rot == 1 ]]; then
-        _STORAGE="hdd"
+    if [[ -z $src || ${src%/} == "$PWD" ]]; then
+        _DOTFILES_SRC=""
     else
-        _STORAGE="ssd"
+        _DOTFILES_SRC="$src"
     fi
-    printSuccess "Storage: $_STORAGE ($dev)"
-
-    # CPU
-    local vendor
-    vendor="$(lscpu | grep 'Vendor ID' | awk -F: '{print $2}' | xargs)"
-    printDebug "lscpu vendor: ${vendor:-?}"
-    case "$vendor" in
-        GenuineIntel) _CPU="intel" ;;
-        AuthenticAMD) _CPU="amd" ;;
-        *) _CPU="" ;;
-    esac
-    printSuccess "CPU: ${_CPU:-unknown}"
-
-    # GPU - PCI display class, deduplicated, may be multiple (hybrid laptops)
-    printDebug "\$ lspci -n -mm -d ::03xx"
-    local vid
-    while read -r vid; do
-        printDebug "pci display vendor: $vid"
-        case "$vid" in
-            10de) _GPU+=("nvidia") ;;
-            1002) _GPU+=("amd") ;;
-            8086) _GPU+=("intel") ;;
-        esac
-    done < <(lspci -n -mm -d ::03xx | awk -F'"' '{print $4}')
-
-    if ((${#_GPU[@]})); then
-        mapfile -t _GPU < <(printf '%s\n' "${_GPU[@]}" | awk '!seen[$0]++')
-    fi
-    printSuccess "GPU: ${_GPU[*]:-none}"
 }
 
-# ── nixos-hardware ───────────────────────────────────────────────────────
-# Laptops only, by choice: the common-* set is tuned for them and guessing
-# for desktops risks more than it fixes.
-# Tries the dedicated board module first, falls back to common-*, and the
-# final list is always editable
+# ── form ─────────────────────────────────────────────────────────────────
+renderForm() {
+    local id="!  required"
+    [[ -n $_HOSTNAME && -n $_USERNAME ]] \
+        && id="$_HOSTNAME | ${_ROLES[*]} | $_USERNAME <${_USER_EMAIL:-no email}>"
 
-dmi() { cat "/sys/class/dmi/id/$1" 2>/dev/null || true; }
+    local wifi="none"
+    local count; count="$(jq -r 'keys | length' <<< "$_WIFI")"
+    (( count > 0 )) && wifi="$count network(s): $(jq -r 'keys | join(", ")' <<< "$_WIFI")"
 
-# Module names from the flake-locked nixos-hardware revision (spin target)
-fetchHardwareModules() {
-    local rev ref="github:NixOS/nixos-hardware"
+    printHeader "Host form"
+    printf '    %s%d)%s %-11s %s\n' \
+        "$BOLD" 1 "$NC" "Identity"  "$id" \
+        "$BOLD" 2 "$NC" "Locale"    "$_TIMEZONE | $_LOCALE / $_LOCALE_EXTRA" \
+        "$BOLD" 3 "$NC" "Hardware"  "$_SYSTEM | ${_CPU:-unknown} | ${_GPU[*]:-no gpu} | $_STORAGE" \
+        "$BOLD" 4 "$NC" "Modules"   "${_HW_MODULES[*]:-none}" \
+        "$BOLD" 5 "$NC" "Wifi"      "$wifi" \
+        "$BOLD" 6 "$NC" "Dotfiles"  "${_DOTFILES_SRC:-skip}"
 
-    rev="$(jq -r '.nodes["nixos-hardware"].locked.rev // empty' "$REPO_ROOT/flake.lock" 2>/dev/null || true)"
-    [[ -n $rev ]] && ref="github:NixOS/nixos-hardware/$rev"
-
-    local args=("$ref#nixosModules"
-        --apply builtins.attrNames --json
-        --extra-experimental-features 'nix-command flakes')
-
-    local json
-    json="$(timeout 120 nix eval "${args[@]}")" \
-        || json="$(timeout 120 nix eval "${args[@]}" --refresh)" \
-        || return 1
-    jq -r '.[]' <<< "$json"
-}
-
-resolveModules() {
-    compgen -G '/sys/class/power_supply/BAT*' > /dev/null || return 0
-
-    printHeader "nixos-hardware"
-    printInfo "DMI: $(dmi sys_vendor) / $(dmi product_name) / board $(dmi board_name)"
-
-    local modules
-    mapfile -t modules < <(spin "Fetching modules" fetchHardwareModules)
-
-    if ((${#modules[@]} == 0)); then
-        printWarn "No module list. Manual entries only"
-        local mods
-        printInfo "nixos-hardware: https://github.com/NixOS/nixos-hardware"
-        askOptional mods "nixos-hardware modules (space separated)" ""
-        read -ra _HW_MODULES <<< "$mods"
-        return 0
-    fi
-
-    printSuccess "Fetched ${#modules[@]} modules"
-
-    # "ROG Zephyrus G16 GU605MY_GU605MY" -> "rog-zephyrus-g16-gu605my-gu605my"
-    local slug match=""
-    slug="$(dmi board_name)"
-    slug="${slug,,}"
-    slug="${slug//[^a-z0-9]/-}"
-    slug="$(sed -E 's/-+/-/g; s/^-//; s/-$//' <<< "$slug")"
-    printDebug "board slug: ${slug:-none}"
-
-    if [[ -n $slug ]]; then
-        match="$(printf '%s\n' "${modules[@]}" | grep -x ".*-${slug}" | head -n1 || true)"
-    fi
-
-    if [[ -n $match ]]; then
-        printSuccess "Matched model: $match"
-        if confirm "Use $match?"; then
-            _HW_MODULES=("$match")
-        else
-            printInfo "Declined. Using common modules instead"
-        fi
-    else
-        printInfo "No dedicated module found for '$(dmi product_name)'. Using common modules"
-    fi
-
-    if ((${#_HW_MODULES[@]} == 0)); then
-        local want=() m
-
-        [[ -n $_CPU ]] && want+=("common-cpu-$_CPU")
-
-        for m in "${_GPU[@]}"; do
-            want+=("common-gpu-$m")
-        done
-
-        want+=("common-pc-laptop")
-
-        if [[ $_STORAGE == "hdd" ]]; then
-            want+=("common-pc-laptop-hdd")
-        else
-            want+=("common-pc-ssd")
-        fi
-
-        # Keep only names that actually exist upstream
-        for m in "${want[@]}"; do
-            if printf '%s\n' "${modules[@]}" | grep -qx "$m"; then
-                _HW_MODULES+=("$m")
-            else
-                printWarn "Skipping $m (not in nixos-hardware)"
-            fi
-        done
-    fi
-
-    printSuccess "Modules: ${_HW_MODULES[*]:-none}"
-
-    local mods
-    printInfo "nixos-hardware: https://github.com/NixOS/nixos-hardware"
-    askOptional mods "nixos-hardware modules" "${_HW_MODULES[*]}"
-    read -ra _HW_MODULES <<< "$mods"
-}
-
-# ── summary ──────────────────────────────────────────────────────────────
-# Last stop before anything is written to disk
-printSummary() {
-    printHeader "Summary"
-
-    printf '    %s%-10s%s %s\n' \
-        "$DIM" "host"     "$NC" "$_HOSTNAME" \
-        "$DIM" "system"   "$NC" "$_SYSTEM" \
-        "$DIM" "roles"    "$NC" "${_ROLES[*]:-none}" \
-        "$DIM" "user"     "$NC" "$_USERNAME <$_USER_EMAIL>" \
-        "$DIM" "cpu"      "$NC" "${_CPU:-unknown}" \
-        "$DIM" "gpu"      "$NC" "${_GPU[*]:-none}" \
-        "$DIM" "storage"  "$NC" "$_STORAGE" \
-        "$DIM" "modules"  "$NC" "${_HW_MODULES[*]:-none}" \
-        "$DIM" "locale"   "$NC" "$_TIMEZONE / $_LOCALE / $_LOCALE_EXTRA" \
-        "$DIM" "host key" "$NC" "$_HOST_KEY_DIR/ssh_host_ed25519_key"
-
-    if [[ -n $TARGET_ROOT ]]; then
-        printf '    %s%-10s%s %s\n' "$DIM" "target" "$NC" "$TARGET_ROOT"
-    fi
-
+    printf '    %s%s%s\n' "$DIM" "host key: $_HOST_KEY_DIR/ssh_host_ed25519_key" "$NC"
+    [[ -n $TARGET_ROOT ]] \
+        && printf '    %s%s%s\n' "$DIM" "target:   $TARGET_ROOT" "$NC"
     echo
-    confirm "Proceed?" || { printInfo "Aborted - nothing was written"; exit 0; }
+    return 0
+}
+
+gatherForm() {
+    detect
+
+    local choice
+    while :; do
+        renderForm
+        read -rp "$(printf '%s?%s Fill section [1-6], (c)ontinue, (q)uit: ' "$BLUE" "$NC")" choice
+        case "$choice" in
+            1) editIdentity ;;
+            2) editLocale ;;
+            3) editHardware ;;
+            4) editModules ;;
+            5) editWifi ;;
+            6) editDotfiles ;;
+            c|C)
+                if [[ -z $_HOSTNAME || -z $_USERNAME ]]; then
+                    printError "Identity (1) is required"
+                elif confirm "Write hosts/$_HOSTNAME and continue?"; then
+                    break
+                fi
+                ;;
+            q|Q) printInfo "Aborted - nothing was written"; exit 0 ;;
+            *) printError "pick 1-6, c or q" ;;
+        esac
+    done
 }
 
 # ── keys ─────────────────────────────────────────────────────────────────
@@ -1072,7 +1066,7 @@ in
         (import ../../lib/mkHost.nix ./.)
     ];
 
-    flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }:
+    flake.modules.nixos."${hostname}Configuration" = { ... }:
     {
         config = {
             profile.system = {
@@ -1087,28 +1081,11 @@ in
             };
 
             profile.user = {
-                terminal = pkgs.alacritty;
                 xkb.layout = "us";
                 xkb.variant = "";
-
-                fonts = {
-                    packages = [ ];
-                    defaults.serif = [ ];
-                    defaults.sans = [ ];
-                    defaults.mono = [ ];
-                };
             };
 
             profile.desktop = {
-                browser = {
-                    extensions.install = { };
-                    extensions.settings = { };
-                    bookmarks.extra = [ ];
-                    tabs.extra = { };
-                    tabs.exclude = [ ];
-                    spaces.extra = { };
-                };
-
                 displayManager.settings = { };
                 displayManager.extraPackages = [ ];
             };
@@ -1131,23 +1108,11 @@ writeDotfiles() {
     local dest="$_HOST_DIR/home"
     mkdir -p "$dest"
 
-    # Existing dotfiles - copied, not linked: this host owns its copy.
-    # The input is prefilled with the repo location so completing a local
-    # path is quick; clear the line to skip, or paste a git URL
-    local src
-    read -r -e -i "$PWD/" \
-        -p "$(printf '%s?%s %s: ' "$BLUE" "$NC" "Seed dotfiles from (git URL or local path, empty = skip)")" src
+    # Source was chosen in the form (editDotfiles) - copied, not
+    # linked: this host owns its copy
+    local src="$_DOTFILES_SRC"
 
-    # read does not expand a leading ~ - do it here, against the invoking
-    # user's home when running under sudo
-    if [[ $src == "~"* ]]; then
-        local h="${SUDO_USER:-}"
-        if [[ -n $h && $h != root ]]; then h="/home/$h"; else h="$HOME"; fi
-        src="$h${src#\~}"
-        printDebug "expanded source: $src"
-    fi
-
-    if [[ -z $src || ${src%/} == "$PWD" ]]; then
+    if [[ -z $src ]]; then
         printInfo "Not seeding dotfiles"
     elif [[ -d $src ]]; then
         printDebug "\$ cp -rT $src $dest"
@@ -1181,12 +1146,6 @@ writeDotfiles() {
         printWarn "Could not fetch niri's default config. Skipping"
         return 0
     fi
-
-    # `spawn` takes an argv and does NOT expand variables, so the stock
-    # `spawn "$TERMINAL"` silently fails. `terminal` is our alias binary
-    sed -i \
-        -e 's|Mod+T hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }|Mod+T hotkey-overlay-title="Open a Terminal" { spawn "terminal"; }|' \
-        "$dest/.config/niri/config.kdl"
 
     printSuccess "Seeded $dest/.config/niri/config.kdl"
 }
@@ -1414,13 +1373,8 @@ main() {
     _KEYS_DIR="$(mktemp -d)"
     chmod 700 "$_KEYS_DIR"
 
-    # gather - prompts and detection, nothing written yet
-    resolveIdentity
-    resolveLocale
-    resolveWifi
-    detectHardware
-    resolveModules
-    printSummary
+    # gather - detection prefills the form, the user fills it in any order
+    gatherForm
 
     # write - only after the summary is confirmed
     generateKeys

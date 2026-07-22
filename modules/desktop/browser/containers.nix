@@ -1,8 +1,5 @@
 { ... }:
 {
-    # @TODO: Hoist container data to the host profile (extensions.nix pattern).
-    # Containers are per-host identity data and carry the userContextIds that
-    # move to the private repo later
     flake.modules.homeManager.browserContainers = { ... }:
     {
         config = {
