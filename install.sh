@@ -328,27 +328,25 @@ formConfirm() {
 # Queries the flake input for all available nixosModules, returns them
 # as nixos-hardware paths (e.g. "framework/13/common", "lenovo/thinkpad/x220")
 listNixosHardwareModules() {
-    local result
+    local rev ref="github:NixOS/nixos-hardware"
+    rev="$(jq -r '.nodes["nixos-hardware"].locked.rev // empty' "$REPO_ROOT/flake.lock" 2>/dev/null || true)"
+    [[ -n $rev ]] && ref="$ref/$rev"
 
-    # Source 1: Try the flake's own nixos-hardware input
-    result=$(nix eval --json "$REPO_ROOT#inputs.nixos-hardware.nixosModules" \
-        --apply 'builtins.attrNames' 2>/dev/null \
-        | jq -r '.[]' 2>/dev/null | sort || true)
+    local args=("$ref#nixosModules"
+        --json --apply builtins.attrNames
+        --extra-experimental-features 'nix-command flakes')
 
-    if [[ -n $result ]]; then
-        echo "$result"
-        return
+    local json=""
+    if ! json="$(timeout 120 nix eval "${args[@]}" 2>&1)"; then
+        printDebug "nix eval failed, retrying with --refresh: $json"
+        if ! json="$(timeout 120 nix eval "${args[@]}" --refresh 2>&1)"; then
+            printWarn "Could not fetch nixos-hardware modules"
+            printDebug "$json"
+            return 1
+        fi
     fi
 
-    # Source 2: Evaluate nixos-hardware directly from GitHub
-    result=$(nix eval --json "github:NixOS/nixos-hardware#nixosModules" \
-        --apply 'builtins.attrNames' 2>/dev/null \
-        | jq -r '.[]' 2>/dev/null | sort || true)
-
-    if [[ -n $result ]]; then
-        echo "$result"
-        return
-    fi
+    jq -r '.[]' <<< "$json" | sort
 }
 
 # ── locale list ──────────────────────────────────────────────────────────
@@ -371,7 +369,6 @@ listSupportedLocales() {
         locale -a 2>/dev/null | grep -i utf | sort -u
         return
     fi
-}
 
     # Source 3: Common locales fallback (curated short list)
     cat <<'EOF'
@@ -459,12 +456,20 @@ gatherForm() {
         
         # Specific model — searchable list from nixos-hardware flake
         if formConfirm "Add a specific model from nixos-hardware?" "n"; then
-            local specific
-            specific=$(listNixosHardwareModules | gum filter \
-                --header="Search for your model (type to filter)" \
-                --header.foreground="#7DD3FC" \
-                --height=20 \
-                --placeholder="e.g. apple-macbook-pro-8-1, asus-rog-strix-x570e, ...") || true
+            local models specific=""
+            models="$(listNixosHardwareModules || true)"
+
+            if [[ -z $models ]]; then
+                formInputOpt specific "Module name (fetch failed - type it manually)" "asus-rog-strix-x570e"
+            else
+                specific=$(gum filter \
+                    --header="Search for your model (type to filter)" \
+                    --header.foreground="#7DD3FC" \
+                    --height=20 \
+                    --placeholder="e.g. apple-macbook-pro-8-1, asus-rog-strix-x570e, ..." \
+                    <<< "$models") || true
+            fi
+
             [[ -n $specific ]] && HW_MODULES+=("$specific")
         fi
         
