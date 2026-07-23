@@ -48,39 +48,40 @@ DOTFILES_SRC=""
 APPLIED=""
 
 # ── palette ──────────────────────────────────────────────────────────────
-FG="#ffffff"       # headers, prompts, cursor
-MUTED="#6c7086"    # placeholders, unselected, borders
-ACCENT="#a6e3a1"   # the selected/matched item
-BASE="#1e1e2e"     # text on the accent background
+FG="#c6c8d1"
+MUTED="#6c7086"
+CURSOR="#7aa2f7"
+ACCENT="#9ece6a"
+BASE="#1a1b26"
 
 # ── gum theme ────────────────────────────────────────────────────────────
 export GUM_INPUT_PROMPT="  "
 export GUM_INPUT_WIDTH="60"
-export GUM_INPUT_CURSOR_FOREGROUND="$FG"
+export GUM_INPUT_CURSOR_FOREGROUND="$CURSOR"
 export GUM_INPUT_PROMPT_FOREGROUND="$FG"
 export GUM_INPUT_HEADER_FOREGROUND="$FG"
 export GUM_INPUT_PLACEHOLDER_FOREGROUND="$MUTED"
 
 export GUM_CHOOSE_CURSOR="→ "
 export GUM_CHOOSE_HEADER_FOREGROUND="$FG"
-export GUM_CHOOSE_CURSOR_FOREGROUND="$ACCENT"
+export GUM_CHOOSE_CURSOR_FOREGROUND="$CURSOR"
 export GUM_CHOOSE_SELECTED_FOREGROUND="$ACCENT"
 
 export GUM_FILTER_INDICATOR="→"
 export GUM_FILTER_HEADER_FOREGROUND="$FG"
-export GUM_FILTER_INDICATOR_FOREGROUND="$ACCENT"
+export GUM_FILTER_INDICATOR_FOREGROUND="$CURSOR"
 export GUM_FILTER_MATCH_FOREGROUND="$ACCENT"
 export GUM_FILTER_PLACEHOLDER_FOREGROUND="$MUTED"
 export GUM_FILTER_PROMPT_FOREGROUND="$FG"
 
 export GUM_CONFIRM_PROMPT_FOREGROUND="$FG"
-export GUM_CONFIRM_SELECTED_BACKGROUND="$ACCENT"
+export GUM_CONFIRM_SELECTED_BACKGROUND="$CURSOR"
 export GUM_CONFIRM_SELECTED_FOREGROUND="$BASE"
 export GUM_CONFIRM_UNSELECTED_FOREGROUND="$MUTED"
 
-export GUM_SPIN_SPINNER_FOREGROUND="$FG"
+export GUM_SPIN_SPINNER_FOREGROUND="$CURSOR"
 export GUM_FILE_HEADER_FOREGROUND="$FG"
-export GUM_FILE_CURSOR_FOREGROUND="$ACCENT"
+export GUM_FILE_CURSOR_FOREGROUND="$CURSOR"
 export GUM_FILE_DIRECTORY_FOREGROUND="$FG"
 
 # ── logging ──────────────────────────────────────────────────────────────
@@ -500,7 +501,7 @@ showSummary() {
     local IFS=', '
     gpu_str="${GPU[*]:-skip}"
     modules_str="${HW_MODULES[*]:-skip}"
-    addons_str="${ADDONS[*]:-skip}"
+    addons_str="${ADDONS[*]}"
 
     local wifi_count wifi_str
     wifi_count="$(jq -r 'keys | length' <<< "$WIFI" 2>/dev/null || echo 0)"
