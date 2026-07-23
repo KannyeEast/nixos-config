@@ -6,218 +6,13 @@
 
 set -Eeuo pipefail
 
-# ── flags ────────────────────────────────────────────────────────────────
-METHOD="${INSTALLER_METHOD:-}"
+# ── state ────────────────────────────────────────────────────────────────
+# flags
+METHOD=""
 VERBOSE=false
 TARGET_ROOT=""
 ADMIN_KEY=""
 
-showFlags() {
-    cat <<EOF
-Usage: sudo ./installer.sh [OPTIONS]
-
-Options:
-      --method <TYPE>     local | iso | remote (nixos-anywhere)
-      --root <PATH>       iso: the mounted target (default: /mnt)
-      --admin-key <PATH>  Public half of the admin SSH key
-  -v, --verbose           Show every command and its output
-  -h, --help              This message
-EOF
-}
-
-parseArgs() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --method)
-                [[ -n ${2:-} ]] || { printf -- '--method needs a value\n' >&2; exit 1; }
-                METHOD="$2"; shift 2 ;;
-            --root)
-                [[ -n ${2:-} ]] || { printf -- '--root needs a path\n' >&2; exit 1; }
-                TARGET_ROOT="${2%/}"
-                shift 2 ;;
-            --admin-key)
-                [[ -n ${2:-} ]] || { printf -- '--admin-key needs a path\n' >&2; exit 1; }
-                ADMIN_KEY="$2"
-                shift 2 ;;
-            -v|--verbose) VERBOSE=true; shift ;;
-            -h|--help) showFlags; exit 0 ;;
-            *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
-        esac
-    done
-}
-
-
-parseArgs "$@"
-
-# ── modular package registry ─────────────────────────────────────────────
-# Each "module" registers its packages. The method picks which modules
-# to enable.
-declare -A MODULE_PKGS=(
-    [base]="gum git jq"
-    [locales]="glibcLocales"
-    [secrets]="age mkpasswd openssh sops ssh-to-age"
-    [iso]="nixos-install-tools"
-    [remote]="nixos-anywhere"
-)
-
-# ── bootstrap ────────────────────────────────────────────────────────────
-# Phase 1: outside nix-shell. No gum, no jq, just bare bash.
-# Ask the method, assemble packages, re-exec inside nix-shell.
-if [[ -z ${IN_NIX_SHELL:-} ]]; then
-    if [[ -z $METHOD ]]; then
-        printf '\n\033[1;32m── Install method ──────────────────────────\033[0m\n'
-        printf '    1) local   - this machine, running NixOS\n'
-        printf '    2) iso     - installer ISO with a mounted target\n'
-        printf '    3) remote  - generate host files for another machine\n'
-        read -rp '    choice [1]: ' reply
-        case "${reply:-1}" in
-            1) METHOD="local" ;;
-            2) METHOD="iso" ;;
-            3) METHOD="remote" ;;
-            *) printf 'pick 1-3\n' >&2; exit 1 ;;
-        esac
-    fi
-
-    # Method → modules mapping
-    MODULES=("base" "secrets" "locales")
-    case "$METHOD" in
-        local)  : ;;  # nixos-rebuild is already on NixOS
-        iso)    MODULES+=("iso") ;;
-        remote) MODULES+=("remote") ;;
-    esac
-
-    # Build the package list from enabled modules
-    pkgs=""
-    for mod in "${MODULES[@]}"; do
-        pkgs+=" ${MODULE_PKGS[$mod]}"
-    done
-
-    printf 'Fetching dependencies (%s)...\n' "$METHOD"
-    exec nix-shell -p $pkgs \
-        --run "INSTALLER_METHOD=$METHOD $(printf '%q ' bash "$0" "$@")"
-fi
-
-
-# ── palette ──────────────────────────────────────────────────────────────
-# One place to retheme. These are the only hex values in the script
-ACCENT="#b4befe"    # lavender  - headers, cursors, borders
-ACCENT2="#89dceb"   # sky       - filter matches
-OK="#a6e3a1"        # green
-WARN="#f9e2af"      # yellow
-ERR="#f38ba8"       # red
-MUTED="#6c7086"     # overlay   - placeholders, dim text
-FG="#cdd6f4"        # text
-SEL="#313244"       # surface   - selected-row background
-
-if [[ -t 1 && ${TERM:-} != dumb ]]; then
-    BOLD=$'\033[1m'; DIM=$'\033[2m'; NC=$'\033[0m'
-    # 24-bit SGR from a #rrggbb, for the plain printf helpers
-    sgr() { local h=${1#\#}; printf '\033[38;2;%d;%d;%dm' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"; }
-    C_OK="$(sgr "$OK")"; C_WARN="$(sgr "$WARN")"; C_ERR="$(sgr "$ERR")"
-    C_INFO="$(sgr "$ACCENT")"; C_STEP="$(sgr "$ACCENT2")"; C_HEAD="$(sgr "$OK")"
-    C_CMD="$(sgr "$MUTED")"
-else
-    BOLD=''; DIM=''; NC=''
-    C_OK=''; C_WARN=''; C_ERR=''; C_INFO=''; C_STEP=''; C_HEAD=''; C_CMD=''
-fi
-
-# ── gum theme ────────────────────────────────────────────────────────────
-# Applies to every gum call - the helpers no longer pass style flags
-export GUM_INPUT_PROMPT="  "
-export GUM_INPUT_WIDTH="60"
-export GUM_INPUT_CURSOR_FOREGROUND="$ACCENT"
-export GUM_INPUT_PROMPT_FOREGROUND="$ACCENT"
-export GUM_INPUT_HEADER_FOREGROUND="$ACCENT"
-export GUM_INPUT_PLACEHOLDER_FOREGROUND="$MUTED"
-
-export GUM_CHOOSE_CURSOR="❯ "
-export GUM_CHOOSE_HEADER_FOREGROUND="$ACCENT"
-export GUM_CHOOSE_CURSOR_FOREGROUND="$ACCENT"
-export GUM_CHOOSE_SELECTED_FOREGROUND="$OK"
-export GUM_CHOOSE_ITEM_FOREGROUND="$FG"
-
-export GUM_FILTER_INDICATOR="❯"
-export GUM_FILTER_HEADER_FOREGROUND="$ACCENT"
-export GUM_FILTER_INDICATOR_FOREGROUND="$ACCENT"
-export GUM_FILTER_MATCH_FOREGROUND="$ACCENT2"
-export GUM_FILTER_PLACEHOLDER_FOREGROUND="$MUTED"
-export GUM_FILTER_PROMPT_FOREGROUND="$ACCENT"
-
-export GUM_CONFIRM_PROMPT_FOREGROUND="$ACCENT"
-export GUM_CONFIRM_SELECTED_BACKGROUND="$ACCENT"
-export GUM_CONFIRM_SELECTED_FOREGROUND="#1e1e2e"
-export GUM_CONFIRM_UNSELECTED_FOREGROUND="$MUTED"
-
-export GUM_SPIN_SPINNER_FOREGROUND="$ACCENT"
-export GUM_FILE_HEADER_FOREGROUND="$ACCENT"
-export GUM_FILE_CURSOR_FOREGROUND="$ACCENT"
-export GUM_FILE_DIRECTORY_FOREGROUND="$ACCENT"
-
-# ── step tracking ────────────────────────────────────────────────────────
-STEP_NUM=0
-STEP_TOTAL=0
-
-setStepTotal() { STEP_TOTAL="$1"; }
-
-printStep() {
-    (( STEP_NUM++ )) || true
-    local prefix=""
-    [[ $STEP_TOTAL -gt 0 ]] && prefix=" ${DIM}[$STEP_NUM/$STEP_TOTAL]${NC}"
-    printf '\n%s%s── %s ──%s\n' "$BOLD$C_STEP" "$prefix" "$*" "$NC"
-}
-
-printHeader()  { printf '\n%s── %s ──%s\n' "$BOLD$C_HEAD" "$*" "$NC"; }
-printSuccess() { printf '%s%s✓%s %s\n' "$C_OK"   "$BOLD" "$NC" "$*"; }
-printError()   { printf '%s%s✗%s %s\n' "$C_ERR"  "$BOLD" "$NC" "$*" >&2; }
-printWarn()    { printf '%s%s⚠%s  %s\n' "$C_WARN" "$BOLD" "$NC" "$*"; }
-printInfo()    { printf '%s%sℹ%s  %s\n' "$C_INFO" "$BOLD" "$NC" "$*"; }
-printDebug()   { [[ $VERBOSE == true ]] || return 0; printf '%s  · %s%s\n' "$DIM" "$*" "$NC" >&2; }
-printCmd()     { [[ $VERBOSE == true ]] || return 0; printf '%s  » %s%s\n' "$C_CMD" "$*" "$NC" >&2; }
-
-die() {
-    printError "$1"
-    exit "${2:-1}"
-}
-
-# run CMD — execute with verbose tracing; capture-and-replay on failure
-run() {
-    printCmd "$*"
-    if [[ $VERBOSE == true ]]; then
-        "$@"
-        return
-    fi
-
-    local out rc=0
-    out="$(mktemp)"
-    "$@" > "$out" 2>&1 || rc=$?
-
-    if (( rc != 0 )); then
-        printError "Command failed: $*"
-        sed 's/^/    /' "$out" >&2
-    fi
-
-    rm -f "$out"
-    return "$rc"
-}
-
-# ── traps ────────────────────────────────────────────────────────────────
-trapError() {
-    local code=$? cmd=$BASH_COMMAND line=${BASH_LINENO[0]} fn=${FUNCNAME[1]:-main}
-    printError "'$cmd' failed (exit $code) at $fn():$line"
-    exit "$code"
-}
-trap trapError ERR
-
-cleanup() {
-    [[ -n ${KEYS_DIR:-} && -d ${KEYS_DIR:-} ]] && rm -rf "$KEYS_DIR"
-    printf '\033[?25h' >&2
-}
-trap cleanup EXIT
-
-# ── helpers ──────────────────────────────────────────────────────────────
-gitRepo() { git -c safe.directory='*' "$@"; }
-
-# ── state ────────────────────────────────────────────────────────────────
 # host.json fields
 HOSTNAME=""
 SYSTEM=""
@@ -252,7 +47,165 @@ DOTFILES_SRC=""
 # Install state
 APPLIED=""
 
-# ── form helpers (gum wrappers) ──────────────────────────────────────────
+# ── palette ──────────────────────────────────────────────────────────────
+ACCENT="#b4befe"   # headers, cursors, borders, prompts, spinner
+MATCH="#89dceb"    # filter match highlight
+CHOICE="#a6e3a1"   # selected item
+MUTED="#6c7086"    # placeholders, unselected
+BASE="#1e1e2e"     # text on the accent background (confirm button)
+
+# ── gum theme ────────────────────────────────────────────────────────────
+export GUM_INPUT_PROMPT="  "
+export GUM_INPUT_WIDTH="60"
+export GUM_INPUT_CURSOR_FOREGROUND="$ACCENT"
+export GUM_INPUT_PROMPT_FOREGROUND="$ACCENT"
+export GUM_INPUT_HEADER_FOREGROUND="$ACCENT"
+export GUM_INPUT_PLACEHOLDER_FOREGROUND="$MUTED"
+
+export GUM_CHOOSE_CURSOR="→ "
+export GUM_CHOOSE_HEADER_FOREGROUND="$ACCENT"
+export GUM_CHOOSE_CURSOR_FOREGROUND="$ACCENT"
+export GUM_CHOOSE_SELECTED_FOREGROUND="$CHOICE"
+
+export GUM_FILTER_INDICATOR="→"
+export GUM_FILTER_HEADER_FOREGROUND="$ACCENT"
+export GUM_FILTER_INDICATOR_FOREGROUND="$ACCENT"
+export GUM_FILTER_MATCH_FOREGROUND="$MATCH"
+export GUM_FILTER_PLACEHOLDER_FOREGROUND="$MUTED"
+export GUM_FILTER_PROMPT_FOREGROUND="$ACCENT"
+
+export GUM_CONFIRM_PROMPT_FOREGROUND="$ACCENT"
+export GUM_CONFIRM_SELECTED_BACKGROUND="$ACCENT"
+export GUM_CONFIRM_SELECTED_FOREGROUND="$BASE"
+export GUM_CONFIRM_UNSELECTED_FOREGROUND="$MUTED"
+
+export GUM_SPIN_SPINNER_FOREGROUND="$ACCENT"
+export GUM_FILE_HEADER_FOREGROUND="$ACCENT"
+export GUM_FILE_CURSOR_FOREGROUND="$ACCENT"
+export GUM_FILE_DIRECTORY_FOREGROUND="$ACCENT"
+
+# ── logging ──────────────────────────────────────────────────────────────
+logInfo() { gum log --level info "$*"; }
+logWarn() { gum log --level warn "$*"; }
+logError() { gum log --level error "$*"; }
+logDebug() { gum log --level debug "$*"; }
+
+die() { logError "$1"; exit "${2:-1}"; }
+
+bash
+run() {
+    logDebug "\$ $*"
+    if [[ $VERBOSE == true ]]; then "$@"; return; fi
+
+    local out rc=0
+    out="$(mktemp)"
+    "$@" > "$out" 2>&1 || rc=$?
+    (( rc == 0 )) || { logError "Command failed: $*"; sed 's/^/    /' "$out" >&2; }
+    rm -f "$out"
+    return "$rc"
+}
+
+# ── traps ────────────────────────────────────────────────────────────────
+trapError() {
+    local code=$? cmd=$BASH_COMMAND line=${BASH_LINENO[0]} fn=${FUNCNAME[1]:-main}
+    logError "'$cmd' failed (exit $code) at $fn():$line"
+    exit "$code"
+}
+trap trapError ERR
+
+cleanup() {
+    [[ -n ${KEYS_DIR:-} && -d ${KEYS_DIR:-} ]] && rm -rf "$KEYS_DIR"
+    printf '\033[?25h' >&2
+}
+trap cleanup EXIT
+
+# ── flags ────────────────────────────────────────────────────────────────
+showFlags() {
+    cat <<EOF
+Usage: sudo ./installer.sh [OPTIONS]
+
+Options:
+      --method <TYPE>     local | iso | remote (nixos-anywhere)
+      --root <PATH>       iso: the mounted target (default: /mnt)
+      --admin-key <PATH>  Public half of the admin SSH key
+  -v, --verbose           Show every command and its output
+  -h, --help              This message
+EOF
+}
+
+parseArgs() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --method)
+                [[ -n ${2:-} ]] || { printf -- '--method needs a value\n' >&2; exit 1; }
+                METHOD="$2"; shift 2 ;;
+            --root)
+                [[ -n ${2:-} ]] || { printf -- '--root needs a path\n' >&2; exit 1; }
+                TARGET_ROOT="${2%/}"
+                shift 2 ;;
+            --admin-key)
+                [[ -n ${2:-} ]] || { printf -- '--admin-key needs a path\n' >&2; exit 1; }
+                ADMIN_KEY="$2"
+                shift 2 ;;
+            -v|--verbose) VERBOSE=true; shift ;;
+            -h|--help) showFlags; exit 0 ;;
+            *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
+        esac
+    done
+}
+
+# ── shell packages ─────────────────────────────────────────────
+declare -A MODULE_PKGS=(
+    [base]="gum git jq"
+    [locales]="glibcLocales"
+    [secrets]="age mkpasswd openssh sops ssh-to-age"
+    [iso]="nixos-install-tools"
+    [remote]="nixos-anywhere"
+)
+
+# ── bootstrap ────────────────────────────────────────────────────────────
+# Phase 1: outside nix-shell. No gum, no jq, just bare bash.
+# Ask the method, assemble packages, re-exec inside nix-shell.
+method() {
+    if [[ -z ${IN_NIX_SHELL:-} ]]; then
+        if [[ -z $METHOD ]]; then
+            printf '\n\033[1;32m── Install method ──────────────────────────\033[0m\n'
+            printf '    1) local   - this machine, running NixOS\n'
+            printf '    2) iso     - installer ISO with a mounted target\n'
+            printf '    3) remote  - generate host files for another machine\n'
+            read -rp '    choice [1]: ' reply
+            case "${reply:-1}" in
+                1) METHOD="local" ;;
+                2) METHOD="iso" ;;
+                3) METHOD="remote" ;;
+                *) printf 'pick 1-3\n' >&2; exit 1 ;;
+            esac
+        fi
+    
+        # Method → modules mapping
+        MODULES=("base" "secrets" "locales")
+        case "$METHOD" in
+            local)  : ;;  # nixos-rebuild is already on NixOS
+            iso)    MODULES+=("iso") ;;
+            remote) MODULES+=("remote") ;;
+        esac
+    
+        # Build the package list from enabled modules
+        pkgs=""
+        for mod in "${MODULES[@]}"; do
+            pkgs+=" ${MODULE_PKGS[$mod]}"
+        done
+    
+        printf 'Fetching dependencies (%s)...\n' "$METHOD"
+        exec nix-shell -p $pkgs \
+                    --run "INSTALLER_METHOD=$METHOD $(printf '%q ' bash "$0" "$@")"
+    fi
+}
+
+# ── helpers ──────────────────────────────────────────────────────────────
+gitRepo() { git -c safe.directory='*' "$@"; }
+
+# ── gum wrappers ──────────────────────────────────────────
 formHeader() {
     gum style --bold --foreground="$ACCENT" \
         --border=rounded --border-foreground="$ACCENT" \
@@ -264,7 +217,7 @@ formInput() {
     while :; do
         value=$(gum input --header="$label" --placeholder="$placeholder") || die "Cancelled"
         [[ -n $value ]] && break
-        printWarn "$label cannot be empty"
+        logWarn "$label cannot be empty"
     done
     printf -v "$__var" '%s' "$value"
 }
@@ -276,13 +229,14 @@ formInputOpt() {
 }
 
 formPassword() {
-    local __var="$1" label="$2" pw pw2
+    local __var="$1" label="$2" confirm="${3:-true}" minlen="${4:-8}" pw pw2
     while :; do
         pw=$(gum input --password --header="$label" --placeholder="$label") || die "Cancelled"
-        [[ -n $pw && ${#pw} -ge 8 ]] || { printWarn "Min 8 characters"; continue; }
+        (( ${#pw} >= minlen )) || { logWarn "Min $minlen characters"; continue; }
+        [[ $confirm == true ]] || break
         pw2=$(gum input --password --header="Repeat $label" --placeholder="Repeat $label") || die "Cancelled"
         [[ $pw == "$pw2" ]] && break
-        printWarn "Mismatch — try again"
+        logWarn "Mismatch — try again"
     done
     printf -v "$__var" '%s' "$pw"
 }
@@ -313,6 +267,16 @@ formConfirm() {
     gum confirm --default="$default" "$label"
 }
 
+# formFilter VAR LABEL OPTIONS [PLACEHOLDER]
+formFilter() {
+    local __var="$1" label="$2" options="$3" placeholder="${4:-$2}" selected
+    [[ -n $options ]] || return 1
+    selected=$(gum filter \
+        --header="$label" \
+        --height=15 \
+        --placeholder="$placeholder" <<< "$options") || die "Cancelled"
+    printf -v "$__var" '%s' "$selected"
+}
 # ── nixos-hardware module list ───────────────────────────────────────────
 # Queries the flake input for all available nixosModules, returns them
 # as nixos-hardware paths (e.g. "framework/13/common", "lenovo/thinkpad/x220")
@@ -329,10 +293,10 @@ listNixosHardwareModules() {
     err="$(mktemp)"
 
     if ! json="$(timeout 120 nix eval "${args[@]}" 2>"$err")"; then
-        printDebug "nix eval failed, retrying with --refresh: $(cat "$err")"
+        logDebug "nix eval failed, retrying with --refresh: $(cat "$err")"
         if ! json="$(timeout 120 nix eval "${args[@]}" --refresh 2>"$err")"; then
-            printWarn "Could not fetch nixos-hardware modules"
-            printDebug "$(cat "$err")"
+            logWarn "Could not fetch nixos-hardware modules"
+            logDebug "$(cat "$err")"
             rm -f "$err"
             return 1
         fi
@@ -342,9 +306,29 @@ listNixosHardwareModules() {
     jq -r '.[]' <<< "$json" | sort
 }
 
+# ── timezone list ──────────────────────────────────────────────────────────
+listSupportedTimezones() {
+    local zones=""
+    zones=$(timedatectl list-timezones 2>/dev/null || true)
+
+    if [[ -z $zones ]]; then
+        zones=$(find /usr/share/zoneinfo -type f -printf '%P\n' 2>/dev/null \
+            | grep -v -E '^(posix|right|Etc)/' | sort || true)
+    fi
+
+    if [[ -z $zones ]]; then
+        local tzdir
+        tzdir=$(nix-build --no-out-link '<nixpkgs>' -A tzdata 2>/dev/null || true)
+        if [[ -n $tzdir ]]; then
+            zones=$(find "$tzdir/share/zoneinfo" -type f -printf '%P\n' 2>/dev/null \
+                | grep -v -E '^(posix|right|Etc)/' | sort || true)
+        fi
+    fi
+
+    printf '%s\n' "$zones"
+}
+
 # ── locale list ──────────────────────────────────────────────────────────
-# Returns all glibc-supported locales with UTF-8 encoding (most common case)
-# Tries multiple sources in order of preference
 listSupportedLocales() {
     # Source 1: glibc-locales in nix store (most reliable in nix-shell)
     local glibcLocales
@@ -362,27 +346,6 @@ listSupportedLocales() {
         locale -a 2>/dev/null | grep -i utf | sort -u
         return
     fi
-
-    # Source 3: Common locales fallback (curated short list)
-    cat <<'EOF'
-C.UTF-8
-en_US.UTF-8
-en_GB.UTF-8
-de_DE.UTF-8
-fr_FR.UTF-8
-es_ES.UTF-8
-it_IT.UTF-8
-pt_BR.UTF-8
-ru_RU.UTF-8
-ja_JP.UTF-8
-ko_KR.UTF-8
-zh_CN.UTF-8
-zh_TW.UTF-8
-nl_NL.UTF-8
-pl_PL.UTF-8
-sv_SE.UTF-8
-tr_TR.UTF-8
-EOF
 }
 
 # ── validation helpers ───────────────────────────────────────────────────
@@ -391,11 +354,11 @@ validateHostname() {
     while :; do
         formInput HOSTNAME "Hostname" "nixos" "my-nixos"
         if [[ ! $HOSTNAME =~ ^[a-z][a-z0-9-]{0,62}$ ]]; then
-            printWarn "Lowercase letters, digits, and hyphens only"
+            logWarn "Lowercase letters, digits, and hyphens only"
             continue
         fi
         if [[ -d $REPO_ROOT/hosts/$HOSTNAME ]]; then
-            printWarn "hosts/$HOSTNAME already exists"
+            logWarn "hosts/$HOSTNAME already exists"
             continue
         fi
         break
@@ -407,13 +370,12 @@ validateUsername() {
     while :; do
         formInput USERNAME "Username" "$(whoami)" "login name"
         [[ $USERNAME =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && break
-        printWarn "Lowercase letters, digits, hyphens, underscores; start with letter or underscore"
+        logWarn "Lowercase letters, digits, hyphens, underscores; start with letter or underscore"
     done
 }
 
 # ── gather form ──────────────────────────────────────────────────────────
 gatherForm() {
-    printStep
 
     while :; do
         # ── Identity ──────────────────────────────────────────────────
@@ -425,6 +387,7 @@ gatherForm() {
         # ── Roles ─────────────────────────────────────────────────────
         formHeader "Role"
         formChoose ROLE "Primary role" "desktop" "server"
+        ADDONS=()
         if [[ $ROLE == "desktop" ]]; then
             formMulti ADDONS "Add-ons (space to toggle)" "dev"
         fi
@@ -436,107 +399,63 @@ gatherForm() {
         formInputOpt USEREMAIL "Email" "$USERNAME@$HOSTNAME"
         # sshKeys are generated, not asked — collected in generateKeys
 
-        # ── Hardware ──────────────────────────────────────────────────
-        formHeader "Hardware"
-        formMulti GPU "Select GPU driver(s)" "nvidia" "amd" "intel"
-        
-        # Common modules — all shown, user toggles what applies
-        formMulti HW_MODULES "Common hardware modules (toggle what applies)" \
-            "common-cpu-intel" "common-cpu-amd" \
-            "common-gpu-nvidia" "common-gpu-amd" "common-gpu-intel" \
-            "common-pc-ssd" "common-pc-hdd" \
-            "common-pc-laptop-hdd" "common-pc-laptop"
-        
-        # Specific model — searchable list from nixos-hardware flake
-        if formConfirm "Add a specific model from nixos-hardware?" "n"; then
-            local models specific=""
-            models="$(listNixosHardwareModules || true)"
-
-            if [[ -z $models ]]; then
-                formInputOpt specific "Module name (fetch failed - type it manually)" "asus-rog-strix-x570e"
-            else
-                specific=$(gum filter \
-                    --header="Search for your model (type to filter)" \
-                    --header.foreground="#7DD3FC" \
-                    --height=20 \
-                    --placeholder="e.g. apple-macbook-pro-8-1, asus-rog-strix-x570e, ..." \
-                    <<< "$models") || true
-            fi
-
-            [[ -n $specific ]] && HW_MODULES+=("$specific")
-        fi
-        
         # ── Locale ────────────────────────────────────────────────────
         formHeader "Locale"
-        # Timezone: collect all IANA zones, pipe to gum filter
-        local zones=""
-        # Source 1: timedatectl (works on running NixOS, not in nix-shell)
-        zones=$(timedatectl list-timezones 2>/dev/null || true)
         
-        # Source 2: find in zoneinfo (standard Linux path)
-        if [[ -z $zones ]]; then
-            zones=$(find /usr/share/zoneinfo -type f -printf '%P\n' 2>/dev/null \
-                | grep -v -E '^(posix|right|Etc)/' | sort || true)
-        fi
-        
-        # Source 3: NixOS-specific zoneinfo path
-        if [[ -z $zones ]]; then
-            local tzdir
-            tzdir=$(nix-build --no-out-link '<nixpkgs>' -A tzdata 2>/dev/null || true)
-            if [[ -n $tzdir ]]; then
-                zones=$(find "$tzdir/share/zoneinfo" -type f -printf '%P\n' 2>/dev/null \
-                    | grep -v -E '^(posix|right|Etc)/' | sort || true)
-            fi
-        fi
-        
-        # Source 4: hardcoded fallback with common zones
-        if [[ -z $zones ]]; then
-            zones="America/New_York America/Chicago America/Denver America/Los_Angeles
-        America/Toronto America/Mexico_City
-        Europe/London Europe/Paris Europe/Berlin Europe/Madrid Europe/Rome
-        Europe/Amsterdam Europe/Stockholm Europe/Moscow
-        Asia/Tokyo Asia/Shanghai Asia/Singapore Asia/Dubai Asia/Kolkata
-        Australia/Sydney Pacific/Auckland
-        UTC"
-        fi
-        
-        TIMEZONE=$(echo "$zones" | gum filter \
-            --header="Timezone (type to filter)" \
-            --header.foreground="#7DD3FC" \
-            --height=15 \
-            --placeholder="e.g. America/New_York, Europe/London...") || die "Cancelled"
-                
-        # Locales: filter through glibc's supported locale list
-        # The list is at https://sourceware.org/git/?p=glibc.git;a=blob;f=localedata/SUPPORTED
-        # On NixOS it's available in the glibc-locales store path
-        LOCALE=$(listSupportedLocales | gum filter \
-            --header="Default locale (type to filter)" \
-            --header.foreground="#7DD3FC" \
-            --height=15 \
-            --placeholder="e.g. en_US.UTF-8, de_DE.UTF-8...") || die "Cancelled"
+        formFilter TIMEZONE "Timezone" "$(listSupportedTimezones)" "e.g. America/New_York, Europe/London..." \
+            || die "No timezones found"
+
+        formFilter LOCALE "Default locale" "$(listSupportedLocales)" "e.g. en_US.UTF-8, de_DE.UTF-8..." \
+            || die "No locale found"
             
         LOCALE_EXTRA=$LOCALE
 
-        # ── Wifi (optional) ───────────────────────────────────────────
-        formHeader "Wi-Fi (optional)"
-        if formConfirm "Add wifi networks?" "n"; then
+        # ── Hardware ──────────────────────────────────────────────────
+        formHeader "Hardware"
+        GPU=()
+        formMulti GPU "Select GPU. Both dGPU and iGPU" "nvidia" "amd" "intel"
+        
+        if formConfirm "Use nixos-hardware modules?" "n"; then            
+            HW_MODULES=()
+            if formConfirm "Add a specific model from nixos-hardware?" "n"; then
+                local models selection=""
+                models="$(listNixosHardwareModules || true)"
+                
+                if [[ -n $models ]] && formFilter selection "Search for your model" "$models" "e.g. apple-macbook-pro-8-1, asus-rog-strix-x570e, ..."; then
+                    HW_MODULES+=("$selection")
+                else
+                    formInputOpt selection "Module name" "https://github.com/NixOS/nixos-hardware"
+                    [[ -n $selection ]] && HW_MODULES+=("$selection")
+                fi
+            else
+                formMulti HW_MODULES "Common hardware modules (toggle what applies)" \
+                    "common-cpu-amd" "common-cpu-intel" \
+                    "common-gpu-amd" "common-gpu-intel" "common-gpu-nvidia" \
+                    "common-pc-laptop-hdd" "common-pc-ssd"
+            fi
+        fi
+
+        # ── Network (optional) ───────────────────────────────────────────
+        formHeader "Network (optional)"
+        WIFI='{}'
+        if formConfirm "Add wifi or other network(s)?" "n"; then
             gatherWifi
         fi
 
         # ── Dotfiles (optional) ───────────────────────────────────────
         formHeader "Dotfiles (optional)"
-        if formConfirm "Seed dotfiles from a source?" "n"; then
-            formInputOpt DOTFILES_SRC "Git URL or local path" "https://github.com/..."
+        if formConfirm "Clone dotfiles from a source?" "n"; then
+            formInputOpt DOTFILES_SRC "Git URL or local path" "https://github.com/... || ~/.config/..."
         fi
 
         # ── Summary ───────────────────────────────────────────────────
-        printHeader "Review Configuration"
+        formHeader "Review Configuration"
         showSummary
 
-        if formConfirm "Does this look correct?" "y"; then
+        if formConfirm "Is this correct?" "y"; then
             break
         fi
-        printWarn "Let's try again..."
+        logWarn "Redoing..."
     done
 
     # ── Derived state ─────────────────────────────────────────────────
@@ -555,11 +474,11 @@ gatherWifi() {
         formInput name "Connection name" "$ssid" "home"
 
         if jq -e --arg n "$name" 'has($n)' <<< "$WIFI" > /dev/null 2>&1; then
-            printWarn "'$name' is already configured"
+            logWarn "'$name' is already configured"
             continue
         fi
 
-        formPassword psk "WPA password (8-63 chars)"
+        formPassword psk "WPA password (8-63 chars)" false
 
         # Build the new network entry and merge it into WIFI
         WIFI=$(jq --argjson prev "$WIFI" \
@@ -572,7 +491,7 @@ gatherWifi() {
                 }
             }' <<< "{}")
 
-        printSuccess "Added '$name' (ssid: $ssid)"
+        logInfo "Added '$name' (ssid: $ssid)"
         formConfirm "Add another network?" "n" || break
     done
 }
@@ -590,7 +509,7 @@ showSummary() {
     (( wifi_count > 0 )) && wifi_str="$wifi_count network(s)"
 
     gum style --border="rounded" --padding="1 2" --margin="1 0" \
-        --border-foreground="#7DD3FC" <<EOF
+        <<EOF
   Hostname       $HOSTNAME
   Architecture   $SYSTEM
   Role           $ROLE${addons_str:+ + $addons_str}
@@ -604,51 +523,6 @@ showSummary() {
 EOF
 }
 
-# ── validate environment ─────────────────────────────────────────────────
-validate() {
-    printStep
-    local fail=0
-
-    check() {
-        local msg="$1"; shift
-        if "$@" > /dev/null 2>&1; then
-            printSuccess "$msg"
-        else
-            printError "$msg"
-            fail=1
-        fi
-    }
-
-    REPO_ROOT="$(gitRepo -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null || true)"
-
-    check "Interactive terminal" test -t 0
-    check "Config repo with flake.nix" test -f "$REPO_ROOT/flake.nix"
-
-    case "$METHOD" in
-        local)
-            check "Running NixOS" grep -qi nixos /etc/os-release
-            check "Root privileges" test "$EUID" -eq 0
-            if grep -q 'VARIANT_ID=installer' /etc/os-release 2>/dev/null; then
-                printWarn "This looks like the installer ISO — did you mean method 'iso'?"
-            fi
-            ;;
-        iso)
-            TARGET_ROOT="${TARGET_ROOT:-/mnt}"
-            check "Installer ISO" grep -q 'VARIANT_ID=installer' /etc/os-release
-            check "Root privileges" test "$EUID" -eq 0
-            check "Target mounted at $TARGET_ROOT" findmnt -M "$TARGET_ROOT"
-            ;;
-        remote)
-            : # no local prerequisites
-            ;;
-    esac
-
-    [[ $fail -eq 0 ]] || die "Fix the above and rerun"
-
-    cd "$REPO_ROOT"
-    printDebug "repo: $REPO_ROOT | target: ${TARGET_ROOT:-none}"
-}
-
 # ── resolve target ───────────────────────────────────────────────────────
 resolveTarget() {
     if [[ -n $TARGET_ROOT ]]; then
@@ -657,10 +531,10 @@ resolveTarget() {
     fi
 
     HOST_KEY_DIR="${TARGET_ROOT}/etc/ssh"
-    printDebug "host key dir: $HOST_KEY_DIR"
+    logDebug "host key dir: $HOST_KEY_DIR"
 
     if [[ -n $TARGET_ROOT ]]; then
-        printSuccess "Install target: $TARGET_ROOT"
+        logInfo "Install target: $TARGET_ROOT"
     fi
 }
 
@@ -671,32 +545,31 @@ resolveTarget() {
 #           target ~/.ssh by installRepo
 #   admin - one global recipient
 generateKeys() {
-    printStep
     formHeader "Key Generation"
 
     # Host key; reused when present
     HOST_KEY_FILE="$HOST_KEY_DIR/ssh_host_ed25519_key"
 
     if [[ -f "$HOST_KEY_FILE.pub" ]]; then
-        printSuccess "Host key: reusing $HOST_KEY_FILE"
+        logInfo "Host key: reusing $HOST_KEY_FILE"
     else
         run install -d -m 755 "$HOST_KEY_DIR"
         run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$HOST_KEY_FILE"
-        printSuccess "Host key: generated"
+        logInfo "Host key: generated"
     fi
-    printDebug "fingerprint: $(ssh-keygen -lf "$HOST_KEY_FILE.pub")"
+    logDebug "fingerprint: $(ssh-keygen -lf "$HOST_KEY_FILE.pub")"
     HOST_AGE="$(ssh-to-age < "$HOST_KEY_FILE.pub")"
-    printInfo "host age: $HOST_AGE"
+    logInfo "host age: $HOST_AGE"
 
     # User key
     local userKey="$KEYS_DIR/id_$USERNAME"
     run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$userKey"
     chmod 600 "$userKey"
     USER_PUB="$(< "$userKey.pub")"
-    printDebug "fingerprint: $(ssh-keygen -lf "$userKey.pub")"
+    logDebug "fingerprint: $(ssh-keygen -lf "$userKey.pub")"
     USER_AGE="$(ssh-to-age < "$userKey.pub")"
-    printSuccess "User key: generated"
-    printInfo "user age:  $USER_AGE"
+    logInfo "User key: generated"
+    logInfo "user age:  $USER_AGE"
 
     # Admin key
     local pub="${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}"
@@ -710,27 +583,26 @@ generateKeys() {
         derived="$(ssh-to-age < "$pub")"
     fi
     
-    printDebug "admin: existing anchor ${existing:-none}, derived ${derived:-none}"
+    logDebug "admin: existing anchor ${existing:-none}, derived ${derived:-none}"
 
     if [[ -n $existing ]]; then
         ADMIN_AGE="$existing"
-        printSuccess "Admin key: using the &admin anchor from .sops.yaml"
+        logInfo "Admin key: using the &admin anchor from .sops.yaml"
         if [[ -n $derived && $derived != "$existing" ]]; then
-            printWarn "$pub derives $derived, which does NOT match the &admin anchor"
-            printWarn "Secrets are encrypted to the anchor — that key file cannot decrypt them"
+            logWarn "$pub derives $derived, which does NOT match the &admin anchor"
+            logWarn "Secrets are encrypted to the anchor — that key file cannot decrypt them"
         fi
     elif [[ -n $derived ]]; then
         ADMIN_AGE="$derived"
-        printSuccess "Admin key: seeded from $pub"
+        logInfo "Admin key: seeded from $pub"
     else
-        printWarn "No admin key. Secrets will be readable by this host and user only"
+        logWarn "No admin key. Secrets will be readable by this host and user only"
     fi
-    [[ -n $ADMIN_AGE ]] && printInfo "admin age: $ADMIN_AGE"
+    [[ -n $ADMIN_AGE ]] && logInfo "admin age: $ADMIN_AGE"
 }
 
 # ── write .sops.yaml ─────────────────────────────────────────────────────
 writeSopsYaml() {
-    printStep
 
     if [[ ! -f .sops.yaml ]]; then
         cat > .sops.yaml <<'EOF'
@@ -739,7 +611,7 @@ keys:
   - &hosts:
 creation_rules:
 EOF
-        printSuccess "Created .sops.yaml"
+        logInfo "Created .sops.yaml"
     fi
 
     # insert LINE before the first line exactly matching MARKER
@@ -753,7 +625,7 @@ EOF
     }
 
     # Scrub previous entries for this host (no duplicates on re-run)
-    printDebug "scrubbing previous $HOSTNAME entries"
+    logDebug "scrubbing previous $HOSTNAME entries"
     awk -v userAnchor="    - &$USER_ANCHOR " \
         -v hostAnchor="    - &$HOST_ANCHOR " \
         -v rulePrefix="  - path_regex: hosts/$HOSTNAME/secrets" '
@@ -782,20 +654,20 @@ EOF
         printf '          - *%s\n' "$HOST_ANCHOR"
     } >> .sops.yaml
 
-    printSuccess "Added recipients and creation rule"
+    logInfo "Added recipients and creation rule"
 }
 
 # ── write secrets.json ───────────────────────────────────────────────────
 writeSecrets() {
-    printStep
 
     local hash
-    printInfo "Set the login password for '$USERNAME':"
-    hash="$(mkpasswd -m sha-512)"
+    formPassword pw "Login password for '$USERNAME'"
+    logInfo "Set the login password for '$USERNAME':"
+    hash="$(mkpasswd -m sha-512 --stdin <<< "$pw")"
 
     mkdir -p "$(dirname "$SECRETS")"
 
-    printDebug "jq -n --arg pw ... --rawfile key ... > $SECRETS"
+    logDebug "jq -n --arg pw ... --rawfile key ... > $SECRETS"
     jq -n \
         --arg pw  "$hash" \
         --rawfile key "$KEYS_DIR/id_$USERNAME" \
@@ -805,12 +677,11 @@ writeSecrets() {
         > "$SECRETS"
 
     run sops --encrypt --in-place "$SECRETS"
-    printSuccess "Encrypted $SECRETS"
+    logInfo "Encrypted $SECRETS"
 }
 
 # ── write host.json ──────────────────────────────────────────────────────
 writeHostJson() {
-    printStep
 
     local adminPub=""
     
@@ -860,12 +731,11 @@ writeHostJson() {
             }
         }' > "$HOST_DIR/host.json"
 
-    printSuccess "Wrote $HOST_DIR/host.json"
+    logInfo "Wrote $HOST_DIR/host.json"
 }
 
 # ── write hardware.nix ───────────────────────────────────────────────────
 writeHardwareNix() {
-    printStep
 
     local genArgs=(--show-hardware-config)
     
@@ -874,7 +744,7 @@ writeHardwareNix() {
     fi
 
     local body
-    printDebug "nixos-generate-config ${genArgs[*]}"
+    logDebug "nixos-generate-config ${genArgs[*]}"
     body="$(nixos-generate-config "${genArgs[@]}" \
         | sed -e '/^ *#/d' \
               -e '/^{ config, lib, pkgs, modulesPath, \.\.\. }:$/d' \
@@ -902,12 +772,11 @@ EOF
 EOF
     } > "$HOST_DIR/hardware.nix"
 
-    printSuccess "Wrote $HOST_DIR/hardware.nix"
+    logInfo "Wrote $HOST_DIR/hardware.nix"
 }
 
 # ── write profile.nix ────────────────────────────────────────────────────
 writeProfileNix() {
-    printStep
 
     mkdir -p "$HOST_DIR"
 
@@ -949,15 +818,14 @@ in
 }
 EOF
 
-    printSuccess "Wrote $HOST_DIR/profile.nix"
+    logInfo "Wrote $HOST_DIR/profile.nix"
 }
 
 # ── write dotfiles ───────────────────────────────────────────────────────
 writeDotfiles() {
-    printStep
 
     if [[ -z $DOTFILES_SRC ]]; then
-        printInfo "No dotfiles source — skipping"
+        logInfo "No dotfiles source — skipping"
         return 0
     fi
 
@@ -965,17 +833,17 @@ writeDotfiles() {
     mkdir -p "$dest"
 
     if [[ -d $DOTFILES_SRC ]]; then
-        printDebug "cp -rT $DOTFILES_SRC $dest"
+        logDebug "cp -rT $DOTFILES_SRC $dest"
         cp -rT "$DOTFILES_SRC" "$dest"
         rm -rf "$dest/.git"
-        printSuccess "Copied dotfiles from $DOTFILES_SRC"
+        logInfo "Copied dotfiles from $DOTFILES_SRC"
     else
         if run gitRepo clone --depth 1 "$DOTFILES_SRC" "$KEYS_DIR/dotfiles"; then
             cp -rT "$KEYS_DIR/dotfiles" "$dest"
             rm -rf "$dest/.git"
-            printSuccess "Cloned dotfiles from $DOTFILES_SRC"
+            logInfo "Cloned dotfiles from $DOTFILES_SRC"
         else
-            printWarn "Could not fetch $DOTFILES_SRC — continuing without"
+            logWarn "Could not fetch $DOTFILES_SRC — continuing without"
         fi
     fi
 }
@@ -983,57 +851,56 @@ writeDotfiles() {
 # ── verify ───────────────────────────────────────────────────────────────
 # Every failure mode that could lock you out, checked byte-exact
 verify() {
-    printStep
     local fail=0
 
     local userKey="$KEYS_DIR/id_$USERNAME"
     local hostKey="$HOST_KEY_FILE"
 
     local userAge hostAge
-    printDebug "ssh-to-age -private-key -i $userKey"
+    logDebug "ssh-to-age -private-key -i $userKey"
     userAge="$(ssh-to-age -private-key -i "$userKey")"
-    printDebug "ssh-to-age -private-key -i $hostKey"
+    logDebug "ssh-to-age -private-key -i $hostKey"
     hostAge="$(ssh-to-age -private-key -i "$hostKey")"
 
     # 1. host.json shape
     if jq -e '.hostname and .user.name and .system' "$HOST_DIR/host.json" > /dev/null; then
-        printSuccess "host.json is valid"
+        logInfo "host.json is valid"
     else
-        printError "host.json is malformed"
+        logError "host.json is malformed"
         fail=1
     fi
 
     # 2. user key decrypts
     if SOPS_AGE_KEY="$userAge" sops -d "$SECRETS" | jq -e '.userPassword and .userPrivateKey' > /dev/null; then
-        printSuccess "secrets.json decrypts with the user key"
+        logInfo "secrets.json decrypts with the user key"
     else
-        printError "User key cannot decrypt $SECRETS"
+        logError "User key cannot decrypt $SECRETS"
         fail=1
     fi
 
     # 3. host key decrypts — the lockout check
     if SOPS_AGE_KEY="$hostAge" sops -d --extract '["userPassword"]' "$SECRETS" > /dev/null; then
-        printSuccess "Host key decrypts its own secrets"
+        logInfo "Host key decrypts its own secrets"
     else
-        printError "Host key cannot decrypt $SECRETS — first boot would lock you out"
+        logError "Host key cannot decrypt $SECRETS"
         fail=1
     fi
 
     # 4. stored private key round-trips
     if SOPS_AGE_KEY="$userAge" sops -d --extract '["userPrivateKey"]' "$SECRETS" \
         | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1; then
-        printSuccess "Stored private key is valid"
+        logInfo "Stored private key is valid"
     else
-        printError "Stored private key is malformed"
+        logError "Stored private key is malformed"
         fail=1
     fi
 
     # 5. admin key (informational)
     if [[ -n $ADMIN_AGE ]]; then
         if sops -d --extract '["userPassword"]' "$SECRETS" > /dev/null 2>&1; then
-            printSuccess "Admin key on this machine decrypts the secrets"
+            logInfo "Admin key on this machine decrypts the secrets"
         else
-            printInfo "No admin private key on this machine (fine on the target itself)"
+            logInfo "No admin private key on this machine (fine on the target itself)"
         fi
     fi
 
@@ -1042,10 +909,9 @@ verify() {
 
 # ── handover ─────────────────────────────────────────────────────────────
 installRepo() {
-    printStep
 
     run chown -R 1000:100 "$REPO_ROOT"
-    printSuccess "Ownership: uid 1000 ($USERNAME)"
+    logInfo "Ownership: uid 1000 ($USERNAME)"
 
     local home="$TARGET_ROOT/home/$USERNAME"
     local target="$home/nixos-config"
@@ -1056,35 +922,34 @@ installRepo() {
     run install -m 600 "$KEYS_DIR/id_$USERNAME" "$sshDir/id_$USERNAME"
     run install -m 644 "$KEYS_DIR/id_$USERNAME.pub" "$sshDir/id_$USERNAME.pub"
     run chown 1000:100 "$home" "$sshDir" "$sshDir/id_$USERNAME" "$sshDir/id_$USERNAME.pub"
-    printSuccess "Seeded $sshDir/id_$USERNAME"
+    logInfo "Seeded $sshDir/id_$USERNAME"
 
     # Move repo to conventional location
     if [[ $REPO_ROOT == "$target" ]]; then
-        printSuccess "Repo is already at $target"
+        logInfo "Repo is already at $target"
     elif [[ -e $target ]]; then
-        printWarn "$target already exists. Leaving the repo at $REPO_ROOT"
+        logWarn "$target already exists. Leaving the repo at $REPO_ROOT"
     elif formConfirm "Move the repo to $target?" "y"; then
         run mv "$REPO_ROOT" "$target"
         REPO_ROOT="$target"
         cd "$REPO_ROOT"
-        printSuccess "Moved repo to $target"
+        logInfo "Moved repo to $target"
     else
-        printInfo "Keeping the repo at $REPO_ROOT"
+        logInfo "Keeping the repo at $REPO_ROOT"
     fi
 
     # Record runtime location in host.json
     local hostJson="$REPO_ROOT/hosts/$HOSTNAME/host.json"
     local runtimePath="${REPO_ROOT#"$TARGET_ROOT"}"
-    printDebug "repoPath: $runtimePath (from $REPO_ROOT)"
+    logDebug "repoPath: $runtimePath (from $REPO_ROOT)"
     jq --arg p "$runtimePath" '.repoPath = $p' "$hostJson" > "$hostJson.tmp"
     mv "$hostJson.tmp" "$hostJson"
     chown 1000:100 "$hostJson"
-    printSuccess "Recorded repo location: $runtimePath"
+    logInfo "Recorded repo location: $runtimePath"
 }
 
 # ── install ──────────────────────────────────────────────────────────────
 installSystem() {
-    printStep
     local flake="$REPO_ROOT#$HOSTNAME"
 
     case "$METHOD" in
@@ -1099,31 +964,31 @@ installSystem() {
 
             if [[ $action == skip ]]; then
                 APPLIED="skipped"
-                printInfo "Run when ready:"
-                printInfo "  sudo nixos-rebuild switch --flake $flake"
+                logInfo "Run when ready:"
+                logInfo "  sudo nixos-rebuild switch --flake $flake"
                 return 0
             fi
 
             local cmd=(nixos-rebuild "$action" --flake "$flake")
-            printInfo "Command: ${cmd[*]}"
+            logInfo "Command: ${cmd[*]}"
             "${cmd[@]}"
             APPLIED="$action"
-            printSuccess "nixos-rebuild $action finished"
+            logInfo "nixos-rebuild $action finished"
             ;;
 
         iso)
             # ISO: nixos-install to mounted target
             local cmd=(nixos-install --root "$TARGET_ROOT" --flake "$flake")
-            printInfo "Command: ${cmd[*]}"
+            logInfo "Command: ${cmd[*]}"
             if ! formConfirm "Install now?" "y"; then
                 APPLIED="skipped"
-                printInfo "Run when ready:"
-                printInfo "  ${cmd[*]}"
+                logInfo "Run when ready:"
+                logInfo "  ${cmd[*]}"
                 return 0
             fi
             "${cmd[@]}"
             APPLIED="installed"
-            printSuccess "Installed $HOSTNAME to $TARGET_ROOT"
+            logInfo "Installed $HOSTNAME to $TARGET_ROOT"
             ;;
 
         remote)
@@ -1132,90 +997,59 @@ installSystem() {
             formInput target "SSH target" "user@hostname"
 
             local cmd=(nixos-anywhere --flake "$flake" "$target")
-            printInfo "Command: ${cmd[*]}"
+            logInfo "Command: ${cmd[*]}"
             if ! formConfirm "Deploy now?" "y"; then
                 APPLIED="skipped"
-                printInfo "Run when ready:"
-                printInfo "  ${cmd[*]}"
+                logInfo "Run when ready:"
+                logInfo "  ${cmd[*]}"
                 return 0
             fi
             "${cmd[@]}"
             APPLIED="deployed"
-            printSuccess "Deployed $HOSTNAME to $target"
+            logInfo "Deployed $HOSTNAME to $target"
             ;;
     esac
 }
-
-
-# ── next steps ───────────────────────────────────────────────────────────
-printNextSteps() {
-    printHeader "Done"
-    printInfo "Review and commit:"
-    printInfo "  git -C $REPO_ROOT add . && git -C $REPO_ROOT commit -m 'feat: add host $HOSTNAME'"
-
-    case "$APPLIED" in
-        installed) printInfo "Then reboot into $HOSTNAME" ;;
-        boot)      printInfo "Then reboot to activate the configuration" ;;
-        switch)    printInfo "The configuration is live" ;;
-        deployed)  printInfo "Deployment complete" ;;
-        *)
-            case "$METHOD" in
-                local)
-                    printInfo "Build skipped. Run when ready:"
-                    printInfo "  sudo nixos-rebuild switch --flake $REPO_ROOT#$HOSTNAME"
-                    ;;
-                iso)
-                    printInfo "Install skipped. Run when ready:"
-                    printInfo "  nixos-install --root $TARGET_ROOT --no-root-passwd --flake $REPO_ROOT#$HOSTNAME"
-                    ;;
-                remote)
-                    printInfo "Deploy skipped. Run when ready:"
-                    printInfo "  nixos-anywhere --flake $REPO_ROOT#$HOSTNAME user@hostname"
-                    ;;
-            esac
-            ;;
-    esac
-}
-
 
 # ── main ─────────────────────────────────────────────────────────────────
 main() {
     clear
-    
     parseArgs "$@"
-    validate
+    method "$@"
+    clear
+    
+    [[ $VERBOSE == true ]] && export GUM_LOG_LEVEL=debug || export GUM_LOG_LEVEL=info
+
     resolveTarget
 
-    # Scratch space for key material — removed on exit
+    # Temp directory for key material
     KEYS_DIR="$(mktemp -d)"
     chmod 700 "$KEYS_DIR"
 
-    # Phase 1: gather all info via gum form
+    # Gather all info via gum form
     gatherForm
 
-    # Phase 2: write files
+    # Write files
     generateKeys
     writeSopsYaml
     writeSecrets
     writeHostJson
+    # writeDisko
     writeHardwareNix
     writeProfileNix
     writeDotfiles
 
-    # Flakes ignore untracked files — stage them without committing
-    run gitRepo add --intent-to-add .
+    # run gitRepo add --intent-to-add .
 
-    # Phase 3: verify
+    # Verify 
     verify
 
-    # Phase 4: install (method-dependent)
+    # Install
     case "$METHOD" in
         local) installSystem ;;
         iso) installRepo; installSystem ;;
         remote) installSystem ;;
     esac
-
-    printNextSteps
 }
 
 main "$@"
