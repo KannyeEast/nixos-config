@@ -13,7 +13,7 @@ hostDir:
             modules = [
                 nixos."${hostname}Configuration"
                 nixos."${hostname}Hardware"
-                #nixos."${hostname}Disko"
+                nixos."${hostname}Disko"
             ] ++ map (role: nixos.${role}) host.roles;
     
             # Planned additions: DevEnv, Docker (compose), Disko, Impermanence

@@ -8,10 +8,9 @@ set -Eeuo pipefail
 
 # ── state ────────────────────────────────────────────────────────────────
 # flags
-METHOD=""
+METHOD="local"
 VERBOSE=false
 TARGET_ROOT=""
-ADMIN_KEY=""
 
 # host.json fields
 HOSTNAME=""
@@ -29,12 +28,11 @@ LOCALE_EXTRA=""
 
 # Secrets / keys
 KEYS_DIR=""
-HOST_KEY_DIR="/etc/ssh"
+HOST_KEY_DIR="/persistent/etc/ssh"
 HOST_KEY_FILE=""
 HOST_AGE=""
 USER_AGE=""
 USER_PUB=""
-ADMIN_AGE=""
 HOST_ANCHOR=""
 USER_ANCHOR=""
 SECRETS=""
@@ -43,9 +41,6 @@ WIFI='{}'
 
 # Dotfiles
 DOTFILES_SRC=""
-
-# Install state
-APPLIED=""
 
 # ── palette ──────────────────────────────────────────────────────────────
 FG="#c6c8d1"
@@ -124,9 +119,7 @@ showFlags() {
 Usage: sudo ./installer.sh [OPTIONS]
 
 Options:
-      --method <TYPE>     local | iso | remote (nixos-anywhere)
-      --root <PATH>       iso: the mounted target (default: /mnt)
-      --admin-key <PATH>  Public half of the admin SSH key
+      --iso               Install from an ISO. This will wipe the target disk
   -v, --verbose           Show every command and its output
   -h, --help              This message
 EOF
@@ -135,17 +128,9 @@ EOF
 parseArgs() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --method)
-                [[ -n ${2:-} ]] || { printf -- '--method needs a value\n' >&2; exit 1; }
-                METHOD="$2"; shift 2 ;;
-            --root)
-                [[ -n ${2:-} ]] || { printf -- '--root needs a path\n' >&2; exit 1; }
-                TARGET_ROOT="${2%/}"
-                shift 2 ;;
-            --admin-key)
-                [[ -n ${2:-} ]] || { printf -- '--admin-key needs a path\n' >&2; exit 1; }
-                ADMIN_KEY="$2"
-                shift 2 ;;
+            --iso)
+                METHOD="iso"
+                shift ;;
             -v|--verbose) VERBOSE=true; shift ;;
             -h|--help) showFlags; exit 0 ;;
             *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
@@ -158,38 +143,19 @@ declare -A MODULE_PKGS=(
     [base]="gum git jq"
     [locales]="glibcLocales"
     [secrets]="age mkpasswd openssh sops ssh-to-age"
-    [iso]="nixos-install-tools"
-    [remote]="nixos-anywhere"
+    [iso]="nixos-install-tools disko"
 )
 
-# ── bootstrap ────────────────────────────────────────────────────────────
-# Phase 1: outside nix-shell. No gum, no jq, just bare bash.
-# Ask the method, assemble packages, re-exec inside nix-shell.
-method() {
+# ── nix-shell ────────────────────────────────────────────────────────────
+# Enter nix-shell with install method depending packages
+shell() {
     if [[ -z ${IN_NIX_SHELL:-} ]]; then
-        if [[ -z $METHOD ]]; then
-            printf '\n\033[1;32m── Install method ──────────────────────────\033[0m\n'
-            printf '    1) local   - this machine, running NixOS\n'
-            printf '    2) iso     - installer ISO with a mounted target\n'
-            printf '    3) remote  - generate host files for another machine\n'
-            read -rp '    choice [1]: ' reply
-            case "${reply:-1}" in
-                1) METHOD="local" ;;
-                2) METHOD="iso" ;;
-                3) METHOD="remote" ;;
-                *) printf 'pick 1-3\n' >&2; exit 1 ;;
-            esac
-        fi
-    
-        # Method → modules mapping
         MODULES=("base" "secrets" "locales")
         case "$METHOD" in
-            local)  : ;;  # nixos-rebuild is already on NixOS
-            iso)    MODULES+=("iso") ;;
-            remote) MODULES+=("remote") ;;
+            local) : ;;
+            iso) MODULES+=("iso") ;;
         esac
     
-        # Build the package list from enabled modules
         pkgs=""
         for mod in "${MODULES[@]}"; do
             pkgs+=" ${MODULE_PKGS[$mod]}"
@@ -347,6 +313,11 @@ listSupportedLocales() {
     fi
 }
 
+# ── disk list ──────────────────────────────────────────────────────────
+listDisks() {
+    lsblk -dno NAME,SIZE,MODEL -e 7,11 2>/dev/null | awk 'NF'
+}
+
 # ── validation helpers ───────────────────────────────────────────────────
 # validateHostname — loops formInput until the hostname passes regex + uniqueness
 validateHostname() {
@@ -396,7 +367,6 @@ gatherForm() {
 
         validateUsername
         formInputOpt USEREMAIL "Email" "$USERNAME@$HOSTNAME"
-        # sshKeys are generated, not asked — collected in generateKeys
 
         # ── Locale ────────────────────────────────────────────────────
         formHeader "Locale"
@@ -412,10 +382,10 @@ gatherForm() {
         # ── Hardware ──────────────────────────────────────────────────
         formHeader "Hardware"
         GPU=()
+        HW_MODULES=()
         formMulti GPU "Select GPU. Both dGPU and iGPU" "nvidia" "amd" "intel"
         
         if formConfirm "Use nixos-hardware modules?" "n"; then            
-            HW_MODULES=()
             if formConfirm "Add a specific model from nixos-hardware?" "n"; then
                 local models selection=""
                 models="$(listNixosHardwareModules || true)"
@@ -443,6 +413,7 @@ gatherForm() {
 
         # ── Dotfiles (optional) ───────────────────────────────────────
         formHeader "Dotfiles (optional)"
+        DOTFILES_SRC=""
         if formConfirm "Clone dotfiles from a source?" "n"; then
             formInputOpt DOTFILES_SRC "Git URL or local path" "https://github.com/... || ~/.config/..."
         fi
@@ -524,85 +495,36 @@ EOF
 
 # ── resolve target ───────────────────────────────────────────────────────
 resolveTarget() {
-    if [[ -n $TARGET_ROOT ]]; then
-        TARGET_ROOT="${TARGET_ROOT%/}"
-        [[ -d $TARGET_ROOT ]] || die "--root: $TARGET_ROOT is not a directory"
-    fi
-
-    HOST_KEY_DIR="${TARGET_ROOT}/etc/ssh"
-    logDebug "host key dir: $HOST_KEY_DIR"
-
-    if [[ -n $TARGET_ROOT ]]; then
-        logInfo "Install target: $TARGET_ROOT"
-    fi
+    [[ $METHOD == iso ]] && TARGET_ROOT="/mnt" || TARGET_ROOT=""
+    logDebug "target: ${TARGET_ROOT:-/}"
 }
 
 # ── generate keys ────────────────────────────────────────────────────────
-# Three recipients of secrets.json:
-#   host  - decrypts at activation (sops-nix, via sshKeyPaths)
-#   user  - generated into temp dir, stored in secrets.json, seeded into
-#           target ~/.ssh by installRepo
-#   admin - one global recipient
-generateKeys() {
-    formHeader "Key Generation"
-
-    # Host key; reused when present
-    HOST_KEY_FILE="$HOST_KEY_DIR/ssh_host_ed25519_key"
-
-    if [[ -f "$HOST_KEY_FILE.pub" ]]; then
-        logInfo "Host key: reusing $HOST_KEY_FILE"
-    else
-        run install -d -m 755 "$HOST_KEY_DIR"
-        run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$HOST_KEY_FILE"
-        logInfo "Host key: generated"
-    fi
-    logDebug "fingerprint: $(ssh-keygen -lf "$HOST_KEY_FILE.pub")"
-    HOST_AGE="$(ssh-to-age < "$HOST_KEY_FILE.pub")"
-    logInfo "host age: $HOST_AGE"
-
-    # User key
+generateUserKey() {
     local userKey="$KEYS_DIR/id_$USERNAME"
+    
     run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$userKey"
     chmod 600 "$userKey"
     USER_PUB="$(< "$userKey.pub")"
-    logDebug "fingerprint: $(ssh-keygen -lf "$userKey.pub")"
     USER_AGE="$(ssh-to-age < "$userKey.pub")"
-    logInfo "User key: generated"
-    logInfo "user age:  $USER_AGE"
-
-    # Admin key
-    local pub="${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}"
-    local existing="" derived=""
-
-    if [[ -f .sops.yaml ]]; then
-        existing="$(sed -n 's/^[[:space:]]*- &admin \(age1[0-9a-z]*\).*/\1/p' .sops.yaml | head -n1)"
-    fi
     
-    if [[ -r $pub ]]; then
-        derived="$(ssh-to-age < "$pub")"
-    fi
-    
-    logDebug "admin: existing anchor ${existing:-none}, derived ${derived:-none}"
+    logDebug "User fingerprint: $(ssh-keygen -lf "$userKey.pub")"
+    logInfo "User age key: $USER_AGE"
+}
 
-    if [[ -n $existing ]]; then
-        ADMIN_AGE="$existing"
-        logInfo "Admin key: using the &admin anchor from .sops.yaml"
-        if [[ -n $derived && $derived != "$existing" ]]; then
-            logWarn "$pub derives $derived, which does NOT match the &admin anchor"
-            logWarn "Secrets are encrypted to the anchor — that key file cannot decrypt them"
-        fi
-    elif [[ -n $derived ]]; then
-        ADMIN_AGE="$derived"
-        logInfo "Admin key: seeded from $pub"
-    else
-        logWarn "No admin key. Secrets will be readable by this host and user only"
-    fi
-    [[ -n $ADMIN_AGE ]] && logInfo "admin age: $ADMIN_AGE"
+generateHostKey() {
+    HOST_KEY_FILE="$KEYS_DIR/ssh_host_ed25519_key"
+
+    run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$HOST_KEY_FILE"
+
+    HOST_AGE="$(ssh-to-age < "$HOST_KEY_FILE.pub")"
+
+    logDebug "Host fingerprint: $(ssh-keygen -lf "$HOST_KEY_FILE.pub")"
+    logInfo "Host age key: $HOST_AGE"
 }
 
 # ── write .sops.yaml ─────────────────────────────────────────────────────
 writeSopsYaml() {
-
     if [[ ! -f .sops.yaml ]]; then
         cat > .sops.yaml <<'EOF'
 keys:
@@ -637,10 +559,6 @@ EOF
     ' .sops.yaml > .sops.yaml.tmp
     mv .sops.yaml.tmp .sops.yaml
 
-    if [[ -n $ADMIN_AGE ]] && ! grep -q -- "- &admin " .sops.yaml; then
-        insertBefore "    - &admin $ADMIN_AGE" "  - &hosts:"
-    fi
-
     insertBefore "    - &$USER_ANCHOR $USER_AGE" "  - &hosts:"
     insertBefore "    - &$HOST_ANCHOR $HOST_AGE" "creation_rules:"
 
@@ -648,7 +566,7 @@ EOF
         printf '  - path_regex: %s$\n' "${SECRETS//./\\.}"
         printf '    key_groups:\n'
         printf '      - age:\n'
-        [[ -n $ADMIN_AGE ]] && printf '          - *admin\n'
+        grep -q -- '- &admin ' .sops.yaml && printf '          - *admin\n'
         printf '          - *%s\n' "$USER_ANCHOR"
         printf '          - *%s\n' "$HOST_ANCHOR"
     } >> .sops.yaml
@@ -658,9 +576,8 @@ EOF
 
 # ── write secrets.json ───────────────────────────────────────────────────
 writeSecrets() {
-
     local hash
-    logInfo "Set the login password for '$USERNAME':"
+    
     formPassword userPw "Login password for '$USERNAME'"
     hash="$(printf '%s' "$userPw" | mkpasswd -m sha-512 --stdin)"
 
@@ -681,25 +598,19 @@ writeSecrets() {
 
 # ── write host.json ──────────────────────────────────────────────────────
 writeHostJson() {
-
-    local adminPub=""
-    
-    if [[ -r ${ADMIN_KEY:-$REPO_ROOT/id_admin.pub} ]]; then
-        adminPub="$(< "${ADMIN_KEY:-$REPO_ROOT/id_admin.pub}")"
-    fi
-
     local rolesJson gpuJson modulesJson keysJson
+    
     rolesJson=$(printf '%s\n' "$ROLE" "${ADDONS[@]}" | jq -R . | jq -sc 'map(select(. != ""))')
     gpuJson=$(printf '%s\n' "${GPU[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
     modulesJson=$(printf '%s\n' "${HW_MODULES[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
-    keysJson=$(printf '%s\n%s\n' "$USER_PUB" "$adminPub" | jq -R . | jq -sc 'map(select(. != ""))')
+    keysJson=$(printf '%s\n' "$USER_PUB" | jq -R . | jq -sc 'map(select(. != ""))')
 
     mkdir -p "$HOST_DIR"
 
     jq -n \
         --arg hostname "$HOSTNAME" \
         --arg system "$SYSTEM" \
-        --arg repoPath "$REPO_ROOT" \
+        --arg repoPath "/home/${USERNAME}/nixos-config" \
         --arg userName "$USERNAME" \
         --arg userEmail "${USEREMAIL:-}" \
         --arg tz "$TIMEZONE" \
@@ -733,10 +644,9 @@ writeHostJson() {
     logInfo "Wrote $HOST_DIR/host.json"
 }
 
-# ── write hardware.nix ───────────────────────────────────────────────────
+# ── hardware.nix ───────────────────────────────────────────────────
 writeHardwareNix() {
-
-    local genArgs=(--show-hardware-config)
+    local genArgs=(--show-hardware-config --no-filesystems)
     
     if [[ -n $TARGET_ROOT ]]; then
         genArgs+=(--root "$TARGET_ROOT")
@@ -773,8 +683,115 @@ EOF
 
     logInfo "Wrote $HOST_DIR/hardware.nix"
 }
+# ── disko.nix ───────────────────────────────────────────────────
+writeDiskoNix() {
+    formHeader "Disko"
 
-# ── write profile.nix ────────────────────────────────────────────────────
+    local disk dev
+    logWarn "The disk will be wiped"
+    formFilter disk "Choose target disk" "$(listDisks)" "" \
+        || die "No disks found"
+        
+    dev="/dev/$(awk '{print $1}' <<< "$disk")"
+    logInfo "Selected disk: $dev"
+
+    mkdir -p "$HOST_DIR"
+
+    cat > "$HOST_DIR/disko.nix" <<'DISKOEOF'
+{ inputs, ... }:
+let
+    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
+    device = "@DEVICE@";
+in
+{
+    flake.modules.nixos."${hostname}Disko" = { lib, ... }:
+    {
+        imports = [ inputs.disko.nixosModules.disko ];
+
+        config = {
+            zramSwap.enable = true;
+
+            boot.initrd.postResumeCommands = lib.mkAfter ''
+                mkdir -p /btrfs_tmp
+                mount -o subvol=/ /dev/disk/by-partlabel/disk-main-root /btrfs_tmp
+
+                if [[ -e /btrfs_tmp/@root ]]; then
+                    mkdir -p /btrfs_tmp/@old_roots
+                    timestamp=$(date --date="@$(stat -c %Y /btrfs_tmp/@root)" "+%Y-%m-%d_%H:%M:%S")
+                    mv /btrfs_tmp/@root "/btrfs_tmp/@old_roots/$timestamp"
+                fi
+
+                delete_subvolume_recursively() {
+                    IFS=$'\n'
+                    for i in $(btrfs subvolume list -o "$1" | cut -f 9- -d ' '); do
+                        delete_subvolume_recursively "/btrfs_tmp/$i"
+                    done
+                    btrfs subvolume delete "$1"
+                }
+
+                for i in $(find /btrfs_tmp/@old_roots/ -maxdepth 1 -mtime +30 2>/dev/null); do
+                    delete_subvolume_recursively "$i"
+                done
+
+                btrfs subvolume snapshot /btrfs_tmp/@root-blank /btrfs_tmp/@root
+                umount /btrfs_tmp
+            '';
+
+            disko.devices.disk.main = {
+                inherit device;
+                type = "disk";
+                content = {
+                    type = "gpt";
+                    partitions = {
+                        ESP = {
+                            type = "EF00";
+                            size = "512M";
+                            content = {
+                                type = "filesystem";
+                                format = "vfat";
+                                mountpoint = "/boot";
+                                mountOptions = [ "umask=0077" ];
+                            };
+                        };
+                        root = {
+                            size = "100%";
+                            content = {
+                                type = "btrfs";
+                                extraArgs = [ "-f" ];
+                                subvolumes = {
+                                    "@root" = {
+                                        mountpoint = "/";
+                                        mountOptions = [ "compress=zstd" "noatime" ];
+                                    };
+                                    "@root-blank" = { };
+                                    "@nix" = {
+                                        mountpoint = "/nix";
+                                        mountOptions = [ "compress=zstd" "noatime" ];
+                                    };
+                                    "@persistent" = {
+                                        mountpoint = "/persistent";
+                                        mountOptions = [ "compress=zstd" "noatime" ];
+                                    };
+                                    "@home" = {
+                                        mountpoint = "/home";
+                                        mountOptions = [ "compress=zstd" "noatime" ];
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+    };
+}
+DISKOEOF
+
+    sed -i "s|@DEVICE@|$dev|" "$HOST_DIR/disko.nix"
+    logInfo "Wrote $HOST_DIR/disko.nix (btrfs + impermanence, $dev)"
+}
+
+# ── profile.nix ────────────────────────────────────────────────────
 writeProfileNix() {
 
     mkdir -p "$HOST_DIR"
@@ -894,127 +911,75 @@ verify() {
         fail=1
     fi
 
-    # 5. admin key (informational)
-    if [[ -n $ADMIN_AGE ]]; then
-        if sops -d --extract '["userPassword"]' "$SECRETS" > /dev/null 2>&1; then
-            logInfo "Admin key on this machine decrypts the secrets"
-        else
-            logInfo "No admin private key on this machine (fine on the target itself)"
-        fi
-    fi
-
     [[ $fail -eq 0 ]] || die "Verification failed"
+}
+
+# ── host key placement ───────────────────────────────────────────────────
+# Copy the staged host key onto the persisted subvolume. Must run AFTER the
+# target is mounted (iso: after `disko ... mount`; local: /persistent already
+# exists) and BEFORE nixos-install/nixos-rebuild activates sops.
+installHostKey() {
+    local dir="$TARGET_ROOT/persistent/etc/ssh"
+
+    run install -d -m 755 "$dir"
+    run install -m 600 "$HOST_KEY_FILE"     "$dir/ssh_host_ed25519_key"
+    run install -m 644 "$HOST_KEY_FILE.pub" "$dir/ssh_host_ed25519_key.pub"
+    logInfo "Installed host key to $dir"
 }
 
 # ── handover ─────────────────────────────────────────────────────────────
 installRepo() {
-
-    run chown -R 1000:100 "$REPO_ROOT"
-    logInfo "Ownership: uid 1000 ($USERNAME)"
-
     local home="$TARGET_ROOT/home/$USERNAME"
-    local target="$home/nixos-config"
-
-    # Seed the user key
     local sshDir="$home/.ssh"
+    local repoTarget="$home/nixos-config"
+
     run install -d -m 700 "$sshDir"
     run install -m 600 "$KEYS_DIR/id_$USERNAME" "$sshDir/id_$USERNAME"
     run install -m 644 "$KEYS_DIR/id_$USERNAME.pub" "$sshDir/id_$USERNAME.pub"
-    run chown 1000:100 "$home" "$sshDir" "$sshDir/id_$USERNAME" "$sshDir/id_$USERNAME.pub"
-    logInfo "Seeded $sshDir/id_$USERNAME"
 
-    # Move repo to conventional location
-    if [[ $REPO_ROOT == "$target" ]]; then
-        logInfo "Repo is already at $target"
-    elif [[ -e $target ]]; then
-        logWarn "$target already exists. Leaving the repo at $REPO_ROOT"
-    elif formConfirm "Move the repo to $target?" "y"; then
-        run mv "$REPO_ROOT" "$target"
-        REPO_ROOT="$target"
-        cd "$REPO_ROOT"
-        logInfo "Moved repo to $target"
-    else
-        logInfo "Keeping the repo at $REPO_ROOT"
+    if [[ $REPO_ROOT != "$repoTarget" && ! -e $repoTarget ]]; then
+        run mkdir -p "$home"
+        run cp -rT "$REPO_ROOT" "$repoTarget"
     fi
 
-    # Record runtime location in host.json
-    local hostJson="$REPO_ROOT/hosts/$HOSTNAME/host.json"
-    local runtimePath="${REPO_ROOT#"$TARGET_ROOT"}"
-    logDebug "repoPath: $runtimePath (from $REPO_ROOT)"
-    jq --arg p "$runtimePath" '.repoPath = $p' "$hostJson" > "$hostJson.tmp"
-    mv "$hostJson.tmp" "$hostJson"
-    chown 1000:100 "$hostJson"
-    logInfo "Recorded repo location: $runtimePath"
+    run chown -R 1000:100 "$home"
+    logInfo "Handed keys + repo to uid 1000 ($USERNAME) at $repoTarget"
 }
 
 # ── install ──────────────────────────────────────────────────────────────
 installSystem() {
+    formConfirm "Install the configuration now?" "y" || { logWarn "Skipped install"; return 0; }
+    
     local flake="$REPO_ROOT#$HOSTNAME"
-
     case "$METHOD" in
         local)
-            # Local: nixos-rebuild with switch/boot/skip choice
-            local action
-            formChoose action "Apply the configuration" \
-                "switch - build and activate now" \
-                "boot   - activate on next reboot" \
-                "skip   - just print the command"
-            action="${action%% *}"
-
-            if [[ $action == skip ]]; then
-                APPLIED="skipped"
-                logInfo "Run when ready:"
-                logInfo "  sudo nixos-rebuild switch --flake $flake"
-                return 0
-            fi
-
-            local cmd=(nixos-rebuild "$action" --flake "$flake")
-            logInfo "Command: ${cmd[*]}"
-            "${cmd[@]}"
-            APPLIED="$action"
-            logInfo "nixos-rebuild $action finished"
+            # System already runs on the layout; /persistent is mounted.
+            installHostKey
+            run nixos-rebuild boot --flake "$flake"
             ;;
-
         iso)
-            # ISO: nixos-install to mounted target
-            local cmd=(nixos-install --root "$TARGET_ROOT" --flake "$flake")
-            logInfo "Command: ${cmd[*]}"
-            if ! formConfirm "Install now?" "y"; then
-                APPLIED="skipped"
-                logInfo "Run when ready:"
-                logInfo "  ${cmd[*]}"
-                return 0
-            fi
-            "${cmd[@]}"
-            APPLIED="installed"
-            logInfo "Installed $HOSTNAME to $TARGET_ROOT"
-            ;;
-
-        remote)
-            # Remote: nixos-anywhere
-            local target
-            formInput target "SSH target" "user@hostname"
-
-            local cmd=(nixos-anywhere --flake "$flake" "$target")
-            logInfo "Command: ${cmd[*]}"
-            if ! formConfirm "Deploy now?" "y"; then
-                APPLIED="skipped"
-                logInfo "Run when ready:"
-                logInfo "  ${cmd[*]}"
-                return 0
-            fi
-            "${cmd[@]}"
-            APPLIED="deployed"
-            logInfo "Deployed $HOSTNAME to $target"
+            # Partition + format + mount at /mnt (stays mounted), place the host
+            # key on the fresh /mnt/persistent, then install into it.
+            run disko --mode destroy,format,mount --flake "$flake"
+            installHostKey
+            run nixos-install --root /mnt --flake "$flake"
             ;;
     esac
+
+    installRepo
+    logInfo "Installed $HOSTNAME"
+
+    formConfirm "Reboot now?" "y" && { logInfo "Rebooting..."; reboot; }
 }
 
 # ── main ─────────────────────────────────────────────────────────────────
 main() {
     clear
     parseArgs "$@"
-    method "$@"
+    shell "$@"
+    REPO_ROOT="$(gitRepo -C "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" rev-parse --show-toplevel)" \
+            || die "Not inside the config git repo"
+        cd "$REPO_ROOT"
     clear
     
     [[ $VERBOSE == true ]] && export GUM_LOG_LEVEL=debug || export GUM_LOG_LEVEL=info
@@ -1027,28 +992,22 @@ main() {
 
     # Gather all info via gum form
     gatherForm
-
-    # Write files
-    generateKeys
-    writeSopsYaml
-    writeSecrets
+    generateUserKey
+    
+    # host files the flake needs before disko can evaluate
     writeHostJson
-    # writeDisko
+    writeDiskoNix
     writeHardwareNix
     writeProfileNix
+  
+    # now the rest
+    generateHostKey
+    writeSopsYaml
+    writeSecrets
     writeDotfiles
-
-    # run gitRepo add --intent-to-add .
-
-    # Verify 
+     
     verify
-
-    # Install
-    case "$METHOD" in
-        local) installSystem ;;
-        iso) installRepo; installSystem ;;
-        remote) installSystem ;;
-    esac
+    installSystem
 }
 
 main "$@"

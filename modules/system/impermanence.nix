@@ -10,7 +10,7 @@
         ];
         
         config = {
-            environment.persistence."/persist" = {
+            environment.persistence."/persistent" = {
                 hideMounts = true;
                 directories = [
                     "/var/lib/bluetooth"
