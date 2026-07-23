@@ -950,19 +950,18 @@ installRepo() {
 installSystem() {
     formConfirm "Install the configuration now?" "y" || { logWarn "Skipped install"; return 0; }
     
-    local flake="$REPO_ROOT#$HOSTNAME"
     case "$METHOD" in
         local)
             # System already runs on the layout; /persistent is mounted.
             installHostKey
-            run nixos-rebuild boot --flake "$flake"
+            run nixos-rebuild boot --flake ".#$HOSTNAME"
             ;;
         iso)
             # Partition + format + mount at /mnt (stays mounted), place the host
             # key on the fresh /mnt/persistent, then install into it.
-            run disko --mode destroy,format,mount --flake "$flake"
+            run disko --mode destroy,format,mount --flake ".#$HOSTNAME"
             installHostKey
-            run nixos-install --root /mnt --flake "$flake"
+            run nixos-install --root /mnt --flake ".#$HOSTNAME"
             ;;
     esac
 
@@ -974,7 +973,6 @@ installSystem() {
 
 # ── main ─────────────────────────────────────────────────────────────────
 main() {
-    clear
     parseArgs "$@"
     shell "$@"
     REPO_ROOT="$(gitRepo -C "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" rev-parse --show-toplevel)" \
