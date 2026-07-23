@@ -704,38 +704,57 @@ let
     device = "@DEVICE@";
 in
 {
-    flake.modules.nixos."${hostname}Disko" = { lib, ... }:
+    flake.modules.nixos."${hostname}Disko" = { pkgs, ... }:
     {
         imports = [ inputs.disko.nixosModules.disko ];
 
         config = {
             zramSwap.enable = true;
 
-            boot.initrd.postResumeCommands = lib.mkAfter ''
-                mkdir -p /btrfs_tmp
-                mount -o subvol=/ /dev/disk/by-partlabel/disk-main-root /btrfs_tmp
+            # Impermanence mounts /persistent in the stage-1 initrd, so it must
+            # be flagged neededForBoot (disko doesn't set this on its own).
+            fileSystems."/persistent".neededForBoot = true;
 
-                if [[ -e /btrfs_tmp/@root ]]; then
-                    mkdir -p /btrfs_tmp/@old_roots
-                    timestamp=$(date --date="@$(stat -c %Y /btrfs_tmp/@root)" "+%Y-%m-%d_%H:%M:%S")
-                    mv /btrfs_tmp/@root "/btrfs_tmp/@old_roots/$timestamp"
-                fi
+            # Ephemeral root. Under systemd stage-1 initrd this is a service, not
+            # boot.initrd.postResumeCommands. It runs once the root device exists
+            # and before sysroot is mounted: move the current @root aside, prune
+            # roots older than 30 days, then restore a pristine snapshot of
+            # @root-blank. Only @root is named — @nix/@persistent/@home survive.
+            boot.initrd.systemd.services.rollback = {
+                description = "Rollback btrfs root to a pristine snapshot";
+                wantedBy = [ "initrd.target" ];
+                after = [ "initrd-root-device.target" ];
+                before = [ "sysroot.mount" ];
+                unitConfig.DefaultDependencies = "no";
+                serviceConfig.Type = "oneshot";
+                script = ''
+                    btrfs=${pkgs.btrfs-progs}/bin/btrfs
 
-                delete_subvolume_recursively() {
-                    IFS=$'\n'
-                    for i in $(btrfs subvolume list -o "$1" | cut -f 9- -d ' '); do
-                        delete_subvolume_recursively "/btrfs_tmp/$i"
+                    mkdir -p /btrfs_tmp
+                    mount -o subvol=/ /dev/disk/by-partlabel/disk-main-root /btrfs_tmp
+
+                    if [[ -e /btrfs_tmp/@root ]]; then
+                        mkdir -p /btrfs_tmp/@old_roots
+                        timestamp=$(date --date="@$(stat -c %Y /btrfs_tmp/@root)" "+%Y-%m-%d_%H:%M:%S")
+                        mv /btrfs_tmp/@root "/btrfs_tmp/@old_roots/$timestamp"
+                    fi
+
+                    delete_subvolume_recursively() {
+                        IFS=$'\n'
+                        for i in $("$btrfs" subvolume list -o "$1" | cut -f 9- -d ' '); do
+                            delete_subvolume_recursively "/btrfs_tmp/$i"
+                        done
+                        "$btrfs" subvolume delete "$1"
+                    }
+
+                    for i in $(${pkgs.findutils}/bin/find /btrfs_tmp/@old_roots/ -maxdepth 1 -mtime +30); do
+                        delete_subvolume_recursively "$i"
                     done
-                    btrfs subvolume delete "$1"
-                }
 
-                for i in $(find /btrfs_tmp/@old_roots/ -maxdepth 1 -mtime +30 2>/dev/null); do
-                    delete_subvolume_recursively "$i"
-                done
-
-                btrfs subvolume snapshot /btrfs_tmp/@root-blank /btrfs_tmp/@root
-                umount /btrfs_tmp
-            '';
+                    "$btrfs" subvolume snapshot /btrfs_tmp/@root-blank /btrfs_tmp/@root
+                    umount /btrfs_tmp
+                '';
+            };
 
             disko.devices.disk.main = {
                 inherit device;
