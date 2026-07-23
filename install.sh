@@ -427,7 +427,7 @@ gatherWifi() {
     local name ssid psk
 
     while :; do
-        formInput name "Connection name" "$ssid" "home"
+        formInput name "Connection name" "" "home"
         formInput ssid "SSID (network name)" "" "my-network"
 
         if jq -e --arg n "$name" 'has($n)' <<< "$WIFI" > /dev/null 2>&1; then
