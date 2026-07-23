@@ -949,7 +949,12 @@ installRepo() {
 # ── install ──────────────────────────────────────────────────────────────
 installSystem() {
     formConfirm "Install the configuration now?" "y" || { logWarn "Skipped install"; return 0; }
-    
+
+    # Nix evaluates a flake from the git tree, excluding untracked files.
+    # Stage the new host files (no commit needed) so import-tree can see them
+    # and nixosConfigurations.$HOSTNAME actually exists.
+    run gitRepo add -A
+
     case "$METHOD" in
         local)
             # System already runs on the layout; /persistent is mounted.
@@ -1003,7 +1008,8 @@ main() {
     writeSopsYaml
     writeSecrets
     writeDotfiles
-     
+    
+    run gitRepo add --intent-to-add .
     verify
     installSystem
 }
