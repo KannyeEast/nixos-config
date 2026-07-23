@@ -427,8 +427,8 @@ gatherWifi() {
     local name ssid psk
 
     while :; do
-        formInput ssid "SSID (network name)" "" "my-network"
         formInput name "Connection name" "$ssid" "home"
+        formInput ssid "SSID (network name)" "" "my-network"
 
         if jq -e --arg n "$name" 'has($n)' <<< "$WIFI" > /dev/null 2>&1; then
             logWarn "'$name' is already configured"
@@ -851,22 +851,27 @@ writeDotfiles() {
         return 0
     fi
 
-    local dest="$HOST_DIR/home"
+    local src="$DOTFILES_SRC" dest="$HOST_DIR/home"
     mkdir -p "$dest"
 
-    if [[ -d $DOTFILES_SRC ]]; then
-        logDebug "cp -rT $DOTFILES_SRC $dest"
-        cp -rT "$DOTFILES_SRC" "$dest"
+    [[ $src == "~" || $src == "~/"* ]] && src="${src/#\~/$HOME}"
+    [[ $src != /* && -e $src ]] && src="$(readlink -f "$src")"
+
+    if [[ -d $src ]]; then
+        logDebug "cp -rT $src $dest"
+        cp -rT "$src" "$dest"
         rm -rf "$dest/.git"
-        logInfo "Copied dotfiles from $DOTFILES_SRC"
-    else
-        if run git -c safe.directory='*' clone --depth 1 "$DOTFILES_SRC" "$KEYS_DIR/dotfiles"; then
+        logInfo "Copied dotfiles from $src"
+    elif [[ $src == *://* || $src == *@*:* || $src == *.git ]]; then
+        if run git -c safe.directory='*' clone --depth 1 "$src" "$KEYS_DIR/dotfiles"; then
             cp -rT "$KEYS_DIR/dotfiles" "$dest"
             rm -rf "$dest/.git"
-            logInfo "Cloned dotfiles from $DOTFILES_SRC"
+            logInfo "Cloned dotfiles from $src"
         else
-            logWarn "Could not fetch $DOTFILES_SRC — continuing without"
+            logWarn "Could not clone $src — continuing without"
         fi
+    else
+        logWarn "Dotfiles source '$src' is not a directory or a git URL — skipping"
     fi
 }
 
@@ -961,17 +966,20 @@ installSystem() {
     # and nixosConfigurations.$HOSTNAME actually exists.
     run git -c safe.directory='*' add -A
 
+    # These commands are interactive and/or stream their own progress: disko
+    # asks to confirm the wipe, nixos-install/rebuild print build logs. They must
+    # NOT go through run() — gum spin hides stdin/stdout, so any prompt hangs
+    # invisibly (which is what stalled the install). Talk to the terminal
+    # directly. --no-root-passwd keeps nixos-install non-interactive.
     case "$METHOD" in
         local)
             installHostKey
-            run nixos-rebuild boot --flake ".#$HOSTNAME"
+            nixos-rebuild boot --flake ".#$HOSTNAME"
             ;;
         iso)
-            run disko --mode destroy,format,mount --flake ".#$HOSTNAME"
+            disko --mode destroy,format,mount --flake ".#$HOSTNAME"
             installHostKey
-            # --no-root-passwd: the user logs in via their own account; without
-            # it nixos-install prompts for a root password and hangs the spinner.
-            run nixos-install --root /mnt --flake ".#$HOSTNAME" --no-root-passwd
+            nixos-install --root /mnt --flake ".#$HOSTNAME" --no-root-passwd
             ;;
     esac
 
