@@ -91,12 +91,10 @@ run() {
     logDebug "\$ $*"
     if [[ $VERBOSE == true ]]; then "$@"; return; fi
 
-    local out rc=0
-    out="$(mktemp)"
-    "$@" > "$out" 2>&1 || rc=$?
-    (( rc == 0 )) || { logError "Command failed: $*"; sed 's/^/    /' "$out" >&2; }
-    rm -f "$out"
-    return "$rc"
+    # Spinner while the command runs; --show-error prints the captured output
+    # only if it fails. Note: gum spin execs the command directly, so it can't
+    # call shell functions (e.g. gitRepo) — pass real binaries.
+    gum spin --title "$*" --show-error -- "$@"
 }
 
 # ── traps ────────────────────────────────────────────────────────────────
@@ -295,22 +293,11 @@ listSupportedTimezones() {
 
 # ── locale list ──────────────────────────────────────────────────────────
 listSupportedLocales() {
-    # Source 1: glibc-locales in nix store (most reliable in nix-shell)
-    local glibcLocales
-    glibcLocales=$(nix-build --no-out-link '<nixpkgs>' -A glibc-locales 2>/dev/null || true)
-    if [[ -n $glibcLocales && -f $glibcLocales/lib/locale/locale-archive ]]; then
-        # We can't easily list from the archive, so use locale -a if available
-        if command -v locale &>/dev/null; then
-            locale -a 2>/dev/null | grep -i utf | sort -u
-            return
-        fi
-    fi
-
-    # Source 2: locale -a if the command exists
-    if command -v locale &>/dev/null; then
-        locale -a 2>/dev/null | grep -i utf | sort -u
-        return
-    fi
+    command -v locale &>/dev/null || return 1
+    locale -a 2>/dev/null \
+        | grep -iE '\.utf-?8$' \
+        | sed -E 's/\.utf-?8$/.UTF-8/I' \
+        | sort -u
 }
 
 # ── disk list ──────────────────────────────────────────────────────────
@@ -873,7 +860,7 @@ writeDotfiles() {
         rm -rf "$dest/.git"
         logInfo "Copied dotfiles from $DOTFILES_SRC"
     else
-        if run gitRepo clone --depth 1 "$DOTFILES_SRC" "$KEYS_DIR/dotfiles"; then
+        if run git -c safe.directory='*' clone --depth 1 "$DOTFILES_SRC" "$KEYS_DIR/dotfiles"; then
             cp -rT "$KEYS_DIR/dotfiles" "$dest"
             rm -rf "$dest/.git"
             logInfo "Cloned dotfiles from $DOTFILES_SRC"
@@ -972,20 +959,19 @@ installSystem() {
     # Nix evaluates a flake from the git tree, excluding untracked files.
     # Stage the new host files (no commit needed) so import-tree can see them
     # and nixosConfigurations.$HOSTNAME actually exists.
-    run gitRepo add -A
+    run git -c safe.directory='*' add -A
 
     case "$METHOD" in
         local)
-            # System already runs on the layout; /persistent is mounted.
             installHostKey
             run nixos-rebuild boot --flake ".#$HOSTNAME"
             ;;
         iso)
-            # Partition + format + mount at /mnt (stays mounted), place the host
-            # key on the fresh /mnt/persistent, then install into it.
             run disko --mode destroy,format,mount --flake ".#$HOSTNAME"
             installHostKey
-            run nixos-install --root /mnt --flake ".#$HOSTNAME"
+            # --no-root-passwd: the user logs in via their own account; without
+            # it nixos-install prompts for a root password and hangs the spinner.
+            run nixos-install --root /mnt --flake ".#$HOSTNAME" --no-root-passwd
             ;;
     esac
 
@@ -1028,7 +1014,7 @@ main() {
     writeSecrets
     writeDotfiles
     
-    run gitRepo add --intent-to-add .
+    run git -c safe.directory='*' add --intent-to-add .
     verify
     installSystem
 }
