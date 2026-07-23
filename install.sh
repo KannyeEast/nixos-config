@@ -48,41 +48,40 @@ DOTFILES_SRC=""
 APPLIED=""
 
 # ── palette ──────────────────────────────────────────────────────────────
-ACCENT="#b4befe"   # headers, cursors, borders, prompts, spinner
-MATCH="#89dceb"    # filter match highlight
-CHOICE="#a6e3a1"   # selected item
-MUTED="#6c7086"    # placeholders, unselected
-BASE="#1e1e2e"     # text on the accent background (confirm button)
+FG="#ffffff"       # headers, prompts, cursor
+MUTED="#6c7086"    # placeholders, unselected, borders
+ACCENT="#a6e3a1"   # the selected/matched item
+BASE="#1e1e2e"     # text on the accent background
 
 # ── gum theme ────────────────────────────────────────────────────────────
 export GUM_INPUT_PROMPT="  "
 export GUM_INPUT_WIDTH="60"
-export GUM_INPUT_CURSOR_FOREGROUND="$ACCENT"
-export GUM_INPUT_PROMPT_FOREGROUND="$ACCENT"
-export GUM_INPUT_HEADER_FOREGROUND="$ACCENT"
+export GUM_INPUT_CURSOR_FOREGROUND="$FG"
+export GUM_INPUT_PROMPT_FOREGROUND="$FG"
+export GUM_INPUT_HEADER_FOREGROUND="$FG"
 export GUM_INPUT_PLACEHOLDER_FOREGROUND="$MUTED"
 
 export GUM_CHOOSE_CURSOR="→ "
-export GUM_CHOOSE_HEADER_FOREGROUND="$ACCENT"
+export GUM_CHOOSE_HEADER_FOREGROUND="$FG"
 export GUM_CHOOSE_CURSOR_FOREGROUND="$ACCENT"
-export GUM_CHOOSE_SELECTED_FOREGROUND="$CHOICE"
+export GUM_CHOOSE_SELECTED_FOREGROUND="$ACCENT"
 
 export GUM_FILTER_INDICATOR="→"
-export GUM_FILTER_HEADER_FOREGROUND="$ACCENT"
+export GUM_FILTER_HEADER_FOREGROUND="$FG"
 export GUM_FILTER_INDICATOR_FOREGROUND="$ACCENT"
-export GUM_FILTER_MATCH_FOREGROUND="$MATCH"
+export GUM_FILTER_MATCH_FOREGROUND="$ACCENT"
 export GUM_FILTER_PLACEHOLDER_FOREGROUND="$MUTED"
-export GUM_FILTER_PROMPT_FOREGROUND="$ACCENT"
+export GUM_FILTER_PROMPT_FOREGROUND="$FG"
 
-export GUM_CONFIRM_PROMPT_FOREGROUND="$ACCENT"
+export GUM_CONFIRM_PROMPT_FOREGROUND="$FG"
 export GUM_CONFIRM_SELECTED_BACKGROUND="$ACCENT"
 export GUM_CONFIRM_SELECTED_FOREGROUND="$BASE"
 export GUM_CONFIRM_UNSELECTED_FOREGROUND="$MUTED"
 
-export GUM_SPIN_SPINNER_FOREGROUND="$ACCENT"
-export GUM_FILE_HEADER_FOREGROUND="$ACCENT"
+export GUM_SPIN_SPINNER_FOREGROUND="$FG"
+export GUM_FILE_HEADER_FOREGROUND="$FG"
 export GUM_FILE_CURSOR_FOREGROUND="$ACCENT"
-export GUM_FILE_DIRECTORY_FOREGROUND="$ACCENT"
+export GUM_FILE_DIRECTORY_FOREGROUND="$FG"
 
 # ── logging ──────────────────────────────────────────────────────────────
 logInfo() { gum log --level info "$*"; }
@@ -206,8 +205,8 @@ gitRepo() { git -c safe.directory='*' "$@"; }
 
 # ── gum wrappers ──────────────────────────────────────────
 formHeader() {
-    gum style --bold --foreground="$ACCENT" \
-        --border=rounded --border-foreground="$ACCENT" \
+    gum style --bold --foreground="$FG" \
+        --border=rounded --border-foreground="$MUTED" \
         --padding="0 2" --margin="1 0" "$*"
 }
 
@@ -499,9 +498,9 @@ gatherWifi() {
 showSummary() {
     local gpu_str modules_str addons_str
     local IFS=', '
-    gpu_str="${GPU[*]:-none}"
-    modules_str="${HW_MODULES[*]:-none}"
-    addons_str="${ADDONS[*]:-none}"
+    gpu_str="${GPU[*]:-skip}"
+    modules_str="${HW_MODULES[*]:-skip}"
+    addons_str="${ADDONS[*]:-skip}"
 
     local wifi_count wifi_str
     wifi_count="$(jq -r 'keys | length' <<< "$WIFI" 2>/dev/null || echo 0)"
@@ -660,9 +659,9 @@ EOF
 writeSecrets() {
 
     local hash
-    formPassword pw "Login password for '$USERNAME'"
     logInfo "Set the login password for '$USERNAME':"
-    hash="$(mkpasswd -m sha-512 --stdin <<< "$pw")"
+    formPassword pw "Login password for '$USERNAME'"
+    hash="$(printf '%s' "$pw" | mkpasswd -m sha-512 --stdin)"
 
     mkdir -p "$(dirname "$SECRETS")"
 
