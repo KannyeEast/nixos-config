@@ -92,7 +92,6 @@ logDebug() { gum log --level debug "$*"; }
 
 die() { logError "$1"; exit "${2:-1}"; }
 
-bash
 run() {
     logDebug "\$ $*"
     if [[ $VERBOSE == true ]]; then "$@"; return; fi
