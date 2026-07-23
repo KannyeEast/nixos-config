@@ -660,8 +660,8 @@ writeSecrets() {
 
     local hash
     logInfo "Set the login password for '$USERNAME':"
-    formPassword pw "Login password for '$USERNAME'"
-    hash="$(printf '%s' "$pw" | mkpasswd -m sha-512 --stdin)"
+    formPassword userPw "Login password for '$USERNAME'"
+    hash="$(printf '%s' "$userPw" | mkpasswd -m sha-512 --stdin)"
 
     mkdir -p "$(dirname "$SECRETS")"
 
