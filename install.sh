@@ -70,9 +70,6 @@ export GUM_CONFIRM_SELECTED_FOREGROUND="$BASE"
 export GUM_CONFIRM_UNSELECTED_FOREGROUND="$MUTED"
 
 export GUM_SPIN_SPINNER_FOREGROUND="$CURSOR"
-export GUM_FILE_HEADER_FOREGROUND="$FG"
-export GUM_FILE_CURSOR_FOREGROUND="$CURSOR"
-export GUM_FILE_DIRECTORY_FOREGROUND="$FG"
 
 # ── logging ────────
 logInfo() { gum log --level info "$*"; }
@@ -143,6 +140,7 @@ shell() {
         done
     
         printf "Fetching dependencies ..."
+        # shellcheck disable=SC2086
         exec nix-shell -p $pkgs --run "$(printf '%q ' bash "$0" "$@")"
     fi
 }
@@ -167,12 +165,6 @@ formInput() {
 formInputOpt() {
     local __var="$1" label="$2" placeholder="${3:-$2}" value
     value=$(gum input --header="$label" --placeholder="$placeholder") || true
-    printf -v "$__var" '%s' "$value"
-}
-
-formFile() {
-    local __var="$1" start="${2:-$HOME}" value
-    value=$(gum file --directory --all "$start") || die "Cancelled"
     printf -v "$__var" '%s' "$value"
 }
 
@@ -255,8 +247,7 @@ listNixosHardwareModules() {
 # == networks ==
 listWifiNetworks() {
     command -v nmcli &>/dev/null || return 1
-    nmcli -t -f SSID device wifi list --rescan yes 2>/dev/null \
-        | sed 's/\\:/:/g' | awk 'NF' | sort -u
+    nmcli -t -f SSID device wifi list --rescan no 2>/dev/null
 }
 
 # == timezones ==
@@ -293,6 +284,13 @@ listSupportedLocales() {
 # == disks ==
 listDisks() {
     lsblk -dno NAME,SIZE,MODEL -e 7,11 2>/dev/null | awk 'NF'
+}
+
+# == list directories ==
+listDirs() {
+    find "$HOME" -maxdepth 4 -type d \
+        \( -name .git -o -name .cache -o -name node_modules \) -prune -o \
+        -type d -print 2>/dev/null | sort
 }
 
 # ── information gathering ────────
@@ -424,7 +422,7 @@ gather() {
                         }
                     }' <<< "{}")
         
-                logInfo "Added '$name' (ssid: $ssid)"
+                logInfo "Added '$name' ($ssid)"
                 formConfirm "Add another network?" "n" || break
             done
         fi
@@ -437,9 +435,10 @@ gather() {
             formChoose DOTFILES_METHOD "Method" "path" "git clone" 
             
             if [[ $DOTFILES_METHOD == "path" ]]; then
-                formFile DOTFILES
+                formFilter DOTFILES "Select directory" "$(listDirs)" "enter path" \
+                    || die "No directories found"
             else
-                formInput DOTFILES "git repo to clone" "https://..."
+                formInput DOTFILES "git repo to clone" "enter link"
             fi
         fi
         
