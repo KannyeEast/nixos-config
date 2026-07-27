@@ -204,16 +204,14 @@ formConfirm() {
     local label="$1" default="${2:-n}"
     case "$default" in
         y|yes|1) default=true ;;
-        n|no|0) default=false ;;
-        *) default=false ;;
+        n|no|0)  default=false ;;
+        *)       default=false ;;
     esac
-    gum confirm --default="$default" "$label"
-    
     if gum confirm --default="$default" "$label"; then
-        gum style --foreground="$MUTED" "$label: yes"
+        gum style --foreground="$MUTED" "  $label: yes"
         return 0
     else
-        gum style --foreground="$MUTED" "$label: no"
+        gum style --foreground="$MUTED" "  $label: no"
         return 1
     fi
 }
@@ -338,7 +336,7 @@ gather() {
         
         formChoose ROLES "Primary role" "desktop" "server"
         if [[ $ROLES == "desktop" ]]; then
-            formMulti ADDONS "Add-ons (space to toggle)" "dev"
+            formMulti ADDONS "Add-ons" "dev"
         fi
 
         # == user ==
