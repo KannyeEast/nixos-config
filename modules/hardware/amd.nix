@@ -14,8 +14,6 @@ in
     
         config = mkIf amd.enable {
             hardware.graphics.enable32Bit = true;
-            
-            hardware.nvidia.prime.amdgpuBusId = "PCI:5@0:0:0";
             # These might not be supported on all (older) iGPUs
             # ROCm/HIP >> drop if you don't do GPU compute
             systemd.tmpfiles.rules = ["L+    /opt/rocm   -    -    -     -    ${pkgs.rocmPackages.clr}"];

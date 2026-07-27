@@ -19,6 +19,8 @@ in
                 nvidiaSettings = true;
                 modesetting.enable = true;
                 
+                prime.amdgpuBusId = "PCI:5@0:0:0";
+                prime.intelBusId = "PCI:0@0:2:0";
                 prime.nvidiaBusId = "PCI:1@0:0:0";
             };
             

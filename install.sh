@@ -886,7 +886,8 @@ write() {
 # ── install ────────
 install() {
     formConfirm "Install the configuration now?" "y" || { die "Skipped install"; }
-
+    
+    logWarn "The first install can take a while"
     nixos-install --root /mnt --flake .#"$HOSTNAME"
     nixos-enter --root /mnt
     
