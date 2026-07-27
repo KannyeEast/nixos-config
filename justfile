@@ -6,8 +6,8 @@ alias deploy := switch
 alias s := switch
 alias b := boot
 alias c := check
-alias cs := check-secrets
 alias es := edit-secrets
+alias sop := edit-secrets
 
 # Overview
 [group("default")]
@@ -64,40 +64,11 @@ inputs:
     nix flake metadata {{flake}}
 
 # ── secrets ────────────────────────────────────────────────────────────────────
-# Verify all secrets can be decrypted with current keys
-[group("secrets")]
-check-secrets:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Checking secrets ..."
-    for f in hosts/*/secrets.json; do
-        [ -e "$f" ] || continue
-        if sops --decrypt "$f" > /dev/null 2>&1;
-        then echo "OK $f";
-        else echo "FAIL $f";
-    fi
-    done
-
 # Edit this host's secrets
 [group("secrets")]
 edit-secrets:
     @sops --decrypt hosts/{{host}}/secrets.json > /dev/null
     sops hosts/{{host}}/secrets.json
-
-# Re-encrypt secrets to the recipients currently in .sops.yaml. Make sure you run this before removing the old key
-# @TODO: Widen the glob once secrets/shared.json exists (currently hosts/* only)
-# @TODO: 'adopt HOST' recipe - reinstall an existing host: extract hostPrivateKey
-# with the admin key, place at /etc/ssh, rebuild (needs hostPrivateKey in secrets)
-[group("secrets")]
-rekey: && check-secrets
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Rotating secrets..."
-    for f in hosts/*/secrets.json; do
-        [ -e "$f" ] || continue
-        echo "Rekeying $f"
-        sops updatekeys -y "$f"
-    done
 
 # ── maintenance ──────────────────────────────────────────────────────────────
 # Garbage-collect old generations
@@ -134,14 +105,13 @@ commit MESSAGE: stage
 # Push changes to repo
 [group("git")]
 push MESSAGE: (commit MESSAGE)
-    git push
+    git -C {{flake}} push all
 
 # Pull changes from the repo
 [group("git")]
 pull:
     git pull --rebase --autostash
 
-# @TODO: Exclude .sops.yaml from this
 # Sync dev branch to main
 [group("git")]
 sync:
@@ -149,11 +119,24 @@ sync:
     set -euo pipefail
     git switch main
     git rm -rq --ignore-unmatch .
-    git checkout dev -- . ":(exclude)hosts"
+    git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml"
     git checkout dev -- hosts/default
     git commit -m "Sync from dev" || echo "Nothing to sync."
     git push origin main
     git switch -
+
+# (Re)build the 'all' remote and pushes to every forge
+[group("git")]
+remotes:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd {{flake}}
+    git remote remove all 2>/dev/null || true
+    git remote add all git@codeberg.org:KanyeSouth/nixos-config.git
+    git remote set-url --add --push all git@codeberg.org:KanyeSouth/nixos-config.git
+    git remote set-url --add --push all git@github.com:KannyeEast/nixos-config.git
+    git remote set-url --add --push all git@gitlab.com:KanyeNorth/nixos-config.git
+    git remote set-url origin git@codeberg.org:KanyeSouth/nixos-config.git
 
 # ── private helpers ──────────────────────────────────────────────────────────
 # Make new files visible without committing them

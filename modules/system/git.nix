@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-    inherit (lib) concatMapStringsSep;
+    inherit (lib) concatMapStringsSep genAttrs;
 in
 {
     flake.modules.homeManager.git = { config, host, ... }:
@@ -32,9 +32,9 @@ in
                     };
 
                     url = {
-                        "ssh://git@github.com/".insteadOf = "https://github.com/";
-                        "https://gitlab.com/".insteadOf = "gitlab:";
-                        "https://codeberg.org/".insteadOf = "codeberg:";
+                        "ssh://git@github.com/".pushInsteadOf = "https://github.com/";
+                        "ssh://git@codeberg.org/".pushInsteadOf = "https://codeberg.org/";
+                        "ssh://git@gitlab.com/".pushInsteadOf = "https://gitlab.com/";
                     };
                 };
             };
@@ -42,17 +42,10 @@ in
             programs.ssh = {
                 enable = true;
                 enableDefaultConfig = false;
-                settings."github.com" = {
-                    # @TODO: Dedicated forge key (id_git) shared across hosts via a
-                    # shared sops file (secrets/shared.json) instead of registering
-                    # every per-host key on GitHub. Auth only - signing stays on the
-                    # per-host user key
-                    IdentityFile = [
-                        "${config.home.homeDirectory}/.ssh/id_${user.name}"
-                        "${config.home.homeDirectory}/.config/sops/age/id_admin" # @TODO@TEMP: Temporary admin key for ssh auth >> Remove when system stable
-                    ];
+                settings = genAttrs [ "github.com" "gitlab.com" "codeberg.org" ] (_: {
+                    IdentityFile = [ "${config.home.homeDirectory}/.ssh/id_${user.name}" ];
                     IdentitiesOnly = true;
-                };
+                });
             };
             
             # For now also GitHub

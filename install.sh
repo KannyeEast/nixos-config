@@ -506,6 +506,8 @@ EOF
 
 # ── partition disk ────────
 partition() {
+    formHeader "Partitioning";
+    
     cat > "$TEMP_DIR/disko.nix" <<EOF
 { ... }:
 let
@@ -566,6 +568,8 @@ EOF
 
 # ── generate ssh keys ────────
 generate() {
+    formHeader "Generating keys";
+    
     # == host keys ==
     run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$TEMP_DIR/ssh_host_ed25519_key"
     HOST_AGE="$(ssh-to-age < "$TEMP_DIR/ssh_host_ed25519_key.pub")"
@@ -877,6 +881,8 @@ writeDotfiles() {
 
 # ── writing all host relevant files ────────
 write() {
+    formHeader "Writing files";
+    
     mkdir -p "$FLAKE/hosts/$HOSTNAME"
     
     writeSopsYaml
@@ -904,6 +910,8 @@ write() {
 
 # ── install ────────
 installSystem() {
+    formHeader "Installing";
+    
     formConfirm "Install now?" "y" || die "Skipped install"
     
     # == host keys ==
@@ -911,7 +919,9 @@ installSystem() {
     run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" /mnt/persistent/etc/ssh/ssh_host_ed25519_key.pub
     run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" /mnt/persistent/etc/ssh/ssh_host_ed25519_key
     
+    # == install ==
     logWarn "First install can take a while"
+    logInfo "While waiting you can already register $USER_KEY to GitHub/GitLab/Codeberg/etc."
     nixos-install --root /mnt --flake .#"$HOSTNAME" --no-root-passwd
   
     # == user home ==
@@ -949,16 +959,9 @@ main() {
 
     gather
     
-    formHeader "Partitioning";
     partition
-    
-    formHeader "Generating keys";
     generate
-    
-    formHeader "Writing files";
     write
-    
-    formHeader "Installing";
     installSystem
 }
 
