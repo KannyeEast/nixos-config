@@ -160,12 +160,14 @@ formInput() {
         logWarn "$label cannot be empty"
     done
     printf -v "$__var" '%s' "$value"
+    gum style --foreground="$MUTED" "$label: $value"
 }
 
 formInputOpt() {
     local __var="$1" label="$2" placeholder="${3:-$2}" value
     value=$(gum input --header="$label" --placeholder="$placeholder") || true
     printf -v "$__var" '%s' "$value"
+    gum style --foreground="$MUTED" "$label: ${value:-skip}"
 }
 
 formPassword() {
@@ -186,6 +188,7 @@ formChoose() {
     local selected
     selected=$(gum choose --header="$label" --selected="$1" --height=15 "$@") || die "Cancelled"
     printf -v "$__var" '%s' "$selected"
+    gum style --foreground="$MUTED" "$label: $selected"
 }
 
 formMulti() {
@@ -194,6 +197,7 @@ formMulti() {
     selected=$(gum choose --no-limit --header="$label" --height=15 "$@") || true
     local -n __ref="$__var"
     [[ -n $selected ]] && mapfile -t __ref <<< "$selected" || __ref=()
+    gum style --foreground="$MUTED" "$label: ${__ref[*]:-none}"
 }
 
 formConfirm() {
@@ -204,6 +208,14 @@ formConfirm() {
         *) default=false ;;
     esac
     gum confirm --default="$default" "$label"
+    
+    if gum confirm --default="$default" "$label"; then
+        gum style --foreground="$MUTED" "$label: yes"
+        return 0
+    else
+        gum style --foreground="$MUTED" "$label: no"
+        return 1
+    fi
 }
 
 formFilter() {
@@ -214,6 +226,7 @@ formFilter() {
         --height=15 \
         --placeholder="$placeholder" <<< "$options") || die "Cancelled"
     printf -v "$__var" '%s' "$selected"
+    gum style --foreground="$MUTED" "  $label: $selected"
 }
 
 # ── filter lists ────────
@@ -482,45 +495,46 @@ let
     device = "$DISK";
 in
 {
-    disko.devices.disk.primary = {
+    disko.devices.disk.main = {
         inherit device;
         type = "disk";
         content = {
             type = "gpt";
             partitions = {
-            ESP = {
-                type = "EF00";
-                size = "512M";
-                content = {
-                    type = "filesystem";
-                    format = "vfat";
-                    mountpoint = "/boot";
-                    mountOptions = [
-                        "defaults"
-                        "umask=0077" 
-                    ];
+                ESP = {
+                    type = "EF00";
+                    size = "512M";
+                    content = {
+                        type = "filesystem";
+                        format = "vfat";
+                        mountpoint = "/boot";
+                        mountOptions = [
+                            "defaults"
+                            "umask=0077" 
+                        ];
+                    };
                 };
-            };
-            root = {
-                size = "100%";
-                content = {
-                    type = "btrfs";
-                    subvolumes = {
-                        "/root" = {
-                            mountpoint = "/";
-                            mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                        };
-                        "/nix" = {
-                            mountpoint = "/nix";
-                            mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                        };
-                        "/persistent" = {
-                            mountpoint = "/persistent";
-                            mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                        };
-                        "/home" = {
-                            mountpoint = "/home";
-                            mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                root = {
+                    size = "100%";
+                    content = {
+                        type = "btrfs";
+                        subvolumes = {
+                            "/root" = {
+                                mountpoint = "/";
+                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                            };
+                            "/nix" = {
+                                mountpoint = "/nix";
+                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                            };
+                            "/persistent" = {
+                                mountpoint = "/persistent";
+                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                            };
+                            "/home" = {
+                                mountpoint = "/home";
+                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                            };
                         };
                     };
                 };
@@ -530,7 +544,7 @@ in
 }
 EOF
 
-    disko --mode disko "$TEMP_DIR/disko.nix" --arg device "$DISK"
+    disko --mode destroy,format,mount "$TEMP_DIR/disko.nix"
 }
 
 # ── generate ssh keys ────────
@@ -721,7 +735,7 @@ in
     flake.modules.nixos."\${hostname}Disko" = { ... }: {
         imports = [ inputs.disko.nixosModules.disko ];
 
-        disko.devices.disk.primary = {
+        disko.devices.disk.main = {
             inherit device;
             type = "disk";
             content = {
