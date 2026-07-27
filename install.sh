@@ -387,14 +387,31 @@ gather() {
                 if [[ -n $models ]] && formFilter selection "Search for your model" "$models" "e.g. apple-macbook-pro-8-1, asus-rog-strix-x570e, ..."; then
                     HW_MODULES+=("$selection")
                 else
-                    formInputOpt selection "Module name" "https://github.com/NixOS/nixos-hardware"
+                    logInfo "https://github.com/NixOS/nixos-hardware"
+                    formInputOpt selection "Module name" ""
                     [[ -n $selection ]] && HW_MODULES+=("$selection")
                 fi
             else
-                formMulti HW_MODULES "Common hardware modules" \
-                    "common-cpu-amd" "common-cpu-intel" \
-                    "common-gpu-amd" "common-gpu-intel" "common-gpu-nvidia" \
-                    "common-pc-laptop-hdd" "common-pc-ssd"
+                local pick modules=(
+                    "AMD CPU|common-cpu-amd"
+                    "Intel CPU|common-cpu-intel-cpu-only"
+                    "Intel CPU + iGPU|common-cpu-intel"
+                    "AMD GPU|common-gpu-amd"
+                    "Intel GPU|common-gpu-intel"
+                    "NVIDIA GPU|common-gpu-nvidia-nonprime"
+                    "SSD|common-pc-laptop-ssd"
+                    "HDD|common-pc-laptop-hdd"
+                    "Laptop|common-pc-laptop"
+                    "HiDPI console|common-hidpi"
+                )
+
+                formMulti pick "Common hardware modules" "${modules[@]%%|*}"
+                
+                for p in "${pick[@]}"; do
+                    for m in "${modules[@]}"; do
+                        [[ ${m%%|*} == "$p" ]] && HW_MODULES+=("${m##*|}")
+                    done
+                done
             fi
         fi
         
