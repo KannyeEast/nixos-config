@@ -98,7 +98,7 @@ trapError() {
 trap trapError ERR
 
 cleanup() {
-    [[ -n ${KEYS_DIR:-} && -d ${KEYS_DIR:-} ]] && rm -rf "$KEYS_DIR"
+    [[ -n ${TEMP_DIR:-} && -d ${TEMP_DIR:-} ]] && rm -rf "$TEMP_DIR"
     printf '\033[?25h' >&2
 }
 trap cleanup EXIT
@@ -143,7 +143,7 @@ shell() {
         done
     
         printf "Fetching dependencies ..."
-        nix-shell -p "$pkgs" 
+        exec nix-shell -p "$pkgs" --run "$(printf '%q ' bash "$0" "$@")"
     fi
 }
 
@@ -496,7 +496,7 @@ in
                     mountpoint = "/boot";
                     mountOptions = [
                         "defaults"
-                        s"umask=0077" 
+                        "umask=0077" 
                     ];
                 };
             };
@@ -572,7 +572,7 @@ EOF
 
     # Scrub previous entries for this host (no duplicates on re-run)
     logDebug "scrubbing previous $HOSTNAME entries"
-    awk -v userAnchor="    - &'$USERNAME'_'$HOSTNAME' " \
+    awk -v userAnchor="    - &${USERNAME}_${HOSTNAME} " \
         -v hostAnchor="    - &$HOSTNAME " \
         -v rulePrefix="  - path_regex: hosts/$HOSTNAME/secrets" '
         index($0, userAnchor) == 1 { next }
@@ -584,14 +584,14 @@ EOF
     ' .sops.yaml > .sops.yaml.tmp
     mv .sops.yaml.tmp .sops.yaml
 
-    insertBefore "    - &'$USERNAME'_'$HOSTNAME' $USER_AGE" "  - &hosts:"
+    insertBefore "    - &${USERNAME}_${HOSTNAME} $USER_AGE" "  - &hosts:"
     insertBefore "    - &$HOSTNAME $HOST_AGE" "creation_rules:"
 
     {
-        printf '  - path_regex: %s$\n' "${SECRETS//./\\.}"
+        printf '  - path_regex: %s$\n' "hosts/$HOSTNAME/secrets\.json"
         printf '    key_groups:\n'
         printf '      - age:\n'
-        printf '          - *%s\n' "'$USERNAME'_'$HOSTNAME'"
+        printf '          - *%s\n' "${USERNAME}_${HOSTNAME}"
         printf '          - *%s\n' "$HOSTNAME"
     } >> .sops.yaml
     
@@ -735,7 +735,7 @@ in
                             mountpoint = "/boot";
                             mountOptions = [
                                 "defaults"
-                                s"umask=0077" 
+                                "umask=0077" 
                             ];
                         };
                     };
@@ -856,13 +856,13 @@ write() {
     writeDotfiles
     
     if formConfirm "Validate files?" "y"; then
-        run gum pager < "$FLAKE/.sops.yaml"
-        run gum pager < "$FLAKE/hosts/secrets.json"
-        run gum pager < "$FLAKE/hosts/host.json"
-        run gum pager < "$FLAKE/hosts/hardware.nix"
-        run gum pager < "$FLAKE/hosts/disko.nix"
-        run gum pager < "$FLAKE/hosts/profile.nix"
-        run ls -la -R "$FLAKE/hosts/home"
+        gum pager < "$FLAKE/.sops.yaml"
+        gum pager < "$FLAKE/hosts/$HOSTNAME/secrets.json"
+        gum pager < "$FLAKE/hosts/$HOSTNAME/host.json"
+        gum pager < "$FLAKE/hosts/$HOSTNAME/hardware.nix"
+        gum pager < "$FLAKE/hosts/$HOSTNAME/disko.nix"
+        gum pager < "$FLAKE/hosts/$HOSTNAME/profile.nix"
+        ls -la -R "$FLAKE/hosts/home"
     fi
 }
 
@@ -880,13 +880,15 @@ install() {
     
     # == user home ==
     run mkdir -p "/home/$USERNAME"
-    run chown -R "$USERNAME":users "/home/$USERNAME"
     run cp -rT "$FLAKE" "/home/$USERNAME/nixos-config" 
     
     # == user keys ==
     run install -d -m 700 "/home/$USERNAME/.ssh"
     run install -m 644 "$TEMP_DIR/id_$USERNAME.pub" "/home/$USERNAME/.ssh/id_$USERNAME.pub"
     run install -m 600 "$TEMP_DIR/id_$USERNAME" "/home/$USERNAME/.ssh/id_$USERNAME"
+
+    # == ownership ==
+    run chown -R 1000:100 "/home/$USERNAME"
 
     logInfo "Successfully installed $HOSTNAME"
 
