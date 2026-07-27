@@ -903,24 +903,23 @@ write() {
 }
 
 # ── install ────────
-install() {
+installSystem() {
     formConfirm "Install now?" "y" || die "Skipped install"
-    
-    logWarn "First install can take a while"
-    nixos-install --root /mnt --flake .#"$HOSTNAME" --no-root-passwd
     
     # == host keys ==
     run install -d -m 755 /mnt/persistent/etc/ssh
     run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" /mnt/persistent/etc/ssh/ssh_host_ed25519_key.pub
     run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" /mnt/persistent/etc/ssh/ssh_host_ed25519_key
     
+    logWarn "First install can take a while"
+    nixos-install --root /mnt --flake .#"$HOSTNAME" --no-root-passwd
+  
     # == user home ==
+    run install -d -m 755 "/mnt/home/$USERNAME"
     run cp -rT "$FLAKE" "/mnt/home/$USERNAME/nixos-config"
-    
     run install -d -m 700 "/mnt/home/$USERNAME/.ssh"
     run install -m 644 "$TEMP_DIR/id_$USERNAME.pub" "/mnt/home/$USERNAME/.ssh/id_$USERNAME.pub"
     run install -m 600 "$TEMP_DIR/id_$USERNAME" "/mnt/home/$USERNAME/.ssh/id_$USERNAME"
-    
     run chown -R 1000:100 "/mnt/home/$USERNAME"
 
     logInfo "Installed $HOSTNAME"
@@ -960,8 +959,7 @@ main() {
     write
     
     formHeader "Installing";
-    install
-    
+    installSystem
 }
 
 main "$@"
