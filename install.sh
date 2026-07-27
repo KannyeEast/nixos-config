@@ -208,12 +208,10 @@ formConfirm() {
         *)       default=false ;;
     esac
     if gum confirm --default="$default" "$label"; then
-        printf '\r\033[K'
-        gum style --foreground="$MUTED" "  $label: yes"
+        gum style --foreground="$MUTED" "$label: yes"
         return 0
     else
-        printf '\r\033[K'
-        gum style --foreground="$MUTED" "  $label: no"
+        gum style --foreground="$MUTED" "$label: no"
         return 1
     fi
 }
@@ -226,9 +224,7 @@ formFilter() {
         --height=15 \
         --placeholder="$placeholder" <<< "$options") || die "Cancelled"
     printf -v "$__var" '%s' "$selected"
-    
-    printf '\r\033[K'
-    gum style --foreground="$MUTED" "  $label: $selected"
+    gum style --foreground="$MUTED" "$label: $selected"
 }
 
 # ── filter lists ────────
@@ -879,7 +875,11 @@ write() {
         gum pager < "$FLAKE/hosts/$HOSTNAME/hardware.nix"
         gum pager < "$FLAKE/hosts/$HOSTNAME/disko.nix"
         gum pager < "$FLAKE/hosts/$HOSTNAME/profile.nix"
-        ls -la -R "$FLAKE/hosts/home"
+        ls -la -R "$FLAKE/hosts/$HOSTNAME/home"
+        
+        if formConfirm "Everything fine?" "n"; then
+          die "Remove created files and rerun script"
+        fi
     fi
 }
 
