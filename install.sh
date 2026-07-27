@@ -143,7 +143,7 @@ shell() {
         done
     
         printf "Fetching dependencies ..."
-        exec nix-shell -p "$pkgs" --run "$(printf '%q ' bash "$0" "$@")"
+        exec nix-shell -p $pkgs --run "$(printf '%q ' bash "$0" "$@")"
     fi
 }
 
