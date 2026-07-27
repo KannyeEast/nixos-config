@@ -208,9 +208,11 @@ formConfirm() {
         *)       default=false ;;
     esac
     if gum confirm --default="$default" "$label"; then
+        printf '\r\033[K'
         gum style --foreground="$MUTED" "  $label: yes"
         return 0
     else
+        printf '\r\033[K'
         gum style --foreground="$MUTED" "  $label: no"
         return 1
     fi
@@ -224,6 +226,8 @@ formFilter() {
         --height=15 \
         --placeholder="$placeholder" <<< "$options") || die "Cancelled"
     printf -v "$__var" '%s' "$selected"
+    
+    printf '\r\033[K'
     gum style --foreground="$MUTED" "  $label: $selected"
 }
 
@@ -649,7 +653,7 @@ writeHostJson() {
         --arg repoPath "/home/${USERNAME}/nixos-config" \
         --arg userName "$USERNAME" \
         --arg userEmail "$USEREMAIL" \
-        --argjson userKey "$USER_KEY" \
+        --arg userKey "$USER_KEY" \
         --arg tz "$TIMEZONE" \
         --arg locale "$LOCALE" \
         --arg extra "$LOCALE_EXTRA" \
@@ -664,7 +668,7 @@ writeHostJson() {
             user: {
                 name: $userName,
                 email: $userEmail,
-                sshKeys: $userKey
+                sshKeys: [ $userKey ]
             },
             hardware: {
                 gpu: $gpu,
