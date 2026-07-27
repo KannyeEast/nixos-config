@@ -139,7 +139,7 @@ shell() {
     
         pkgs=""
         for mod in "${MODULES[@]}"; do
-            pkgs+="${MODULE_PKGS[$mod]}"
+            pkgs+=" ${MODULE_PKGS[$mod]}"
         done
     
         printf "Fetching dependencies ..."
