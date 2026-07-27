@@ -23,17 +23,17 @@ todo:
 # ── system ───────────────────────────────────────────────────────────────────
 # Rebuild and activate the configuration
 [group("system")]
-switch *ARGS: _stage (_closed "zen-beta" "Zen")
+switch *ARGS: pull _stage (_closed "zen-beta" "Zen")
     nh os switch --ask {{flake}} -H {{host}} {{ARGS}}
 
 # Build and activate on the next reboot
 [group("system")]
-boot *ARGS: _stage
+boot *ARGS: pull _stage
     nh os boot --ask {{flake}} -H {{host}} {{ARGS}}
 
 # Build without activating
 [group("system")]
-build *ARGS: _stage && diff
+build *ARGS: pull _stage && diff
     nh os build {{flake}} -H {{host}} {{ARGS}}
 
 # Show what switching would change
@@ -43,19 +43,9 @@ diff:
 
 # Boot the config in a VM
 [group("system")]
-vm: _stage
+vm: pull _stage
     nixos-rebuild build-vm --flake {{flake}}#{{host}}
     ./result/bin/run-{{host}}-vm
-     
-# Roll back to the previous generation
-[group("system")]
-rollback:
-    sudo nixos-rebuild switch --rollback
-
-# List system generations
-[group("system")]
-generations:
-    nixos-rebuild list-generations
 
 # ── flake ────────────────────────────────────────────────────────────────────
 # Evaluate every output
@@ -151,21 +141,22 @@ push MESSAGE: (commit MESSAGE)
 pull:
     git pull --rebase --autostash
 
+# @TODO: Exclude .sops.yaml from this
 # Sync dev branch to main
 [group("git")]
-sync MESSAGE: (push MESSAGE)
+sync:
     #!/usr/bin/env bash
     set -euo pipefail
     git switch main
     git rm -rq --ignore-unmatch .
-    git checkout dev -- . ':(exclude)hosts'
+    git checkout dev -- . ":(exclude)hosts"
     git checkout dev -- hosts/default
     git commit -m "Sync from dev" || echo "Nothing to sync."
     git push origin main
     git switch -
 
 # ── private helpers ──────────────────────────────────────────────────────────
-# Flakes ignore untracked files — make new files visible without committing them
+# Make new files visible without committing them
 [private]
 _stage:
     @git -C {{flake}} add --intent-to-add .

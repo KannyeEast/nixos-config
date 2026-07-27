@@ -10,6 +10,8 @@
         ];
         
         config = {
+            fileSystems."/persistent".neededForBoot = true;
+
             environment.persistence."/persistent" = {
                 hideMounts = true;
                 directories = [

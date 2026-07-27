@@ -1,9 +1,0 @@
-keys:
-  - &users:
-    - &admin age1fv4c8lqxxuqvhl3pudpgrye4fggf6qm5623p9qrxxseju0ydxy0q7x9x56
-  - &hosts:
-creation_rules:
-  - path_regex: hosts/default/secrets\.json$
-    key_groups:
-      - age:
-          - *admin
