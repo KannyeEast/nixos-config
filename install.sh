@@ -247,7 +247,8 @@ listNixosHardwareModules() {
 # == networks ==
 listWifiNetworks() {
     command -v nmcli &>/dev/null || return 1
-    nmcli -t -f SSID device wifi list --rescan no 2>/dev/null
+    nmcli -t -f SSID device wifi list --rescan no 2>/dev/null \
+        | sed 's/\\:/:/g' | awk 'NF' | sort -u
 }
 
 # == timezones ==
@@ -288,9 +289,10 @@ listDisks() {
 
 # == list directories ==
 listDirs() {
-    find "$HOME" -maxdepth 4 -type d \
-        \( -name .git -o -name .cache -o -name node_modules \) -prune -o \
-        -type d -print 2>/dev/null | sort
+    find / -xdev -maxdepth 6 -type d \
+        \( -path /nix -o -path /proc -o -path /sys -o -path /dev -o -path /run \
+           -o -name .git -o -name .cache -o -name node_modules \) -prune -o \
+        -type d -print 2>/dev/null | sort -u
 }
 
 # ── information gathering ────────
