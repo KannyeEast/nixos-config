@@ -877,7 +877,7 @@ write() {
         gum pager < "$FLAKE/hosts/$HOSTNAME/profile.nix"
         ls -la -R "$FLAKE/hosts/$HOSTNAME/home"
         
-        if formConfirm "Everything fine?" "n"; then
+        if ! formConfirm "Everything fine?" "y"; then
           die "Remove created files and rerun script"
         fi
     fi
