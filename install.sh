@@ -80,10 +80,12 @@ logDebug() { gum log --level debug "$*"; }
 die() { logError "$1"; exit "${2:-1}"; }
 
 run() {
-    logDebug "\$ $*"
-    if [[ $VERBOSE == true ]]; then "$@"; return; fi
-
-    gum spin --title "$*" --show-error -- "$@"
+    if [[ $VERBOSE == true ]]; then
+        logDebug "\$ $*"
+        "$@"
+    else
+        gum spin --title "$*" --show-error -- "$@"
+    fi
 }
 
 # ── traps ────────
@@ -878,39 +880,34 @@ write() {
         ls -la -R "$FLAKE/hosts/$HOSTNAME/home"
         
         if ! formConfirm "Everything fine?" "y"; then
-          die "Remove created files and rerun script"
+            die "Remove created files and rerun script"
         fi
     fi
 }
 
 # ── install ────────
 install() {
-    formConfirm "Install the configuration now?" "y" || { die "Skipped install"; }
+    formConfirm "Install now?" "y" || die "Skipped install"
     
-    logWarn "The first install can take a while"
-    nixos-install --root /mnt --flake .#"$HOSTNAME"
-    nixos-enter --root /mnt
+    logWarn "First install can take a while"
+    nixos-install --root /mnt --flake .#"$HOSTNAME" --no-root-passwd
     
     # == host keys ==
-    run install -d -m 755 "/persistent/etc/ssh"
-    run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" "/persistent/etc/ssh/ssh_host_ed25519_key.pub"
-    run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" "/persistent/etc/ssh/ssh_host_ed25519_key"
+    run install -d -m 755 /mnt/persistent/etc/ssh
+    run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" /mnt/persistent/etc/ssh/ssh_host_ed25519_key.pub
+    run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" /mnt/persistent/etc/ssh/ssh_host_ed25519_key
     
     # == user home ==
-    run mkdir -p "/home/$USERNAME"
-    run cp -rT "$FLAKE" "/home/$USERNAME/nixos-config" 
+    run cp -rT "$FLAKE" "/mnt/home/$USERNAME/nixos-config"
     
-    # == user keys ==
-    run install -d -m 700 "/home/$USERNAME/.ssh"
-    run install -m 644 "$TEMP_DIR/id_$USERNAME.pub" "/home/$USERNAME/.ssh/id_$USERNAME.pub"
-    run install -m 600 "$TEMP_DIR/id_$USERNAME" "/home/$USERNAME/.ssh/id_$USERNAME"
+    run install -d -m 700 "/mnt/home/$USERNAME/.ssh"
+    run install -m 644 "$TEMP_DIR/id_$USERNAME.pub" "/mnt/home/$USERNAME/.ssh/id_$USERNAME.pub"
+    run install -m 600 "$TEMP_DIR/id_$USERNAME" "/mnt/home/$USERNAME/.ssh/id_$USERNAME"
+    
+    run chown -R 1000:100 "/mnt/home/$USERNAME"
 
-    # == ownership ==
-    run chown -R 1000:100 "/home/$USERNAME"
-
-    logInfo "Successfully installed $HOSTNAME"
-
-    formConfirm "Reboot now?" "y" || { die "Reboot manually"; }
+    logInfo "Installed $HOSTNAME"
+    formConfirm "Reboot now?" "y" || die "Reboot manually"
     reboot
 }
 
@@ -935,10 +932,19 @@ main() {
     chmod 700 "$TEMP_DIR"
 
     gather
+    
+    formHeader "Partitioning";
     partition
+    
+    formHeader "Generating keys";
     generate
+    
+    formHeader "Writing files";
     write
+    
+    formHeader "Installing";
     install
+    
 }
 
 main "$@"
