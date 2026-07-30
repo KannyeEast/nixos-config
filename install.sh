@@ -426,6 +426,28 @@ gather() {
             || die "No disks found"
         DISK="/dev/$(awk '{print $1}' <<< "$DISK")"
 
+        # == swap ==
+        formHeader "Swap"
+        SWAP=""
+        HIBERNATE=false
+        
+        ram=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1048576 ))
+        logInfo "Detected ${ram}GiB of RAM"
+        
+        if formConfirm "Enable hibernation?" "n"; then
+            HIBERNATE=true
+            swapDefault=$(( ram + 2 ))
+        else
+            swapDefault=$(( ram < 8 ? ram : 8 ))
+        fi
+        
+        while :; do
+            formInputOpt SWAP "Swap size in GiB" "$swapDefault"
+            SWAP="${SWAP:-$swapDefault}"
+            [[ $SWAP =~ ^[0-9]+$ ]] && (( SWAP > 0 )) && break
+            logWarn "Enter a whole number of GiB"
+        done
+
         # == Network (optional) ==
         formHeader "Network (optional)"
         WIFI='{}'
@@ -460,28 +482,6 @@ gather() {
                 formConfirm "Add another network?" "n" || break
             done
         fi
-        
-        # == swap ==
-        formHeader "Swap"
-        SWAP=""
-        HIBERNATE=false
-        
-        ram=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1048576 ))
-        logInfo "Detected ${ram}GiB of RAM"
-        
-        if formConfirm "Enable hibernation?" "n"; then
-            HIBERNATE=true
-            swapDefault=$(( ram + 2 ))
-        else
-            swapDefault=$(( ram < 8 ? ram : 8 ))
-        fi
-        
-        while :; do
-            formInputOpt SWAP "Swap size in GiB" "$swapDefault"
-            SWAP="${SWAP:-$swapDefault}"
-            [[ $SWAP =~ ^[0-9]+$ ]] && (( SWAP > 0 )) && break
-            logWarn "Enter a whole number of GiB"
-        done
 
         # == dotfiles (optional) ==
         formHeader "Dotfiles (optional)"
