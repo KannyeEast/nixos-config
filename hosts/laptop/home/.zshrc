@@ -25,7 +25,7 @@ transient-prompt() {
 add-zle-hook-widget zle-line-finish transient-prompt
 
 # ── behaviour ────────
-KEYTIMEOUT=10
+KEYTIMEOUT=1
 WORDCHARS=${WORDCHARS//[\/]}
 
 setopt AUTO_CD
@@ -57,6 +57,9 @@ bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 bindkey -M vicmd 'k' history-substring-search-up
 bindkey -M vicmd 'j' history-substring-search-down
+bindkey -M viins '^Xs' sudo-command-line
+bindkey -M vicmd '^Xs' sudo-command-line
+bindkey -M viins '^W' backward-kill-word
 
 # ── completion ────────
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
