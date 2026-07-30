@@ -84,10 +84,12 @@
                     };
 
                     "bing".metaData.hidden = true;
-                    "google".metaData.hidden = true;
                     "ddg".metaData.hidden = true;
                     "ebay".metaData.hidden = true;
                     "ecosia".metaData.hidden = true;
+                    "google".metaData.hidden = true;
+                    "perplexity".metaData.hidden = true;
+                    "wikipedia".metaData.hidden = true;
                 };
             };
         };

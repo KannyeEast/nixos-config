@@ -3,9 +3,9 @@ let
     inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
 {
-    imports = [
-        (import ../../lib/mkHost.nix ./.)
-    ];
+#    imports = [
+#        (import ../../lib/mkHost.nix ./.)
+#    ];
     
     flake.modules.nixos."${hostname}Configuration" = { pkgs, ... }:
     {

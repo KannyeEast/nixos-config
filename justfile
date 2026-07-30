@@ -102,7 +102,13 @@ stage:
 # Commit changes
 [group("git")]
 commit MESSAGE: stage
-    git -C {{flake}} commit -m "{{MESSAGE}}"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if git diff --cached --quiet; then
+        echo "Nothing to commit."
+    else
+        git commit -m "{{MESSAGE}}"
+    fi
 
 # Push changes to repo
 [group("git")]
@@ -119,15 +125,12 @@ pull:
 sync:
     #!/usr/bin/env bash
     set -euo pipefail
-    cd {{flake}}
-    
-    rev=$(git rev-parse --short dev)
-    
+
     git switch main 2>/dev/null || git switch -c main
     git rm -rq --ignore-unmatch .
     git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml"
     git checkout dev -- hosts/default
-    git commit -m "Sync from dev ($rev)" || echo "Nothing to sync."
+    git commit -m "Sync from dev ($(git rev-parse dev))" || echo "Nothing to sync."
     git push
     git switch dev
 
@@ -136,7 +139,6 @@ sync:
 remotes:
     #!/usr/bin/env bash
     set -euo pipefail
-    cd {{flake}}
     
     codeberg="git@codeberg.org:KanyeSouth/nixos-config.git"
     github="git@github.com:KannyeEast/nixos-config.git"

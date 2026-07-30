@@ -3,6 +3,7 @@ let
     inherit (config.flake.modules) homeManager;
 in
 {
+    # @TODO: Check if we can suppress the extensions forced window popup
     flake.modules.homeManager.browser = { ... }:
     {
         imports = [

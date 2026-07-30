@@ -8,8 +8,7 @@
         imports = [
             inputs.sops-nix.nixosModules.sops
         ];
-    
-        # @TODO: Shared sops file (secrets/shared.json) encrypted to admin + all
+
         config = {
             environment.systemPackages = [
                 pkgs.sops
