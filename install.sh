@@ -33,6 +33,8 @@ WIFI='{}'
 FLAKE=""
 TEMP_DIR=""
 DISK=""
+SWAP=""
+HIBERNATE=false
 DOTFILES_METHOD=""
 DOTFILES=""
 
@@ -458,6 +460,28 @@ gather() {
                 formConfirm "Add another network?" "n" || break
             done
         fi
+        
+        # == swap ==
+        formHeader "Swap"
+        SWAP=""
+        HIBERNATE=false
+        
+        ram=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1048576 ))
+        logInfo "Detected ${ram}GiB of RAM"
+        
+        if formConfirm "Enable hibernation?" "n"; then
+            HIBERNATE=true
+            swapDefault=$(( ram + 2 ))
+        else
+            swapDefault=$(( ram < 8 ? ram : 8 ))
+        fi
+        
+        while :; do
+            formInputOpt SWAP "Swap size in GiB" "$swapDefault"
+            SWAP="${SWAP:-$swapDefault}"
+            [[ $SWAP =~ ^[0-9]+$ ]] && (( SWAP > 0 )) && break
+            logWarn "Enter a whole number of GiB"
+        done
 
         # == dotfiles (optional) ==
         formHeader "Dotfiles (optional)"
@@ -492,6 +516,7 @@ gather() {
     Timezone       $TIMEZONE
     Locale         $LOCALE / $LOCALE_EXTRA
     Disk           $DISK
+    Swap           $SWAP
     Wi-Fi          ${wifi_str:-skip}
     Dotfiles       ${DOTFILES:-skip}
 EOF
@@ -531,6 +556,15 @@ in
                             "defaults"
                             "umask=0077" 
                         ];
+                    };
+                };
+                swap = {
+                    priority = 2;
+                    size = "${SWAP}G";
+                    content = {
+                        type = "swap";
+                        discardPolicy = "both";
+                        resumeDevice = $HIBERNATE;
                     };
                 };
                 root = {
@@ -773,6 +807,15 @@ in
                                 "defaults"
                                 "umask=0077" 
                             ];
+                        };
+                    };
+                    swap = {
+                        priority = 2;
+                        size = "${SWAP}G";
+                        content = {
+                            type = "swap";
+                            discardPolicy = "both";
+                            resumeDevice = $HIBERNATE;
                         };
                     };
                     root = {
