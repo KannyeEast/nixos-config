@@ -121,10 +121,4 @@ disabled = true
 # ── transient profile ────────
 [profiles]
 transient = "$character"
-rtransient = "$time"
-
-[time]
-disabled = false
-format = "[$time]($style)"
-style = "bright-black"
-time_format = "%H:%M"
+rtransient = "$cmd_duration"
