@@ -93,27 +93,26 @@ fmt:
         [[ "$reply" =~ ^[Yy]$ ]] && deadnix --edit .
     fi
 
-# @TODO: Git commands should probably use their just counterpart to keep sync in check
 # ── git ────────
 # Add changes to be committed
 [group("git")]
 stage:
-    git add .
+    git -C {{flake}} add .
 
 # Commit changes
 [group("git")]
 commit MESSAGE: stage
-    git commit -m "{{MESSAGE}}"
+    git -C {{flake}} commit -m "{{MESSAGE}}"
 
 # Push changes to repo
 [group("git")]
 push MESSAGE: (commit MESSAGE)
-    git -C {{flake}} push all
+    git -C {{flake}} push
 
 # Pull changes from the repo
 [group("git")]
 pull:
-    git pull --rebase --autostash
+    git -C {{flake}} pull --rebase --autostash
 
 # Sync dev branch to main
 [group("git")]
@@ -124,12 +123,12 @@ sync:
     
     rev=$(git rev-parse --short dev)
     
-    git switch main
+    git switch main 2>/dev/null || git switch -c main
     git rm -rq --ignore-unmatch .
     git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml"
     git checkout dev -- hosts/default
     git commit -m "Sync from dev ($rev)" || echo "Nothing to sync."
-    git push origin main
+    git push
     git switch dev
 
 # (Re)build the 'all' remote and pushes to every forge
@@ -153,10 +152,9 @@ remotes:
     
     git remote add origin "$codeberg"
     
-    git remote add all "$codeberg"
-    git remote set-url --add --push all "$codeberg"
-    git remote set-url --add --push all "$github"
-    git remote set-url --add --push all "$gitlab"
+    git remote set-url --add --push origin "$codeberg"
+    git remote set-url --add --push origin "$github"
+    git remote set-url --add --push origin "$gitlab"
     
     git fetch --all --prune
     git branch --set-upstream-to="origin/$(git branch --show-current)" 2>/dev/null || true
