@@ -1,0 +1,107 @@
+# ── debug ────────
+# `debug_zsh` reports startup timings
+if [ -n "${ZSH_DEBUGRC+1}" ]; then
+    zmodload zsh/zprof
+fi
+
+# ── prompt ────────
+eval "$(starship init zsh)"
+
+starship_transient_prompt_func() {
+    starship module character
+}
+enable_transience
+
+# ── behaviour ────────
+KEYTIMEOUT=1                    # no delay entering vi command mode
+WORDCHARS=${WORDCHARS//[\/.]}   # ^W stops at / and . instead of eating a path
+
+setopt AUTO_CD                  # bare directory name cds into it
+setopt GLOB_DOTS                # globs match dotfiles
+setopt INTERACTIVE_COMMENTS     # allow # comments while typing
+setopt NO_BEEP
+
+# ── history ────────
+HISTFILE=~/.zsh_history
+HISTSIZE=5000
+SAVEHIST=$HISTSIZE
+
+setopt APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt EXTENDED_HISTORY         # record timestamps
+setopt HIST_VERIFY              # expand !! for review instead of running it
+setopt HIST_REDUCE_BLANKS
+setopt HIST_IGNORE_SPACE        # skip lines that start with a space
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_SAVE_NO_DUPS
+setopt HIST_FIND_NO_DUPS
+
+# ── keybindings ────────
+bindkey -v
+zle-keymap-select() { zle reset-prompt }
+zle -N zle-keymap-select
+
+bindkey '^p' history-substring-search-up
+bindkey '^n' history-substring-search-down
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+bindkey -M vicmd 'k' history-substring-search-up
+bindkey -M vicmd 'j' history-substring-search-down
+
+# ── completion ────────
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' menu no
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
+
+# fzf-tab: directories list, everything else previews through bat
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --icons --color=always $realpath'
+zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'eza -1 --icons --color=always $realpath'
+zstyle ':fzf-tab:complete:*:*' fzf-preview \
+    '[ -d $realpath ] && eza -1 --icons --color=always $realpath || bat -n --color=always $realpath 2>/dev/null'
+zstyle ':fzf-tab:*' switch-group ',' '.'
+
+# ── fzf ────────
+# -1 means "terminal default", so the palette follows the terminal theme
+export FZF_DEFAULT_OPTS="
+  --height 40%
+  --layout reverse
+  --info inline
+  --border none
+  --prompt '  '
+  --pointer '>'
+  --marker '+'
+  --color 'fg:-1,bg:-1,hl:cyan'
+  --color 'fg+:regular:white,bg+:-1,hl+:cyan'
+  --color 'info:8,prompt:cyan,pointer:cyan,marker:green,spinner:8,header:8,border:8'
+"
+
+# ── aliases ────────
+alias ls='eza --icons -a --group-directories-first'
+alias ll='eza --icons -a -l --group-directories-first --git --header'
+alias lt='eza --icons -a -T -L 2 --group-directories-first'
+alias lls='eza --icons -a -lT -L 1 --git --header'
+
+alias grep='grep --color=auto'
+alias c='clear'
+alias debug_zsh='time ZSH_DEBUGRC=1 zsh -i -c exit'
+
+# ── functions ────────
+# ls after any directory change - covers cd, zoxide jumps and pushd
+chpwd() { ls }
+
+# don't append "command not found" to history
+# https://www.zsh.org/mla/users//2014/msg00715.html
+zshaddhistory() {
+    local j=1
+    while ([[ ${${(z)1}[$j]} == *=* ]]) {
+        ((j++))
+    }
+    whence ${${(z)1}[$j]} >| /dev/null || return 1
+}
+
+# ── debug ────────
+if [ -n "${ZSH_DEBUGRC+1}" ]; then
+    zprof
+fi
