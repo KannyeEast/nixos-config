@@ -1,4 +1,4 @@
-﻿{ inputs, ... }:
+{ inputs, ... }:
 {
     flake.modules.nixos.ide = { pkgs, ... }:
     let

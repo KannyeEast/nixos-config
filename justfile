@@ -1,6 +1,7 @@
 flake := env("NH_FLAKE", justfile_directory())
 host := shell("hostname -s")
 
+# ── aliases ────────
 alias bump := update
 alias deploy := switch
 alias s := switch
@@ -9,7 +10,7 @@ alias c := check
 alias es := edit-secrets
 alias sop := edit-secrets
 
-# Overview
+# ── overview ────────
 [group("default")]
 default:
     @just --list
@@ -20,7 +21,7 @@ todo:
     @echo TO-DOs in:
     @rg -g '!justfile' -C 5 TODO || echo "Everything's done!"
 
-# ── system ───────────────────────────────────────────────────────────────────
+# ── system ────────
 # Rebuild and activate the configuration
 [group("system")]
 switch *ARGS: pull _stage (_closed "zen-beta" "Zen")
@@ -47,7 +48,7 @@ vm: pull _stage
     nixos-rebuild build-vm --flake {{flake}}#{{host}}
     ./result/bin/run-{{host}}-vm
 
-# ── flake ────────────────────────────────────────────────────────────────────
+# ── flake ────────
 # Evaluate every output
 [group("flake")]
 check *ARGS: _stage
@@ -63,14 +64,14 @@ update *INPUTS: _stage
 inputs:
     nix flake metadata {{flake}}
 
-# ── secrets ────────────────────────────────────────────────────────────────────
+# ── secrets ────────
 # Edit this host's secrets
 [group("secrets")]
 edit-secrets:
     @sops --decrypt hosts/{{host}}/secrets.json > /dev/null
     sops hosts/{{host}}/secrets.json
 
-# ── maintenance ──────────────────────────────────────────────────────────────
+# ── maintenance ────────
 # Garbage-collect old generations
 [group("maintenance")]
 clean:
@@ -91,7 +92,7 @@ fmt:
         [[ "$reply" =~ ^[Yy]$ ]] && deadnix --edit .
     fi
 
-# ── git ──────────────────────────────────────────────────────────────────────
+# ── git ────────
 # Add changes to be committed
 [group("git")]
 stage:
@@ -138,7 +139,7 @@ remotes:
     git remote set-url --add --push all git@gitlab.com:KanyeNorth/nixos-config.git
     git remote set-url origin git@codeberg.org:KanyeSouth/nixos-config.git
 
-# ── private helpers ──────────────────────────────────────────────────────────
+# ── private helpers ────────
 # Make new files visible without committing them
 [private]
 _stage:

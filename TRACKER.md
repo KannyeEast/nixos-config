@@ -1,4 +1,4 @@
-﻿# Issue Tracker
+# Issue Tracker
 ## Simple checklist to keep track of functionality of all the modules
 
 ### Desktop
