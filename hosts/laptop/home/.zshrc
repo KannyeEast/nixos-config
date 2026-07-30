@@ -25,12 +25,12 @@ transient-prompt() {
 add-zle-hook-widget zle-line-finish transient-prompt
 
 # ── behaviour ────────
-KEYTIMEOUT=1                    # no delay entering vi command mode
-WORDCHARS=${WORDCHARS//[\/.]}   # ^W stops at / and . instead of eating a path
+KEYTIMEOUT=10
+WORDCHARS=${WORDCHARS//[\/]}
 
-setopt AUTO_CD                  # bare directory name cds into it
-setopt GLOB_DOTS                # globs match dotfiles
-setopt INTERACTIVE_COMMENTS     # allow # comments while typing
+setopt AUTO_CD
+setopt GLOB_DOTS
+setopt INTERACTIVE_COMMENTS
 setopt NO_BEEP
 
 # ── history ────────
@@ -40,18 +40,16 @@ SAVEHIST=$HISTSIZE
 
 setopt APPEND_HISTORY
 setopt SHARE_HISTORY
-setopt EXTENDED_HISTORY         # record timestamps
-setopt HIST_VERIFY              # expand !! for review instead of running it
+setopt EXTENDED_HISTORY
+setopt HIST_VERIFY
 setopt HIST_REDUCE_BLANKS
-setopt HIST_IGNORE_SPACE        # skip lines that start with a space
+setopt HIST_IGNORE_SPACE
 setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_SAVE_NO_DUPS
 setopt HIST_FIND_NO_DUPS
 
 # ── keybindings ────────
 bindkey -v
-zle-keymap-select() { zle reset-prompt }
-zle -N zle-keymap-select
 
 bindkey '^p' history-substring-search-up
 bindkey '^n' history-substring-search-down
