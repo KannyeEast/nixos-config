@@ -100,7 +100,6 @@ style = "bright-black"
 [character]
 success_symbol = "[❯](bold yellow)[❯](bold purple)[❯](bold blue)"
 error_symbol = "[❯](bold red)[❯](bold red)[❯](bold red)"
-vicmd_symbol = "[❮](bold green)[❮](bold green)[❮](bold green)"
 
 # ── off ────────
 # Language versions are noise; the nix shell already says what is available.
@@ -122,4 +121,10 @@ disabled = true
 # ── transient profile ────────
 [profiles]
 transient = "$character"
-rtransient = "$cmd_duration"
+rtransient = "$time"
+
+[time]
+disabled = false
+format = "[$time]($style)"
+style = "bright-black"
+time_format = "%H:%M"

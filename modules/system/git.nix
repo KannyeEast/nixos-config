@@ -9,7 +9,6 @@ in
     in
     {
         config = {
-            # Verifies our own signatures locally; the forges keep their own copy
             home.file.".ssh/allowed_signers".text =
                 concatMapStringsSep "\n" (key: "${user.email} ${key}") user.sshKeys + "\n";
 

@@ -11,6 +11,7 @@ alias es := edit-secrets
 alias sop := edit-secrets
 
 # ── overview ────────
+# This list
 [group("default")]
 default:
     @just --list
