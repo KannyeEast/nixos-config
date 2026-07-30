@@ -25,16 +25,6 @@
                 openssh.authorizedKeys.keys = user.sshKeys;
             };
             
-            services.openssh = {
-                enable = true;
-                openFirewall = true;
-                
-                hostKeys = [{
-                    path = "/persistent/etc/ssh/ssh_host_ed25519_key";
-                    type = "ed25519";
-                }];
-            };
-            
             security.sudo.extraConfig = "Defaults lecture=never";
             
             nix.settings.trusted-users = [

@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-    inherit (lib) concatMapStringsSep genAttrs;
+    inherit (lib) concatMapStringsSep;
 in
 {
     flake.modules.homeManager.git = { config, host, ... }:
@@ -9,81 +9,88 @@ in
     in
     {
         config = {
+            # Verifies our own signatures locally; the forges keep their own copy
             home.file.".ssh/allowed_signers".text =
                 concatMapStringsSep "\n" (key: "${user.email} ${key}") user.sshKeys + "\n";
-            
+
             programs.delta.enable = true;
             programs.delta.enableGitIntegration = true;
-            
+
             programs.git = {
                 enable = true;
-                
+
                 signing = {
                     format = "ssh";
                     signByDefault = true;
                     key = "${config.home.homeDirectory}/.ssh/id_${user.name}";
                 };
-                
+
                 settings = {
                     user.name = user.name;
                     user.email = user.email;
                     init.defaultBranch = "main";
                     gpg.ssh.allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
 
+                    # Show both sides plus the common ancestor in conflicts
+                    merge.conflictStyle = "zdiff3";
+                    # Remember conflict resolutions and replay them
+                    rerere.enabled = true;
+                    push.autoSetupRemote = true;
+                    pull.rebase = true;
+                    fetch.prune = true;
+                    diff.algorithm = "histogram";
+
                     alias = {
-                        # list commits in short form with branch/tag annotations
-                        ls = "log --pretty=format:'%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate";
-                        # show changed files
-                        ll = "log --pretty=format:'%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate --numstat";
-                        # list wihtout colors (unix piping)
-                        lnc = "log --pretty=format:'%h\\ %s\\ [%cn]'";
-                        # commits with dates
-                        lds = "log --pretty=format:'%C(yellow)%h\\ %ad%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate --date=short";
-                        # commits with relative dates
-                        ld = "log --pretty=format:'%C(yellow)%h\\ %ad%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate --date=relative";
-                        # git log
-                        le = "log --oneline --decorate";
-                        
-                        # history of a file
-                        filelog = "log -u";
+                        # ── log ────────
+                        l = "log --oneline --decorate";
+                        lg = "log --oneline --decorate --graph --all";
+                        ld = "log --pretty=format:'%C(yellow)%h %ad%Cred%d %Creset%s%Cblue [%cn]' --decorate --date=relative";
+                        lds = "log --pretty=format:'%C(yellow)%h %ad%Cred%d %Creset%s%Cblue [%cn]' --decorate --date=short";
+                        lnc = "log --pretty=format:'%h %s [%cn]'";
+                        last = "log -1 HEAD --stat";
+                        # history of one file, with patches
                         fl = "log -u";
-                        
-                        # modified files in last commit
-                        dl = "!git ll -1";
-                        # diff of last commit
-                        dlc = "diff --cached HEAD^";
-                        
-                        # find file
-                        f = "!git ls-files | grep -i";
-                        # find string
-                        grep = "grep -Ii";
-                        gr = "grep -Ii";
-                        
-                        # list aliases
-                        la = "!git config -l | grep alias | cut -c 7-";
-                        
-                        # basic commands
-                        cp = "cherry-pick";
+
+                        # ── inspect ────────
                         st = "status -s";
-                        cl = "clone";
-                        ci = "commit";
-                        co = "checkout";
-                        br = "branch";
-                        diff = "diff --word-diff";
                         dc = "diff --cached";
-                        
-                        # reset commands
+                        dw = "diff --word-diff";
+                        # files changed in the last commit
+                        dl = "show --stat --oneline HEAD";
+                        # find a tracked file by name
+                        f = "!git ls-files | grep -i";
+                        # find a string in tracked files
+                        gr = "grep -Ii";
+                        # list these aliases
+                        la = "!git config -l | grep alias | cut -c 7-";
+
+                        # ── work ────────
+                        a = "add";
+                        aa = "add --all";
+                        ci = "commit";
+                        cm = "commit -m";
+                        amend = "commit --amend --no-edit";
+                        co = "checkout";
+                        sw = "switch";
+                        br = "branch";
+                        cl = "clone";
+                        cp = "cherry-pick";
+                        rb = "rebase";
+                        rbi = "rebase -i";
+                        wt = "worktree";
+
+                        # ── undo ────────
+                        # keep the changes, drop the commit
+                        uncommit = "reset --soft HEAD^";
+                        unstage = "restore --staged";
                         r = "reset";
-                        r1 = "reset HEAD^";
-                        r2 = "reset HEAD^^";
                         rh = "reset --hard";
                         rh1 = "reset HEAD^ --hard";
-                        rh2 = "reset HEAD^^ --hard";
-                        
-                        # stash commands
+
+                        # ── stash ────────
                         sl = "stash list";
                         sa = "stash apply";
-                        ss = "stash save";
+                        ss = "stash push";
                     };
 
                     url = {
@@ -92,21 +99,6 @@ in
                         "ssh://git@gitlab.com/".pushInsteadOf = "https://gitlab.com/";
                     };
                 };
-            };
-            
-            programs.ssh = {
-                enable = true;
-                enableDefaultConfig = false;
-                settings = genAttrs [ "github.com" "gitlab.com" "codeberg.org" ] (_: {
-                    IdentityFile = [ "${config.home.homeDirectory}/.ssh/id_${user.name}" ];
-                    IdentitiesOnly = true;
-                });
-            };
-            
-            programs.ssh.knownHosts = {
-                "github.com".publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
-                "codeberg.org".publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIVIC02vnjFyL+I4RHfvIGNtOgJMe769VTF1VR4EB3ZB";
-                "gitlab.com".publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf";
             };
         };
     };

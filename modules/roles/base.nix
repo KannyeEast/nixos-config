@@ -13,14 +13,16 @@ in
             nixos.impermanence
             nixos.locale
             nixos.networking
+            nixos.ssh
             nixos.system
             nixos.user
             nixos.secrets
         ];
-        
-        config = { 
+
+        config = {
             home-manager.sharedModules = [
                 homeManager.git
+                homeManager.ssh
             ];
         };
     };
