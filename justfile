@@ -93,6 +93,7 @@ fmt:
         [[ "$reply" =~ ^[Yy]$ ]] && deadnix --edit .
     fi
 
+# @TODO: Git commands should probably use their just counterpart to keep sync in check
 # ── git ────────
 # Add changes to be committed
 [group("git")]
@@ -119,13 +120,17 @@ pull:
 sync:
     #!/usr/bin/env bash
     set -euo pipefail
+    cd {{flake}}
+    
+    rev=$(git rev-parse --short dev)
+    
     git switch main
     git rm -rq --ignore-unmatch .
     git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml"
     git checkout dev -- hosts/default
-    git commit -m "Sync from dev" || echo "Nothing to sync."
+    git commit -m "Sync from dev ($rev)" || echo "Nothing to sync."
     git push origin main
-    git switch -
+    git switch dev
 
 # (Re)build the 'all' remote and pushes to every forge
 [group("git")]
@@ -133,12 +138,30 @@ remotes:
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{flake}}
-    git remote remove all 2>/dev/null || true
-    git remote add all git@codeberg.org:KanyeSouth/nixos-config.git
-    git remote set-url --add --push all git@codeberg.org:KanyeSouth/nixos-config.git
-    git remote set-url --add --push all git@github.com:KannyeEast/nixos-config.git
-    git remote set-url --add --push all git@gitlab.com:KanyeNorth/nixos-config.git
-    git remote set-url origin git@codeberg.org:KanyeSouth/nixos-config.git
+    
+    codeberg="git@codeberg.org:KanyeSouth/nixos-config.git"
+    github="git@github.com:KannyeEast/nixos-config.git"
+    gitlab="git@gitlab.com:KanyeNorth/nixos-config.git"
+    
+    for r in origin all codeberg github gitlab; do
+        git remote remove "$r" 2>/dev/null || true
+    done
+    
+    git remote add codeberg "$codeberg"
+    git remote add github "$github"
+    git remote add gitlab "$gitlab"
+    
+    git remote add origin "$codeberg"
+    
+    git remote add all "$codeberg"
+    git remote set-url --add --push all "$codeberg"
+    git remote set-url --add --push all "$github"
+    git remote set-url --add --push all "$gitlab"
+    
+    git fetch --all --prune
+    git branch --set-upstream-to="origin/$(git branch --show-current)" 2>/dev/null || true
+
+    git remote -v
 
 # ── private helpers ────────
 # Make new files visible without committing them
