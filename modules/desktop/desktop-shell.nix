@@ -1,14 +1,11 @@
-{ ... }:
-let
-in
+{ inputs, ... }:
 {
     flake.modules.nixos.desktopShell = { pkgs, ... }:
-    let
-    in
     {
         config = {
             # @TODO: Custom quickshell
              environment.systemPackages = [
+                inputs.quickshell.packages.${pkgs.system}.default
                 pkgs.kdePackages.qtsvg 
                 pkgs.kdePackages.qtmultimedia 
                 pkgs.kdePackages.qtvirtualkeyboard 

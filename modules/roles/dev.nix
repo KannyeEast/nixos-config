@@ -8,6 +8,8 @@ in
         imports = [
             nixos.debug
             nixos.direnv
+            nixos.ide
+            nixos.tuiShell
         ];
         
         config = { 

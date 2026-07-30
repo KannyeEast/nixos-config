@@ -3,9 +3,6 @@ let
     inherit (config.flake.modules) homeManager;
 in
 {
-    # Opinionated by design: all browser data is hardcoded in these modules,
-    # there are no host options.
-    # @TODO: Move the data to the private repo later
     flake.modules.homeManager.browser = { ... }:
     {
         imports = [

@@ -37,19 +37,38 @@ in
             };
             
             # @TODO: Look for other package combos with niri
+            # https://github.com/niri-wm/awesome-niri
+            # https://niri-wm.github.io/niri/Important-Software.html
             environment.systemPackages = [
                 pkgs.xwayland-satellite
+                pkgs.lxqt.lxqt-policykit
+                pkgs.brightnessctl
+                pkgs.playerctl
+                pkgs.alacritty
+                pkgs.nautilus
+                pkgs.wl-clipboard
+                
+                # Temporary until quickshell works
+                pkgs.fuzzel
+                pkgs.swaylock
+                pkgs.mako
+                pkgs.swayidle
             ];
+            
+            # Temporary until quickshell works
+            programs.waybar.enable = true; 
+            security.pam.services.swaylock = {};
             
             environment.sessionVariables = {
                 NIXOS_OZONE_WL = "1";
                 XKB_DEFAULT_LAYOUT = user.xkb.layout;
                 XKB_DEFAULT_VARIANT = user.xkb.variant;
+                TERMINAL = "alacritty";
             };
             
             programs.niri.enable = true;
-            programs.niri.useNautilus = true;
             programs.dconf.enable = true;
+            security.polkit.enable = true;
             services = {
                 gnome.gnome-keyring.enable  = true;
                 xserver = {

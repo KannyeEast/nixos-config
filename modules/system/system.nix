@@ -45,6 +45,10 @@ in
             # Nix system settings
             #
             
+            environment.sessionVariables = {
+                NH_FLAKE = repoPath;
+            };
+            
             programs.nh = {
                 enable = true;
                 clean.enable = true;

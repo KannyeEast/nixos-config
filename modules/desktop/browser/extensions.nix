@@ -8,7 +8,6 @@ in
     # Id    = https://addons.mozilla.org/en-US/firefox/addon/<id>
     # @TODO: Settings-testing: audit which extensions read storage.managed
     # (unzip the xpi, rg 'storage\.managed') before adding more 3rdparty settings
-    # @TODO: Move the browser data to the private repo later
     flake.modules.homeManager.browserExtensions = { ... }:
     let
         mkExtensionEntry = { id, pinned ? false }:
