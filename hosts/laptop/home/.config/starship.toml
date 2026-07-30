@@ -118,3 +118,8 @@ disabled = true
 
 [package]
 disabled = true
+
+# ── transient profile ────────
+[profiles]
+transient = "$character"
+rtransient = "$cmd_duration"

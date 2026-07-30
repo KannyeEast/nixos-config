@@ -7,10 +7,22 @@ fi
 # ── prompt ────────
 eval "$(starship init zsh)"
 
-starship_transient_prompt_func() {
-    starship module character
+TRANSIENT_PROMPT="${PROMPT// prompt / prompt --profile transient }"
+TRANSIENT_RPROMPT="${PROMPT// prompt / prompt --profile rtransient }"
+
+autoload -Uz add-zsh-hook add-zle-hook-widget
+
+transient-prompt-precmd() {
+    TRAPINT() { transient-prompt; return $(( 128 + $1 )) }
+    SAVED_PROMPT="$(eval "printf '%s' \"${TRANSIENT_PROMPT}\"")"
+    SAVED_RPROMPT="$(eval "printf '%s' \"${TRANSIENT_RPROMPT}\"")"
 }
-enable_transience
+add-zsh-hook precmd transient-prompt-precmd
+
+transient-prompt() {
+    PROMPT="$SAVED_PROMPT" RPROMPT="$SAVED_RPROMPT" zle .reset-prompt
+}
+add-zle-hook-widget zle-line-finish transient-prompt
 
 # ── behaviour ────────
 KEYTIMEOUT=1                    # no delay entering vi command mode
