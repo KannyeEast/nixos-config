@@ -914,6 +914,12 @@ installSystem() {
     
     formConfirm "Install now?" "y" || die "Skipped install"
     
+    # == move files to target ==
+    run mkdir -p /mnt/tmp
+    export TMPDIR=/mnt/tmp
+    run systemctl set-environment TMPDIR=/mnt/tmp
+    run systemctl restart nix-daemon
+    
     # == host keys ==
     run install -d -m 755 /mnt/persistent/etc/ssh
     run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" /mnt/persistent/etc/ssh/ssh_host_ed25519_key.pub
@@ -958,7 +964,6 @@ main() {
     chmod 700 "$TEMP_DIR"
 
     gather
-    
     partition
     generate
     write
