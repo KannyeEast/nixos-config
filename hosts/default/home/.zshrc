@@ -28,14 +28,6 @@ add-zle-hook-widget zle-line-finish transient-prompt
 KEYTIMEOUT=1
 WORDCHARS=${WORDCHARS//[\/]}
 
-backward-kill-dir() {
-    local WORDCHARS="${WORDCHARS/\/}"
-    zle backward-kill-word
-    zle -f kill
-}
-zle -N backward-kill-dir
-bindkey '^W' backward-kill-dir
-
 setopt AUTO_CD
 setopt GLOB_DOTS
 setopt INTERACTIVE_COMMENTS
@@ -67,6 +59,7 @@ bindkey -M vicmd 'k' history-substring-search-up
 bindkey -M vicmd 'j' history-substring-search-down
 bindkey -M viins '^Xs' sudo-command-line
 bindkey -M vicmd '^Xs' sudo-command-line
+bindkey -M viins '^W' backward-kill-word
 
 # ── completion ────────
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
