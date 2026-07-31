@@ -163,6 +163,7 @@ in
             "Pull requests" = {
                 id = "b7a3d5c1-9e2f-4a68-b0d4-6f1c8e5a2d93";
                 kind = "github:pull-requests";
+                workspace = spaces."Development".id;
                 position = 210;
                 github = {
                     assignedMe = true;
@@ -173,6 +174,7 @@ in
             "Issues" = {
                 id = "3c9e1f7a-5b24-4d80-9a6c-e2f4b8d10c57";
                 kind = "github:issues";
+                workspace = spaces."Development".id;
                 position = 211;
                 github.authorMe = true;
             };
@@ -181,9 +183,12 @@ in
         # ── joined tabs ────────
         joinedTabs = {
             "Rawe Ceek" = {
-                id = "4e91b7d3-8a06-42c5-9f38-6b2e1d7c0a54";
+                id = "race-split";
                 gridType = "vsep";
-                tabs = [ pins."F1 Stream".id pins."F1 Timing".id ];
+                tabs = [ 
+                    pins."F1 Stream".id 
+                    pins."F1 Timing".id
+                ];
                 sizes = [ 72 28 ];
             };
         };
