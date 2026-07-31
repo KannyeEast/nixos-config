@@ -3,7 +3,10 @@ let
     inherit (config.flake.modules) homeManager;
 in
 {
-    # @TODO: Check if we can suppress the extensions forced window popup
+    # @TODO:
+    # - Check if we can suppress the extensions forced window popup
+    # - Theme zen with the dotfiles theme
+    # - Custom script to open tabs in designated container
     flake.modules.homeManager.browser = { ... }:
     {
         imports = [
