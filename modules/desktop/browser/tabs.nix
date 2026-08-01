@@ -83,25 +83,11 @@ in
                 isEssential = true;
             };
             
-            # ── entertainment ────────
-            "F1 Stream" = {
-                id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";
-                url = "https://f1live.dpdns.org/1"; # @TODO: Replace with F1TV if that works in zen
-                position = 101;
-                workspace = spaces."Entertainment".id;
-            };
-            "F1 Timing" = {
-                id = "d5a81e6c-3b09-4f72-8e14-9a7c6b2d5f80";
-                url = "https://www.formula1.com/en/timing/f1-live";
-                position = 102;
-                workspace = spaces."Entertainment".id;
-            };
-            
             # ── development ────────
             # Infrastructure
             "Server" = {
                 id = "e0f080f0-6cab-41d5-b416-cc07d318b969";
-                position = 200;
+                position = 100;
                 workspace = spaces."Development".id;
                 isGroup = true;
                 isFolderCollapsed = true;
@@ -111,14 +97,14 @@ in
             "FRITZ!Box" = {
                 id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
                 url = "http://192.168.178.1/";
-                position = 201;
+                position = 101;
                 workspace = spaces."Development".id;
                 folderParentId = pins."Server".id;
             };
             "Cloudflare" = {
                 id = "9fb4ee37-0150-4532-ad02-f981f102f16a";
                 url = "https://dash.cloudflare.com/";
-                position = 202;
+                position = 102;
                 workspace = spaces."Development".id;
                 folderParentId = pins."Server".id;
             };
@@ -127,20 +113,34 @@ in
             "GitHub" = {
                 id = "fcc811cc-1389-4b0f-8384-949da46ad442";
                 url = "https://github.com/";
-                position = 251;
+                position = 151;
                 workspace = spaces."Development".id;
             };
             "GitLab" = {
                 id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
                 url = "https://gitlab.com/";
-                position = 252;
+                position = 152;
                 workspace = spaces."Development".id;
             };
             "Codeberg" = {
                 id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
                 url = "https://codeberg.org/";
-                position = 253;
+                position = 153;
                 workspace = spaces."Development".id;
+            };
+
+            # ── entertainment ────────
+            "F1 Stream" = {
+                id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";
+                url = "https://f1live.dpdns.org/1"; # @TODO: Replace with F1TV if that works in zen
+                position = 201;
+                workspace = spaces."Entertainment".id;
+            };
+            "F1 Timing" = {
+                id = "d5a81e6c-3b09-4f72-8e14-9a7c6b2d5f80";
+                url = "https://www.formula1.com/en/timing/f1-live";
+                position = 202;
+                workspace = spaces."Entertainment".id;
             };
 
             # ── admin ────────
@@ -184,7 +184,7 @@ in
         joinedTabs = {
             "Rawe Ceek" = {
                 id = "race-split";
-                gridType = "vsep";
+                gridType = "hsep";
                 tabs = [ 
                     pins."F1 Stream".id 
                     pins."F1 Timing".id

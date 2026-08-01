@@ -5,7 +5,7 @@ in
 {
     flake.modules.nixos.system = { config, host, ... }:
     let
-        inherit (host) hostname user repoPath;
+        inherit (host) repoPath;
         inherit (config.internal) system;
     in
     {

@@ -1,9 +1,6 @@
 { inputs, ... }:
 {
-    flake.modules.nixos.impermanence = { host, ... }:
-    let
-        inherit (host) user;
-    in  
+    flake.modules.nixos.impermanence = { ... }:
     {
         imports = [
             inputs.impermanence.nixosModules.impermanence
