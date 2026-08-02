@@ -1,255 +1,258 @@
 { lib, ... }:
 let
-    inherit (lib) concatMap filter;
+  inherit (lib) concatMap filter;
 in
 {
-    flake.modules.homeManager.browserTabs = { ... }:
+  flake.modules.homeManager.browserTabs =
+    { ... }:
     let
-        # ── bookmarks ────────
-        # Anything tagged "shortcut" also becomes a new-tab tile
-        bookmarks = [
+      # ── bookmarks ────────
+      # Anything tagged "shortcut" also becomes a new-tab tile
+      bookmarks = [
+        {
+          name = "Tools";
+          bookmarks = [
             {
-                name = "Tools";
-                bookmarks = [
-                    {
-                        name = "Regex";
-                        url = "https://regex101.com/";
-                        tags = [
-                            "shortcut" 
-                            "tool"
-                        ];
-                    }
-                ];
+              name = "Regex";
+              url = "https://regex101.com/";
+              tags = [
+                "shortcut"
+                "tool"
+              ];
+            }
+          ];
+        }
+        {
+          name = "Streaming";
+          bookmarks = [
+            {
+              name = "F1TV";
+              url = "https://f1tv.formula1.com/";
+              tags = [
+                "shortcut"
+                "streaming"
+              ];
             }
             {
-                name = "Streaming";
-                bookmarks = [
-                    {
-                        name = "F1TV";
-                        url = "https://f1tv.formula1.com/";
-                        tags = [ 
-                            "shortcut"
-                            "streaming" 
-                        ];
-                    }
-                    {
-                        name = "F1";
-                        url = "https://f1live.dpdns.org/1";
-                        tags = [ 
-                            "shortcut"
-                            "streaming" 
-                        ];
-                    }
-                    {
-                        name = "Football";
-                        url = "https://streamed.pk/";
-                        tags = [ 
-                            "shortcut"
-                            "streaming" 
-                        ];
-                    }
-                ];
+              name = "F1";
+              url = "https://f1live.dpdns.org/1";
+              tags = [
+                "shortcut"
+                "streaming"
+              ];
             }
-        ];
+            {
+              name = "Football";
+              url = "https://streamed.pk/";
+              tags = [
+                "shortcut"
+                "streaming"
+              ];
+            }
+          ];
+        }
+      ];
 
-        # Flatten the bookmark tree, then keep the tagged ones for the tile grid
-        flatten = items: concatMap
-            (b: if b ? bookmarks then flatten b.bookmarks else [ b ])
-            items;
+      # Flatten the bookmark tree, then keep the tagged ones for the tile grid
+      flatten = items: concatMap (b: if b ? bookmarks then flatten b.bookmarks else [ b ]) items;
 
-        shortcuts = map
-            (b: { inherit (b) url; label = b.name; })
-            (filter (b: builtins.elem "shortcut" (b.tags or [ ])) (flatten bookmarks));
+      shortcuts = map (b: {
+        inherit (b) url;
+        label = b.name;
+      }) (filter (b: builtins.elem "shortcut" (b.tags or [ ])) (flatten bookmarks));
 
-        # ── routes ────────
-        host = alternatives: {
-            matchType = "regex";
-            reference = "^https?://[^/]*(${alternatives})";
+      # ── routes ────────
+      host = alternatives: {
+        matchType = "regex";
+        reference = "^https?://[^/]*(${alternatives})";
+      };
+
+      # ── pins ────────
+      pins = {
+        # ── essentials ────────
+        "Proton" = {
+          id = "986ce577-0407-46b0-90cb-d2ad8dba406c";
+          url = "https://account.proton.me/apps";
+          position = 1;
+          isEssential = true;
+        };
+        "SimpleLogin" = {
+          id = "8e9537c6-400d-4d3f-9dc8-724c4c76cb07";
+          url = "https://app.simplelogin.io/dashboard/";
+          position = 2;
+          isEssential = true;
         };
 
-        # ── pins ────────
-        pins = {
-            # ── essentials ────────
-            "Proton" = {
-                id = "986ce577-0407-46b0-90cb-d2ad8dba406c";
-                url = "https://account.proton.me/apps";
-                position = 1;
-                isEssential = true;
-            };
-            "SimpleLogin" = {
-                id = "8e9537c6-400d-4d3f-9dc8-724c4c76cb07";
-                url = "https://app.simplelogin.io/dashboard/";
-                position = 2;
-                isEssential = true;
-            };
-            
-            # ── development ────────
-            # Infrastructure
-            "Server" = {
-                id = "e0f080f0-6cab-41d5-b416-cc07d318b969";
-                position = 110;
-                workspace = spaces."Development".id;
-                isGroup = true;
-                isFolderCollapsed = true;
-                editedTitle = true;
-                folderIcon = "chrome://browser/skin/zen-icons/selectable/folder.svg";
-            };
-            "FRITZ!Box" = {
-                id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
-                url = "http://192.168.178.1/";
-                position = 111;
-                workspace = spaces."Development".id;
-                folderParentId = pins."Server".id;
-            };
-            "Cloudflare" = {
-                id = "9fb4ee37-0150-4532-ad02-f981f102f16a";
-                url = "https://dash.cloudflare.com/";
-                position = 112;
-                workspace = spaces."Development".id;
-                folderParentId = pins."Server".id;
-            };
-            
-            # Forges
-            "GitHub" = {
-                id = "fcc811cc-1389-4b0f-8384-949da46ad442";
-                url = "https://github.com/";
-                position = 151;
-                workspace = spaces."Development".id;
-            };
-            "GitLab" = {
-                id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
-                url = "https://gitlab.com/";
-                position = 152;
-                workspace = spaces."Development".id;
-            };
-            "Codeberg" = {
-                id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
-                url = "https://codeberg.org/";
-                position = 153;
-                workspace = spaces."Development".id;
-            };
-
-            # ── entertainment ────────
-            "F1 Stream" = {
-                id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";
-                url = "https://f1live.dpdns.org/1"; # @TODO: Replace with F1TV if that works in zen
-                position = 201;
-                workspace = spaces."Entertainment".id;
-            };
-            "F1 Timing" = {
-                id = "d5a81e6c-3b09-4f72-8e14-9a7c6b2d5f80";
-                url = "https://www.formula1.com/en/timing/f1-live";
-                position = 202;
-                workspace = spaces."Entertainment".id;
-            };
-
-            # ── admin ────────
-            "Documents" = {
-                id = "27b7c2ce-6856-43c3-b996-b99d4a8b8578";
-                url = "https://docs.proton.me/";
-                position = 301;
-                workspace = spaces."Admin".id;
-            };
-            "Mail" = {
-                id = "b2d84f19-5c73-4e0a-8f26-3d91c7a5e408";
-                url = "https://mail.proton.me/";
-                position = 302;
-                workspace = spaces."Admin".id;
-            };
+        # ── development ────────
+        # Infrastructure
+        "Server" = {
+          id = "e0f080f0-6cab-41d5-b416-cc07d318b969";
+          position = 110;
+          workspace = spaces."Development".id;
+          isGroup = true;
+          isFolderCollapsed = true;
+          editedTitle = true;
+          folderIcon = "chrome://browser/skin/zen-icons/selectable/folder.svg";
+        };
+        "FRITZ!Box" = {
+          id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
+          url = "http://192.168.178.1/";
+          position = 111;
+          workspace = spaces."Development".id;
+          folderParentId = pins."Server".id;
+        };
+        "Cloudflare" = {
+          id = "9fb4ee37-0150-4532-ad02-f981f102f16a";
+          url = "https://dash.cloudflare.com/";
+          position = 112;
+          workspace = spaces."Development".id;
+          folderParentId = pins."Server".id;
         };
 
-        # ── live folders ────────
-        liveFolders = {
-            "Pull requests" = {
-                id = "b7a3d5c1-9e2f-4a68-b0d4-6f1c8e5a2d93";
-                kind = "github:pull-requests";
-                workspace = spaces."Development".id;
-                position = 101;
-                github = {
-                    assignedMe = true;
-                    reviewRequested = true;
-                    authorMe = true;
-                };
-            };
-            "Issues" = {
-                id = "3c9e1f7a-5b24-4d80-9a6c-e2f4b8d10c57";
-                kind = "github:issues";
-                workspace = spaces."Development".id;
-                position = 102;
-                github.authorMe = true;
-            };
+        # Forges
+        "GitHub" = {
+          id = "fcc811cc-1389-4b0f-8384-949da46ad442";
+          url = "https://github.com/";
+          position = 151;
+          workspace = spaces."Development".id;
         };
-        
-        # ── joined tabs ────────
-        joinedTabs = {
-            "Rawe Ceek" = {
-                id = "race-split";
-                gridType = "hsep";
-                tabs = [ 
-                    pins."F1 Stream".id 
-                    pins."F1 Timing".id
-                ];
-                sizes = [ 66 34 ];
-            };
+        "GitLab" = {
+          id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
+          url = "https://gitlab.com/";
+          position = 152;
+          workspace = spaces."Development".id;
+        };
+        "Codeberg" = {
+          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
+          url = "https://codeberg.org/";
+          position = 153;
+          workspace = spaces."Development".id;
         };
 
-        # ── spaces (routing) ────────
-        spaces = {
-            "Entertainment" = {
-                id = "a8fde799-77d2-4b1c-8c83-37dce87d30be";
-                position = 1;
-                routes = {
-                    "video" = host "youtube|youtu\\.be|twitch|vimeo|odysee";
-                    "music" = host "spotify|bandcamp|soundcloud|last\\.fm";
-                    "streaming" = host "netflix|f1tv|formula1|streamed|dpdns";
-                };
-            };
-
-            "Development" = {
-                id = "779e73b8-5f81-4538-9d92-e7da96824c56";
-                position = 2;
-                routes = {
-                    "forges" = host "github|gitlab|codeberg|sr\\.ht|sourcehut";
-                    "nix" = host "nixos|nixpkgs|noogle|nixpk\\.gs|nix-community|determinate";
-                    "docs" = host "rust-lang|crates\\.io|docs\\.rs|developer\\.mozilla|devdocs|kernel\\.org|man7";
-                    "help" = host "stackoverflow|stackexchange|serverfault|superuser";
-                    "tools" = host "regex101|starship\\.rs|quickshell|just\\.systems";
-                    "infra" = host "dash\\.cloudflare|192\\.168\\.|tailscale";
-                };
-            };
-
-            "Admin" = {
-                id = "6698068a-20c7-436b-9351-b024cde94686";
-                position = 3;
-                routes = {
-                    "accounts" = host "proton\\.me|simplelogin|keepass";
-                    "bank" = host "sparkasse";
-                    "shopping" = host "amazon|ebay|kleinanzeigen";
-                };
-            };
+        # ── entertainment ────────
+        "F1 Stream" = {
+          id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";
+          url = "https://f1live.dpdns.org/1"; # @TODO: Replace with F1TV if that works in zen
+          position = 201;
+          workspace = spaces."Entertainment".id;
         };
+        "F1 Timing" = {
+          id = "d5a81e6c-3b09-4f72-8e14-9a7c6b2d5f80";
+          url = "https://www.formula1.com/en/timing/f1-live";
+          position = 202;
+          workspace = spaces."Entertainment".id;
+        };
+
+        # ── admin ────────
+        "Documents" = {
+          id = "27b7c2ce-6856-43c3-b996-b99d4a8b8578";
+          url = "https://docs.proton.me/";
+          position = 301;
+          workspace = spaces."Admin".id;
+        };
+        "Mail" = {
+          id = "b2d84f19-5c73-4e0a-8f26-3d91c7a5e408";
+          url = "https://mail.proton.me/";
+          position = 302;
+          workspace = spaces."Admin".id;
+        };
+      };
+
+      # ── live folders ────────
+      liveFolders = {
+        "Pull requests" = {
+          id = "b7a3d5c1-9e2f-4a68-b0d4-6f1c8e5a2d93";
+          kind = "github:pull-requests";
+          workspace = spaces."Development".id;
+          position = 101;
+          github = {
+            assignedMe = true;
+            reviewRequested = true;
+            authorMe = true;
+          };
+        };
+        "Issues" = {
+          id = "3c9e1f7a-5b24-4d80-9a6c-e2f4b8d10c57";
+          kind = "github:issues";
+          workspace = spaces."Development".id;
+          position = 102;
+          github.authorMe = true;
+        };
+      };
+
+      # ── joined tabs ────────
+      joinedTabs = {
+        "Rawe Ceek" = {
+          id = "race-split";
+          gridType = "hsep";
+          tabs = [
+            pins."F1 Stream".id
+            pins."F1 Timing".id
+          ];
+          sizes = [
+            66
+            34
+          ];
+        };
+      };
+
+      # ── spaces (routing) ────────
+      spaces = {
+        "Entertainment" = {
+          id = "a8fde799-77d2-4b1c-8c83-37dce87d30be";
+          position = 1;
+          routes = {
+            "video" = host "youtube|youtu\\.be|twitch|vimeo|odysee";
+            "music" = host "spotify|bandcamp|soundcloud|last\\.fm";
+            "streaming" = host "netflix|f1tv|formula1|streamed|dpdns";
+          };
+        };
+
+        "Development" = {
+          id = "779e73b8-5f81-4538-9d92-e7da96824c56";
+          position = 2;
+          routes = {
+            "forges" = host "github|gitlab|codeberg|sr\\.ht|sourcehut";
+            "nix" = host "nixos|nixpkgs|noogle|nixpk\\.gs|nix-community|determinate";
+            "docs" = host "rust-lang|crates\\.io|docs\\.rs|developer\\.mozilla|devdocs|kernel\\.org|man7";
+            "help" = host "stackoverflow|stackexchange|serverfault|superuser";
+            "tools" = host "regex101|starship\\.rs|quickshell|just\\.systems";
+            "infra" = host "dash\\.cloudflare|192\\.168\\.|tailscale";
+          };
+        };
+
+        "Admin" = {
+          id = "6698068a-20c7-436b-9351-b024cde94686";
+          position = 3;
+          routes = {
+            "accounts" = host "proton\\.me|simplelogin|keepass";
+            "bank" = host "sparkasse";
+            "shopping" = host "amazon|ebay|kleinanzeigen";
+          };
+        };
+      };
     in
     {
-        config = {
-            programs.zen-browser.profiles.default = {
-                bookmarks.force = true;
-                bookmarks.settings = bookmarks;
+      config = {
+        programs.zen-browser.profiles.default = {
+          bookmarks.force = true;
+          bookmarks.settings = bookmarks;
 
-                pinsForce = true;
-                inherit pins;
+          pinsForce = true;
+          inherit pins;
 
-                spacesForce = true;
-                inherit spaces;
+          spacesForce = true;
+          inherit spaces;
 
-                inherit liveFolders;
-                inherit joinedTabs;
+          inherit liveFolders;
+          inherit joinedTabs;
 
-                spaceRouting.defaultExternalRoute = "most-recent-space";
+          spaceRouting.defaultExternalRoute = "most-recent-space";
 
-                settings = {
-                    "browser.newtabpage.pinned" = builtins.toJSON shortcuts;
-                };
-            };
+          settings = {
+            "browser.newtabpage.pinned" = builtins.toJSON shortcuts;
+          };
         };
+      };
     };
 }

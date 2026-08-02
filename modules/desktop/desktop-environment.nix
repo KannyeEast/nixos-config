@@ -1,81 +1,85 @@
 { lib, ... }:
 let
-    inherit (lib) mkOption types;
+  inherit (lib) mkOption types;
 in
 {
-    flake.modules.nixos.desktopEnvironment = { config, pkgs, ... }:
+  flake.modules.nixos.desktopEnvironment =
+    { config, pkgs, ... }:
     let
-        inherit (config.profile) user;
+      inherit (config.profile) user;
     in
     {
-        options = {
-            profile.user = {
-                xkb.layout = mkOption {
-                    type = types.str;
-                    default = "us";
-                    description = "xkb keyboard layout";
-                };
-                xkb.variant = mkOption {
-                    type = types.str;
-                    default = "";
-                    description = "xkb keyboard variant";
-                };
-            };
+      options = {
+        profile.user = {
+          xkb.layout = mkOption {
+            type = types.str;
+            default = "us";
+            description = "xkb keyboard layout";
+          };
+          xkb.variant = mkOption {
+            type = types.str;
+            default = "";
+            description = "xkb keyboard variant";
+          };
         };
-        
-        config = {
-            xdg.portal = {
-                enable = true;
-                extraPortals = [
-                    pkgs.xdg-desktop-portal-gtk
-                    pkgs.xdg-desktop-portal-gnome
-                ];
-                config = {
-                    common.default = [ "gtk" ];
-                    niri.default = [ "gnome" "gtk" ];
-                };
-            };
-            
-            # @TODO: Look for other package combos with niri
-            # https://github.com/niri-wm/awesome-niri
-            # https://niri-wm.github.io/niri/Important-Software.html
-            environment.systemPackages = [
-                pkgs.xwayland-satellite
-                pkgs.lxqt.lxqt-policykit
-                pkgs.brightnessctl
-                pkgs.playerctl
-                pkgs.alacritty
-                pkgs.nautilus
-                pkgs.wl-clipboard
-                
-                # Temporary until quickshell works
-                pkgs.fuzzel
-                pkgs.swaylock
-                pkgs.mako
-                pkgs.swayidle
+      };
+
+      config = {
+        xdg.portal = {
+          enable = true;
+          extraPortals = [
+            pkgs.xdg-desktop-portal-gtk
+            pkgs.xdg-desktop-portal-gnome
+          ];
+          config = {
+            common.default = [ "gtk" ];
+            niri.default = [
+              "gnome"
+              "gtk"
             ];
-            
-            # Temporary until quickshell works
-            programs.waybar.enable = true; 
-            security.pam.services.swaylock = {};
-            
-            environment.sessionVariables = {
-                NIXOS_OZONE_WL = "1";
-                XKB_DEFAULT_LAYOUT = user.xkb.layout;
-                XKB_DEFAULT_VARIANT = user.xkb.variant;
-                TERMINAL = "alacritty";
-            };
-            
-            programs.niri.enable = true;
-            programs.dconf.enable = true;
-            security.polkit.enable = true;
-            services = {
-                gnome.gnome-keyring.enable  = true;
-                xserver = {
-                    enable = true;
-                    xkb.layout = user.xkb.layout;
-                };
-            };
+          };
         };
+
+        # @TODO: Look for other package combos with niri
+        # https://github.com/niri-wm/awesome-niri
+        # https://niri-wm.github.io/niri/Important-Software.html
+        environment.systemPackages = [
+          pkgs.xwayland-satellite
+          pkgs.lxqt.lxqt-policykit
+          pkgs.brightnessctl
+          pkgs.playerctl
+          pkgs.alacritty
+          pkgs.nautilus
+          pkgs.wl-clipboard
+
+          # Temporary until quickshell works
+          pkgs.fuzzel
+          pkgs.swaylock
+          pkgs.mako
+          pkgs.swayidle
+        ];
+
+        # Temporary until quickshell works
+        programs.waybar.enable = true;
+        security.pam.services.swaylock = { };
+
+        environment.sessionVariables = {
+          NIXOS_OZONE_WL = "1";
+          XKB_DEFAULT_LAYOUT = user.xkb.layout;
+          XKB_DEFAULT_VARIANT = user.xkb.variant;
+          TERMINAL = "alacritty";
+        };
+
+        programs.niri.enable = true;
+        programs.dconf.enable = true;
+        security.polkit.enable = true;
+        services = {
+          gnome.gnome-keyring.enable = true;
+          xserver = {
+            enable = true;
+            xkb.layout = user.xkb.layout;
+          };
+        };
+      };
     };
 }

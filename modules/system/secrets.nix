@@ -1,38 +1,39 @@
 { inputs, ... }:
 {
-    flake.modules.nixos.secrets = { pkgs, host, ... }:
+  flake.modules.nixos.secrets =
+    { pkgs, host, ... }:
     let
-        inherit (host) hostname user;
+      inherit (host) hostname user;
     in
     {
-        imports = [
-            inputs.sops-nix.nixosModules.sops
+      imports = [
+        inputs.sops-nix.nixosModules.sops
+      ];
+
+      config = {
+        environment.systemPackages = [
+          pkgs.sops
+          pkgs.ssh-to-age
         ];
 
-        config = {
-            environment.systemPackages = [
-                pkgs.sops
-                pkgs.ssh-to-age
-            ];
+        environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i /home/${user.name}/.ssh/id_${user.name}";
 
-            environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i /home/${user.name}/.ssh/id_${user.name}";
-        
-            sops = {
-                defaultSopsFile = ../../hosts/${hostname}/secrets.json;
+        sops = {
+          defaultSopsFile = ../../hosts/${hostname}/secrets.json;
 
-                defaultSopsFormat = "yaml";
-                validateSopsFiles = false;
-                
-                age.sshKeyPaths = [ "/persistent/etc/ssh/ssh_host_ed25519_key" ];
-                
-                secrets = {
-                    userPrivateKey = {
-                        path = "/home/${user.name}/.ssh/id_${user.name}";
-                        owner = user.name;
-                        mode = "0600";
-                    };
-                };
+          defaultSopsFormat = "yaml";
+          validateSopsFiles = false;
+
+          age.sshKeyPaths = [ "/persistent/etc/ssh/ssh_host_ed25519_key" ];
+
+          secrets = {
+            userPrivateKey = {
+              path = "/home/${user.name}/.ssh/id_${user.name}";
+              owner = user.name;
+              mode = "0600";
             };
+          };
         };
+      };
     };
 }

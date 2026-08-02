@@ -1,11 +1,12 @@
 { ... }:
 {
-    flake.modules.nixos.packages = { pkgs, ... }:
+  flake.modules.nixos.packages =
+    { pkgs, ... }:
     {
-        config = {
-            environment.systemPackages = [
-                pkgs.keepassxc
-            ];
-        };
+      config = {
+        environment.systemPackages = [
+          pkgs.keepassxc
+        ];
+      };
     };
 }

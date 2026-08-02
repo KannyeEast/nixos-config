@@ -1,14 +1,14 @@
 { ... }:
 {
-    systems = [ "x86_64-linux" ];
+  systems = [ "x86_64-linux" ];
 
-    perSystem = { pkgs, ... }: {
-        devShells.default = pkgs.mkShell {
-            packages = [
-                pkgs.just
-                pkgs.nixfmt
-                pkgs.deadnix
-            ];
-        };
+  perSystem = { pkgs, ... }: {
+    devShells.default = pkgs.mkShell {
+      packages = [
+        pkgs.just
+        pkgs.nixfmt
+        pkgs.deadnix
+      ];
     };
+  };
 }
