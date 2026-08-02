@@ -176,12 +176,13 @@
                         inset-inline-start: -1px;
                         width: 2px;
                         border-radius: 1px;
-                        background-color: color-mix(in srgb, var(--sidebar-text-color) 30%, transparent) !important;
-                        transition: background-color 0.2s ease;
+                        background-color: currentColor;
                     }
 
-                    &:hover .tab-group-container::before {
-                        background-color: color-mix(in srgb, var(--sidebar-text-color) 65%, transparent) !important;
+                    /* Collapse even when the active tab lives in this folder;
+                       Zen otherwise keeps the container laid out */
+                    &[collapsed] .tab-group-container {
+                        display: none !important;
                     }
 
                     & .tab-group-overflow-count {
