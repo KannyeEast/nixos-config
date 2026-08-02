@@ -189,7 +189,7 @@ in
                     pins."F1 Stream".id 
                     pins."F1 Timing".id
                 ];
-                sizes = [ 66 33 ];
+                sizes = [ 66 34 ];
             };
         };
 
