@@ -162,7 +162,6 @@
                     }
 
                     & .tab-group-container {
-                        display: block !important;
                         position: relative !important;
                         margin-inline-start: var(--folder-rail-inset) !important;
                         padding-inline-start: 5px !important;
@@ -177,12 +176,12 @@
                         inset-inline-start: -1px;
                         width: 2px;
                         border-radius: 1px;
-                        background-color: color-mix(in srgb, currentColor 30%, transparent);
+                        background-color: color-mix(in srgb, var(--sidebar-text-color) 30%, transparent) !important;
                         transition: background-color 0.2s ease;
                     }
 
                     &:hover .tab-group-container::before {
-                        background-color: color-mix(in srgb, currentColor 60%, transparent);
+                        background-color: color-mix(in srgb, var(--sidebar-text-color) 65%, transparent) !important;
                     }
 
                     & .tab-group-overflow-count {
