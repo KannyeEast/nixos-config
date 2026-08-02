@@ -6,25 +6,20 @@
             programs.zen-browser.profiles.default = {
                 containersForce = true;
                 containers = {
-                    "Main" = {
+                    "A" = {
                         color = "toolbar";
                         icon = "fingerprint";
                         id = 1;
                     };
-                    "Music" = {
+                    "B" = {
                         color = "purple";
-                        icon = "chill";
+                        icon = "fingerprint";
                         id = 2;
                     };
-                    "Coding" = {
+                    "C" = {
                         color = "blue";
                         icon = "fingerprint";
                         id = 3;
-                    };
-                    "Server" = {
-                        color = "red";
-                        icon = "fingerprint";
-                        id = 4;
                     };
                 };
             };

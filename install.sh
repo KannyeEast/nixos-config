@@ -584,10 +584,6 @@ in
                                 mountpoint = "/persistent";
                                 mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
                             };
-                            "/home" = {
-                                mountpoint = "/home";
-                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                            };
                         };
                     };
                 };
@@ -833,10 +829,6 @@ in
                                 };
                                 "/persistent" = {
                                     mountpoint = "/persistent";
-                                    mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                                };
-                                "/home" = {
-                                    mountpoint = "/home";
                                     mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
                                 };
                             };

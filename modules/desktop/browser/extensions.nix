@@ -3,11 +3,6 @@ let
     inherit (lib) mapAttrs;
 in
 {
-    # Opinionated by design - the data lives here, not in host options.
-    # Entry = about:debugging#/runtime/this-firefox
-    # Id    = https://addons.mozilla.org/en-US/firefox/addon/<id>
-    # @TODO: Settings-testing: audit which extensions read storage.managed
-    # (unzip the xpi, rg 'storage\.managed') before adding more 3rdparty settings
     flake.modules.homeManager.browserExtensions = { ... }:
     let
         mkExtensionEntry = { id, pinned ? false }:

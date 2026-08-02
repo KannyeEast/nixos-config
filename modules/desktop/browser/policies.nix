@@ -156,8 +156,10 @@
                 "browser.urlbar.suggest.yelp" = false;
                 "browser.urlbar.trending.featureGate" = false;
                 "browser.urlbar.quicksuggest.enabled" = false;
-                
+
                 "general.smoothScroll" = false;
+
+                "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
             };
             UserMessaging = {
                 WhatsNew = false;
@@ -173,11 +175,15 @@
         programs.zen-browser.profiles.default.settings = {
             "devtools.chrome.enabled" = true;
             "devtools.debugger.remote-enabled" = true;
+
+            "browser.shell.checkDefaultBrowser" = false;
+            "browser.shell.didSkipDefaultBrowserCheckOnFirstRun" = true;
             
-            "font.name.serif.x-western" = "Bahnschrift";
+            "font.default.x-western" = "sans-serif";
+            "font.name.sans-serif.x-western" = "Inter";
+            "font.name.monospace.x-western" = "JetBrainsMono Nerd Font";
             "font.size.variable.x-western" = 16;
             "font.size.monospace.x-western" = 13;
-            "font.default.x-western" = "serif";
         
             "zen.pinned-tab-manager.restore-pinned-tabs-to-pinned-url" = true;
             "zen.tabs.ctrl-tab.ignore-pending-tabs" = true;

@@ -8,6 +8,8 @@
                 enableDefaultPackages = true;
 
                 packages = [
+                    pkgs.barlow
+                    pkgs.inter
                     pkgs.noto-fonts
                     pkgs.noto-fonts-cjk-sans
                     pkgs.noto-fonts-color-emoji

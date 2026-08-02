@@ -76,8 +76,9 @@ edit-secrets:
 # Garbage-collect old generations
 [group("maintenance")]
 clean:
-    rm -f {{flake}}/result {{flake}}/result-*
     nh clean all --ask --keep-since 4d --keep 5
+    rm -f {{flake}}/result {{flake}}/result-*
+    nix store optimise
     
 # Format and prune dead code
 [group("maintenance")]
