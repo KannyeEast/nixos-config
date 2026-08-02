@@ -176,7 +176,7 @@
                         inset-inline-start: -1px;
                         width: 2px;
                         border-radius: 1px;
-                        background-color: currentColor;
+                        background-color: color-mix(in srgb, currentColor 50%, transparent);
                     }
 
                     /* Collapse even when the active tab lives in this folder;
