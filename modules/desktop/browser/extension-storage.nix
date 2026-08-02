@@ -73,8 +73,6 @@ in
 
                     if [ ! -f "$db" ]; then
                         echo "zen: no storage-sync-v2.sqlite, skipping extension settings"
-                    elif [ -L "${profile}/lock" ]; then
-                        echo "zen: running, skipping extension settings (rerun after closing it)"
                     else
                         apply() {
                             local id="$1" declared="$2" cur merged escaped
