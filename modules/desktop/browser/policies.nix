@@ -155,6 +155,8 @@
 
           "general.smoothScroll" = false;
 
+          "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
+
           "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
         };
         UserMessaging = {

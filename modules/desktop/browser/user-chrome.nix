@@ -281,7 +281,7 @@
 
         programs.zen-browser.profiles.default.userContent = ''
           @-moz-document url-prefix("about:newtab"), url-prefix("about:home") {
-              .top-site-outer:not(.pinned):not(:has(.icon-pin-small)) {
+              .top-site-outer:not(:has(.icon-pin-small)) {
                   display: none !important;
               }
           }
