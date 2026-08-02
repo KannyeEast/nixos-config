@@ -63,7 +63,6 @@ in
                 ExtensionSettings = mkExtensionSettings extensions;
 
                 "3rdparty".Extensions = {
-                    "deArrow@ajay.app".licenseKey = "AjI0L-6f166";
                     "uBlock0@raymondhill.net".adminSettings = builtins.toJSON {
                         userSettings = {
                             uiTheme = "dark";

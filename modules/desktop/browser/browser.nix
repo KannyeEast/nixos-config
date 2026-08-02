@@ -34,6 +34,7 @@ in
             
             homeManager.browserContainers
             homeManager.browserExtensions
+            homeManager.browserExtensionStorage
             homeManager.browserMods
             homeManager.browserPolicies
             homeManager.browserSearch
