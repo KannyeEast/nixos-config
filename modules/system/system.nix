@@ -82,7 +82,7 @@ in
                 
                 gc = {
                     automatic = true;
-                    dats = "weekly";
+                    dates = "weekly";
                     options = "--delete-older-than 4d";
                 };
                 
