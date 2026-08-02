@@ -80,12 +80,6 @@ in
                     ];
                 };
                 
-                gc = {
-                    automatic = true;
-                    dates = "weekly";
-                    options = "--delete-older-than 4d";
-                };
-                
                 # Optimize
                 optimise = {
                     automatic = true;

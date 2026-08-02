@@ -32,7 +32,7 @@
             environment.systemPackages = [
                 pkgs.emacs # Move this to its own module
                 
-                inputs.undo.packages.${pkgs.system}.default # CTRL + Z for tui
+                inputs.undo.packages.${pkgs.stdenv.hostPlatform.system}.default # CTRL + Z for tui
                 pkgs.bat # Prettier cat pages
                 pkgs.eza # better ls
                 pkgs.fd # better find
@@ -70,7 +70,7 @@
                     source ${pkgs.oh-my-zsh}/share/oh-my-zsh/plugins/copypath/copypath.plugin.zsh
                     source ${pkgs.oh-my-zsh}/share/oh-my-zsh/plugins/extract/extract.plugin.zsh
                     source ${pkgs.oh-my-zsh}/share/oh-my-zsh/plugins/sudo/sudo.plugin.zsh
-                    source ${inputs.undo.packages.${pkgs.system}.default}/share/undo/undo.zsh
+                    source ${inputs.undo.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/undo/undo.zsh
                     source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh
                     source ${pkgs.zsh-history-substring-search}/share/zsh-history-substring-search/zsh-history-substring-search.zsh
                     source ${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use/you-should-use.plugin.zsh
