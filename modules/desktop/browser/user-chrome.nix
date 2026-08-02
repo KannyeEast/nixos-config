@@ -131,33 +131,23 @@
                     margin-block: 9px 5px !important;
                     margin-inline: 2px !important;
 
-                    /* Zen's gradient folder glyph; chevron replaces it */
                     & .tab-group-folder-icon {
-                        display: none !important;
+                        opacity: 1 !important;
+                        background-color: currentColor !important;
+                        mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+                        mask-size: 14px 14px;
+                        mask-repeat: no-repeat;
+                        mask-position: center;
+                        transition: rotate 0.2s ease !important;
+
+                        & > svg {
+                            display: none !important;
+                        }
                     }
 
                     & .tab-group-label-container {
-                        position: relative !important;
-                        padding-inline-start: 20px !important;
-
                         &:after {
                             display: none !important;
-                        }
-
-                        &::before {
-                            content: "" !important;
-                            position: absolute !important;
-                            left: 3px !important;
-                            top: 50%;
-                            translate: 0 -50%;
-                            width: 14px !important;
-                            height: 14px !important;
-                            background-color: var(--tab-group-color-invert);
-                            mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
-                            mask-size: contain;
-                            mask-repeat: no-repeat;
-                            mask-position: center;
-                            transition: rotate 0.2s ease !important;
                         }
                     }
 
@@ -170,14 +160,15 @@
                     }
 
                     & .tab-group-container {
+                        display: block !important;
                         margin-inline-start: 10px !important;
                         padding-inline-start: 5px !important;
-                        border-inline-start: 2px solid color-mix(in srgb, var(--tab-group-color-invert) 65%, transparent) !important;
+                        border-inline-start: 2px solid color-mix(in srgb, currentColor 30%, transparent) !important;
                         transition: border-color 0.2s ease !important;
                     }
 
                     &:hover .tab-group-container {
-                        border-inline-start-color: var(--tab-group-color-invert) !important;
+                        border-inline-start-color: color-mix(in srgb, currentColor 60%, transparent) !important;
                     }
 
                     & .tab-group-overflow-count {
@@ -185,15 +176,8 @@
                         opacity: 0.55;
                     }
 
-                    /* Collapsed: keep the folder's identity in the label */
-                    &[collapsed] {
-                        & .tab-group-label-container::before {
-                            rotate: -90deg;
-                        }
-
-                        & .tab-group-label {
-                            color: var(--tab-group-color-invert) !important;
-                        }
+                    &[collapsed] .tab-group-folder-icon {
+                        rotate: -90deg;
                     }
                 }
 
