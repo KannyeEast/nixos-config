@@ -3,10 +3,6 @@ let
     inherit (config.flake.modules) homeManager;
 in
 {
-    # @TODO: Suppress the forced-extension popup
-    # On a fresh install every declared extension force-opens its own
-    # onboarding tab/window. Ten windows on first launch. Want zero.
-
     # @TODO: Theme zen from the shared palette
     # Part of the stylix work. Zen pulls its colours from the one palette
     # source like everything else, no hand-maintained copy here.

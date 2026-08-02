@@ -145,6 +145,7 @@
             VisualSearchEnabled = true;
             Preferences = mkPolicy {
                 "browser.display.document_color_use" = 0;
+                "browser.newtabpage.activity-stream.default.sites" = "";
                 "browser.tabs.warnOnClose" = false;
                 "browser.urlbar.addons.featureGate" = false;
                 "browser.urlbar.suggest.addons" = false;
@@ -156,6 +157,10 @@
                 "browser.urlbar.suggest.yelp" = false;
                 "browser.urlbar.trending.featureGate" = false;
                 "browser.urlbar.quicksuggest.enabled" = false;
+
+                # Drop Mozilla's pre-seeded tiles so new tab shows only the
+                # bookmarks tagged "shortcut" in tabs.nix
+                "browser.newtabpage.activity-stream.default.sites" = "";
 
                 "general.smoothScroll" = false;
 

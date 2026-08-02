@@ -128,9 +128,7 @@
 
                 /* ── folders ──────── */
                 zen-folder {
-                    /* Favicon centre: the tab's inline margin, then its inline
-                       padding, then half a 16px icon. */
-                    --folder-rail-inset: calc(4px + var(--tab-inline-padding, 8px) + 8px);
+                    --folder-rail-inset: calc(4px + var(--tab-inline-padding, 8px) + 6px);
 
                     margin: 0 !important;
                     padding: 0 !important;

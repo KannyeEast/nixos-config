@@ -3,12 +3,13 @@
     flake.modules.homeManager.browserSearch = { pkgs, ... }:
     let
         nixIcon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
+        colorIcon = "https://htmlcolorcodes.com/favicon.ico";
     in
     {
         config = {
             programs.zen-browser.profiles.default.search = {
                 force = true;
-                
+
                 default = "Kagi";
                 privateDefault = "Kagi";
 
@@ -23,8 +24,8 @@
                         icon = "https://kagi.com/favicon.ico";
                         definedAliases = [ "@k" ];
                     };
-                    
-                    "Nix Packages" = {
+
+                    "NixOS Packages" = {
                         urls = [{
                             template = "https://search.nixos.org/packages";
                             params = [
@@ -36,10 +37,21 @@
                         icon = nixIcon;
                         definedAliases = [ "@np" ];
                     };
+
+                    "NixOS Options" = {
+                        urls = [{
+                            template = "https://mynixos.com/search";
+                            params = [
+                                { name = "q"; value = "{searchTerms}"; }
+                            ];
+                        }];
+                        icon = nixIcon;
+                        definedAliases = [ "@no" ];
+                    };
                     
                     "Home Manager Options" = {
                         urls = [{
-                            template = "https://search.nixos.org/packages";
+                            template = "https://search.nixos.org/options";
                             params = [
                                 { name = "channel"; value = "unstable"; }
                                 { name = "type"; value = "options"; }
@@ -50,37 +62,32 @@
                         icon = nixIcon;
                         definedAliases = [ "@hm" ];
                     };
-                    
-                    "MyNixOS" = {
+
+                    "Noogle" = {
                         urls = [{
-                            template = "https://mynixos.com/search";
+                            template = "https://noogle.dev/q";
                             params = [
-                                { name = "q"; value = "{searchTerms}"; }
+                                { name = "term"; value = "{searchTerms}"; }
                             ];
                         }];
                         icon = nixIcon;
-                        definedAliases = [ "@mn" ];
-                    };
-                    
-                    "Noogle" = {
-                        urls = [
-                            {
-                                template = "https://noogle.dev/q";
-                                params = [
-                                    { name = "term"; value = "{searchTerms}"; }
-                                ];
-                            }
-                        ];
-                        icon = nixIcon;
                         definedAliases = [ "@ng" ];
                     };
-                    
-                    "Color Codes" = {
+
+                    "Hex to RGB" = {
                         urls = [{
                             template = "https://htmlcolorcodes.com/hex-to-rgb/";
                         }];
-                        icon = "https://htmlcolorcodes.com/favicon.ico";
-                        definedAliases = [ "@hex" "@rgb" ];
+                        icon = colorIcon;
+                        definedAliases = [ "@hex" ];
+                    };
+
+                    "RGB to Hex" = {
+                        urls = [{
+                            template = "https://htmlcolorcodes.com/rgb-to-hex/";
+                        }];
+                        icon = colorIcon;
+                        definedAliases = [ "@rgb" ];
                     };
 
                     "bing".metaData.hidden = true;
