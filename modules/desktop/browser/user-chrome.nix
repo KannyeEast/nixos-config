@@ -128,8 +128,9 @@
 
                 /* ── folders ──────── */
                 zen-folder {
-                    /* Nudge if the rail drifts off the chevron's centre */
-                    --folder-rail-inset: 13px;
+                    /* Favicon centre: past the tab's inline padding, then half
+                       an icon. Same origin the chevron sits on. */
+                    --folder-rail-inset: calc(var(--tab-inline-padding, 8px) + 8px);
 
                     margin: 0 !important;
                     padding: 0 !important;
@@ -164,14 +165,26 @@
 
                     & .tab-group-container {
                         display: block !important;
+                        position: relative !important;
                         margin-inline-start: var(--folder-rail-inset) !important;
                         padding-inline-start: 5px !important;
-                        border-inline-start: 2px solid color-mix(in srgb, currentColor 30%, transparent) !important;
-                        transition: border-color 0.2s ease !important;
                     }
 
-                    &:hover .tab-group-container {
-                        border-inline-start-color: color-mix(in srgb, currentColor 60%, transparent) !important;
+                    /* Rail runs first favicon centre to last, so it stops half
+                       a tab short at each end instead of spanning the box */
+                    & .tab-group-container::before {
+                        content: "";
+                        position: absolute;
+                        inset-block: calc(var(--tab-min-height, 36px) / 2);
+                        inset-inline-start: -1px;
+                        width: 2px;
+                        border-radius: 1px;
+                        background-color: color-mix(in srgb, currentColor 30%, transparent);
+                        transition: background-color 0.2s ease;
+                    }
+
+                    &:hover .tab-group-container::before {
+                        background-color: color-mix(in srgb, currentColor 60%, transparent);
                     }
 
                     & .tab-group-overflow-count {
