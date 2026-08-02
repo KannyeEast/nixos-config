@@ -10,6 +10,8 @@
         config = {
             programs.zen-browser.policies = {
                 "3rdparty".Extensions = {
+                    # @TODO: brokeen >> selfhost the json later for tampermonkey to read
+                    # https://www.tampermonkey.net/documentation.php?locale=en&q=deploying
                     "firefox@tampermonkey.net".jsonImport = [{
                         url = "file://${tampermonkey}";
                         hash = "1:${builtins.hashFile "sha256" tampermonkey}";
