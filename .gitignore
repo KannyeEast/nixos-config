@@ -7,5 +7,4 @@ result
 .env
 .idea
 *.qcow2
-modules/desktop/browser/*.json
 *.bak

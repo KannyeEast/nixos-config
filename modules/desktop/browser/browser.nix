@@ -34,10 +34,11 @@ in
             
             homeManager.browserContainers
             homeManager.browserExtensions
-            homeManager.browserExtensionStorage
             homeManager.browserMods
             homeManager.browserPolicies
             homeManager.browserSearch
+            homeManager.browserStorageManaged
+            homeManager.browserStorageSync
             homeManager.browserTabs
             homeManager.browserUserChrome
         ];

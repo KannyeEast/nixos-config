@@ -3,13 +3,11 @@ let
     inherit (lib) concatMapStringsSep escapeShellArg;
 in
 {
-    # Extensions built on maze-utils ignore managed storage, so their settings
-    # cannot go through policies. They keep config in storage.sync, which is a
-    # single SQLite file with one JSON blob per extension -- writable directly.
+    # Extensions settings for extensions using storage.sync
+    # which is a single SQLite file with one JSON blob per extension.
     #
-    # Values are merged over what is already there, so counters and userID
-    # survive. Declared keys win on every activation.
-    flake.modules.homeManager.browserExtensionStorage = { config, pkgs, ... }:
+    # Values are merged over what is already there.
+    flake.modules.homeManager.browserStorageSync = { config, pkgs, ... }:
     let
         profile = "${config.home.homeDirectory}/.config/zen/default";
 
@@ -45,15 +43,13 @@ in
             };
 
             "deArrow@ajay.app" = {
-                # ProtoConfig never reads managed storage, so the policy entry
-                # cannot deliver this; it is a plain storage.sync key
+                # Free key :)
                 licenseKey = "AjI0L-6f166";
 
                 casualMode = true;
                 onlyShowCasualIconForCustom = true;
                 showInfoAboutCasualMode = false;
 
-                # Default is locale-dependent: TitleCase in English, else off
                 titleFormatting = 2;
 
                 replaceThumbnails = false;
@@ -72,7 +68,7 @@ in
                     db="${profile}/storage-sync-v2.sqlite"
 
                     if [ ! -f "$db" ]; then
-                        echo "zen: no storage-sync-v2.sqlite, skipping extension settings"
+                        echo "zen: no storage-sync-v2.sqlite"
                     else
                         apply() {
                             local id="$1" declared="$2" cur merged escaped
