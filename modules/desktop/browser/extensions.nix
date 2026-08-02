@@ -55,7 +55,6 @@ in
             "{b8326f03-322f-4112-96bd-e7996548d99f}" = "theater-mode-for-youtube";
             "{9076cefe-e6f8-4883-a480-9f968bd09249}" = "reddit-nsfw-unblocker";
             "7esoorv3@alefvanoon.anonaddy.me" = "libredirect";
-
         };
     in
     {

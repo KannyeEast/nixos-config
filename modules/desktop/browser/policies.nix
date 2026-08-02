@@ -158,10 +158,6 @@
                 "browser.urlbar.trending.featureGate" = false;
                 "browser.urlbar.quicksuggest.enabled" = false;
 
-                # Drop Mozilla's pre-seeded tiles so new tab shows only the
-                # bookmarks tagged "shortcut" in tabs.nix
-                "browser.newtabpage.activity-stream.default.sites" = "";
-
                 "general.smoothScroll" = false;
 
                 "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
