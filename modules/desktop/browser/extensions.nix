@@ -58,7 +58,14 @@ in
     in
     {
         config = {
-            programs.zen-browser.policies.ExtensionSettings = mkExtensionSettings extensions;
+            programs.zen-browser.policies.ExtensionSettings =
+                mkExtensionSettings extensions // {
+                    "*" = {
+                        blocked_install_message = "Modify the nixos-config to install extension";
+                        install_sources = [ "https://addons.mozilla.org/*" ];
+                        installation_mode = "blocked";
+                    };
+                };
         };
     };
 }

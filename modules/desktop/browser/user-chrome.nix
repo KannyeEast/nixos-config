@@ -276,7 +276,9 @@
                     background: #f34f5694 !important;
                     border: 1px solid #f34f56 !important;
                 }
-                
+            '';
+            
+            programs.zen-browser.profiles.default.userContent = ''
                 @-moz-document url-prefix("about:newtab"), url-prefix("about:home") {
                     .top-site-outer:not(.pinned):not(:has(.icon-pin-small)) {
                         display: none !important;

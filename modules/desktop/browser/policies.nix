@@ -45,15 +45,6 @@
                 Category = "strict";
                 BaselineExceptions = true;
             };
-            ExtensionSettings = {
-                "*" = {
-                    blocked_install_message = "Modify the nixos-config to install extension";
-                    install_sources = [
-                        "https://addons.mozilla.org/*"
-                    ];
-                    installation_mode = "blocked";
-                };
-            };
             FirefoxHome = {
                 Search = true;
                 Weather = false;
