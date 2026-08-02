@@ -126,47 +126,28 @@
                     background-color: color-mix(in srgb, currentColor 20%, transparent) !important;
                 }
 
-                /* ── folders ────────
-                   No container. Grouping reads from a rail in the folder's own
-                   colour, and the chevron rotating is the collapse affordance. */
-                tab-group {
-                    display: grid !important;
-                    background: none !important;
-                    border: none !important;
-                    margin-block: 4px !important;
+                /* ── folders ──────── */
+                zen-folder {
+                    margin-block: 9px 5px !important;
                     margin-inline: 2px !important;
-                    max-height: 1000px !important;
-                    transition: max-height 0.2s ease !important;
 
-                    & > vbox {
-                        margin-inline-start: 11px !important;
-                        padding-inline-start: 5px !important;
-                        border-inline-start: 2px solid color-mix(in srgb, var(--tab-group-color-invert) 65%, transparent);
-                        transition: border-color 0.2s ease !important;
-                    }
-
-                    & tab {
-                        transition: opacity 0.5s ease !important;
+                    /* Zen's gradient folder glyph; chevron replaces it */
+                    & .tab-group-folder-icon {
+                        display: none !important;
                     }
 
                     & .tab-group-label-container {
+                        position: relative !important;
+                        padding-inline-start: 20px !important;
+
                         &:after {
                             display: none !important;
                         }
 
-                        & > label {
-                            background: transparent !important;
-                            border: unset !important;
-                            font-weight: 500 !important;
-                            text-align: unset !important;
-                            color: var(--sidebar-text-color) !important;
-                            padding-left: 21px !important;
-                        }
-
-                        & > label::before {
+                        &::before {
                             content: "" !important;
                             position: absolute !important;
-                            left: 4px !important;
+                            left: 3px !important;
                             top: 50%;
                             translate: 0 -50%;
                             width: 14px !important;
@@ -180,26 +161,49 @@
                         }
                     }
 
+                    & .tab-group-label {
+                        background: transparent !important;
+                        border: unset !important;
+                        font-weight: 500 !important;
+                        text-align: unset !important;
+                        color: var(--sidebar-text-color) !important;
+                    }
+
+                    & .tab-group-container {
+                        margin-inline-start: 10px !important;
+                        padding-inline-start: 5px !important;
+                        border-inline-start: 2px solid color-mix(in srgb, var(--tab-group-color-invert) 65%, transparent) !important;
+                        transition: border-color 0.2s ease !important;
+                    }
+
+                    &:hover .tab-group-container {
+                        border-inline-start-color: var(--tab-group-color-invert) !important;
+                    }
+
+                    & .tab-group-overflow-count {
+                        font-weight: 400 !important;
+                        opacity: 0.55;
+                    }
+
+                    /* Collapsed: keep the folder's identity in the label */
                     &[collapsed] {
-                        overflow: hidden !important;
-                        max-height: 3rem !important;
-
-                        & tab {
-                            opacity: 0 !important;
-                        }
-
-                        & > vbox {
-                            border-inline-start-color: transparent !important;
-                        }
-
-                        & .tab-group-label-container > label::before {
+                        & .tab-group-label-container::before {
                             rotate: -90deg;
+                        }
+
+                        & .tab-group-label {
+                            color: var(--tab-group-color-invert) !important;
                         }
                     }
                 }
 
-                /* Folders whose tabs live in another workspace */
-                tab-group:has(tab[hidden]) {
+                /* Live folders are fetched, not owned: dashed rail */
+                zen-folder:has(.reset-icon[live-folder-action]) .tab-group-container {
+                    border-inline-start-style: dashed !important;
+                }
+
+                /* Per-tab unload buttons, but keep live-folder status icons */
+                .reset-icon:not([live-folder-action]) {
                     display: none !important;
                 }
 

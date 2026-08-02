@@ -87,7 +87,7 @@ in
             # Infrastructure
             "Server" = {
                 id = "e0f080f0-6cab-41d5-b416-cc07d318b969";
-                position = 100;
+                position = 110;
                 workspace = spaces."Development".id;
                 isGroup = true;
                 isFolderCollapsed = true;
@@ -97,14 +97,14 @@ in
             "FRITZ!Box" = {
                 id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
                 url = "http://192.168.178.1/";
-                position = 101;
+                position = 111;
                 workspace = spaces."Development".id;
                 folderParentId = pins."Server".id;
             };
             "Cloudflare" = {
                 id = "9fb4ee37-0150-4532-ad02-f981f102f16a";
                 url = "https://dash.cloudflare.com/";
-                position = 102;
+                position = 112;
                 workspace = spaces."Development".id;
                 folderParentId = pins."Server".id;
             };
@@ -164,7 +164,7 @@ in
                 id = "b7a3d5c1-9e2f-4a68-b0d4-6f1c8e5a2d93";
                 kind = "github:pull-requests";
                 workspace = spaces."Development".id;
-                position = 210;
+                position = 101;
                 github = {
                     assignedMe = true;
                     reviewRequested = true;
@@ -175,7 +175,7 @@ in
                 id = "3c9e1f7a-5b24-4d80-9a6c-e2f4b8d10c57";
                 kind = "github:issues";
                 workspace = spaces."Development".id;
-                position = 211;
+                position = 102;
                 github.authorMe = true;
             };
         };
@@ -189,7 +189,7 @@ in
                     pins."F1 Stream".id 
                     pins."F1 Timing".id
                 ];
-                sizes = [ 72 28 ];
+                sizes = [ 66 33 ];
             };
         };
 
