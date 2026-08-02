@@ -68,7 +68,7 @@ in
     {
         config = {
             home.activation.zenExtensionStorage =
-                lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+                config.lib.dag.entryAfter [ "writeBoundary" ] ''
                     db="${profile}/storage-sync-v2.sqlite"
 
                     if [ ! -f "$db" ]; then
