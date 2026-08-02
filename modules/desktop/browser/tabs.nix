@@ -110,21 +110,21 @@ in
         };
 
         # Forges
+        "Codeberg" = {
+          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
+          url = "https://codeberg.org/";
+          position = 151;
+          workspace = spaces."Development".id;
+        };
         "GitHub" = {
           id = "fcc811cc-1389-4b0f-8384-949da46ad442";
           url = "https://github.com/";
-          position = 151;
+          position = 152;
           workspace = spaces."Development".id;
         };
         "GitLab" = {
           id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
           url = "https://gitlab.com/";
-          position = 152;
-          workspace = spaces."Development".id;
-        };
-        "Codeberg" = {
-          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
-          url = "https://codeberg.org/";
           position = 153;
           workspace = spaces."Development".id;
         };
