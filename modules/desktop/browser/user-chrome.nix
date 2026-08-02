@@ -128,8 +128,11 @@
 
                 /* ── folders ──────── */
                 zen-folder {
-                    margin-block: 9px 5px !important;
-                    margin-inline: 2px !important;
+                    /* Nudge if the rail drifts off the chevron's centre */
+                    --folder-rail-inset: 13px;
+
+                    margin: 0 !important;
+                    padding: 0 !important;
 
                     & .tab-group-folder-icon {
                         opacity: 1 !important;
@@ -161,7 +164,7 @@
 
                     & .tab-group-container {
                         display: block !important;
-                        margin-inline-start: 10px !important;
+                        margin-inline-start: var(--folder-rail-inset) !important;
                         padding-inline-start: 5px !important;
                         border-inline-start: 2px solid color-mix(in srgb, currentColor 30%, transparent) !important;
                         transition: border-color 0.2s ease !important;
@@ -181,9 +184,10 @@
                     }
                 }
 
-                /* Live folders are fetched, not owned: dashed rail */
-                zen-folder:has(.reset-icon[live-folder-action]) .tab-group-container {
-                    border-inline-start-style: dashed !important;
+                /* Live folders are fetched, not owned: sync glyph, no rotation */
+                zen-folder:has(.reset-icon[live-folder-action]) .tab-group-folder-icon {
+                    mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4'/><path d='M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4'/></svg>") !important;
+                    rotate: none !important;
                 }
 
                 /* Per-tab unload buttons, but keep live-folder status icons */
