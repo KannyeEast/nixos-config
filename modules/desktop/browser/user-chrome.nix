@@ -30,7 +30,7 @@ in
           }
 
           .urlbar-background {
-              border: 1px solid #ffffff13 !important;
+              border: 2px solid #ffffff13 !important;
           }
 
           #urlbar[open][zen-floating-urlbar="true"],
@@ -51,7 +51,15 @@ in
           }
 
           #urlbar-results:has(.urlbarView-row[type="top_site"]) {
+              grid-template-columns: repeat(auto-fit, ${toString tileWidth}px) !important;
               justify-content: center !important;
+          }
+
+          .urlbarView-row[type="top_site"]:hover .urlbarView-favicon,
+          .urlbarView-row[type="top_site"] .urlbarView-favicon:hover {
+              background: none !important;
+              box-shadow: none !important;
+              outline: none !important;
           }
 
           .urlbarView-switchToTab {
