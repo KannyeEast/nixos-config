@@ -71,6 +71,7 @@ let
       label = b.name;
     }
     // optionalAttrs (b ? icon) {
+      smallFavicon = b.icon;
       favicon = b.icon;
       faviconSize = b.iconSize or 96;
     }
