@@ -2,10 +2,6 @@
 live_config_reload = true
 working_directory = "None"
 
-# Generated from .config/theme/palette.json. tmux and starship read the ANSI
-# palette back out of the terminal, so this is the only place it enters.
-import = ["~/.config/theme/palette.toml"]
-
 [terminal]
 shell = { program = "zsh", args = ["-l", "-c", "tmux attach || tmux"] }
 
@@ -63,3 +59,7 @@ background = "0x303340"
 [colors.vi_mode_cursor]
 text = "CellBackground"
 cursor = "CellForeground"
+
+# Everything between these markers is written by `flavours apply`.
+# Start flavours
+# End flavours

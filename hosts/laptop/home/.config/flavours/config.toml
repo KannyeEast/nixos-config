@@ -1,0 +1,11 @@
+# flavours rewrites the block between the start/end markers in each file, so
+# the rest of the config stays hand-written. Apply with:
+#   flavours apply dendrite
+#
+# Files written here are out-of-store symlinks into the repo, so applying a
+# scheme shows up as a git diff. That is intended.
+
+[[items]]
+file = "~/.config/alacritty/alacritty.toml"
+template = "alacritty"
+# alacritty watches its own config, so no hook is needed

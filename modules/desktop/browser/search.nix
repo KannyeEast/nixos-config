@@ -115,24 +115,14 @@
               definedAliases = [ "@ng" ];
             };
 
-            "Hex to RGB" = {
+            "Colors" = {
               urls = [
                 {
-                  template = "https://htmlcolorcodes.com/hex-to-rgb/";
+                  template = "https://htmlcolorcodes.com/color-picker/";
                 }
               ];
               icon = colorIcon;
-              definedAliases = [ "@hex" ];
-            };
-
-            "RGB to Hex" = {
-              urls = [
-                {
-                  template = "https://htmlcolorcodes.com/rgb-to-hex/";
-                }
-              ];
-              icon = colorIcon;
-              definedAliases = [ "@rgb" ];
+              definedAliases = [ "@hex" "rgb" ];
             };
 
             "bing".metaData.hidden = true;
