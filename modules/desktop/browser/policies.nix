@@ -177,8 +177,9 @@
         "browser.shell.checkDefaultBrowser" = false;
         "browser.shell.didSkipDefaultBrowserCheckOnFirstRun" = true;
 
-        "font.default.x-western" = "sans-serif";
+        "font.default.x-western" = "serif";
         "font.name.sans-serif.x-western" = "Inter";
+        "font.name.serif.x-western" = "Barlow";
         "font.name.monospace.x-western" = "JetBrainsMono Nerd Font";
         "font.size.variable.x-western" = 16;
         "font.size.monospace.x-western" = 13;

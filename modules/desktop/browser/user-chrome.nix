@@ -32,6 +32,25 @@
               display: none !important;
           }
 
+          /* Centre the tile grid rather than left-aligning a short row */
+          #urlbar-results:has(.urlbarView-row[type="top_site"]) {
+              justify-content: center !important;
+          }
+
+          /* "Switch to Tab" adds a second line and knocks that tile out of
+             alignment with the rest of the grid. Badge the favicon instead. */
+          .urlbarView-row[type="top_site"] .urlbarView-switchToTab {
+              display: none !important;
+          }
+
+          .urlbarView-row[type="top_site"]:has(.urlbarView-switchToTab) .urlbarView-type-icon {
+              background-color: currentColor;
+              mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='M13 6l6 6-6 6'/></svg>");
+              mask-size: contain;
+              mask-repeat: no-repeat;
+              mask-position: center;
+          }
+
           /* ── tabs ──────── */
           .tabbrowser-tab .tab-background {
               transition: background-color 0.2s ease;
