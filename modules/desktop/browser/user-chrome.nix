@@ -1,8 +1,8 @@
 { config, lib, ... }:
 let
-  tileWidth = 75;
+  tileWidth = 93;
   tileCount = builtins.length config.flake.lib.browserShortcuts;
-  urlbarWidth = lib.min 750 (lib.max 375 (tileWidth * (tileCount + 2)));
+  urlbarWidth = lib.min 744 (lib.max 372 (tileWidth * (tileCount + 2)));
 in
 {
   flake.modules.homeManager.browserUserChrome =
@@ -51,8 +51,6 @@ in
           }
 
           #urlbar-results:has(.urlbarView-row[type="top_site"]) {
-              display: flex !important;
-              flex-wrap: wrap !important;
               justify-content: center !important;
           }
 
