@@ -10,4 +10,5 @@ rewrite = true
 [[items]]
 file = "~/.config/nix/zen.json"
 template = "nix"
+subtemplate = "zen"
 rewrite = true

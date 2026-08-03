@@ -183,21 +183,10 @@ in
 
       # ── spaces (routing) ────────
       spaces = {
-        "Entertainment" = {
-          id = "a8fde799-77d2-4b1c-8c83-37dce87d30be";
-          position = 1;
-          theme = mkTheme "base0E";
-          routes = {
-            "video" = regexMatch "youtube|youtu\\.be|twitch|vimeo|odysee";
-            "music" = regexMatch "spotify|bandcamp|soundcloud|last\\.fm";
-            "streaming" = regexMatch "netflix|f1tv|formula1|streamed|dpdns";
-          };
-        };
-
         "Development" = {
           id = "779e73b8-5f81-4538-9d92-e7da96824c56";
           position = 2;
-          theme = mkTheme "base0C";
+          theme = mkTheme "base00";
           routes = {
             "forges" = regexMatch "github|gitlab|codeberg|sr\\.ht|sourcehut";
             "nix" = regexMatch "nixos|nixpkgs|noogle|nixpk\\.gs|nix-community|determinate";
@@ -207,10 +196,22 @@ in
             "infra" = regexMatch "dash\\.cloudflare|192\\.168\\.|tailscale";
           };
         };
+        
+        "Entertainment" = {
+          id = "a8fde799-77d2-4b1c-8c83-37dce87d30be";
+          position = 1;
+          theme = mkTheme "base00";
+          routes = {
+            "video" = regexMatch "youtube|youtu\\.be|twitch|vimeo|odysee";
+            "music" = regexMatch "spotify|bandcamp|soundcloud|last\\.fm";
+            "streaming" = regexMatch "netflix|f1tv|formula1|streamed|dpdns";
+          };
+        };
 
         "Admin" = {
           id = "6698068a-20c7-436b-9351-b024cde94686";
           position = 3;
+          theme = mkTheme "base00";
           routes = {
             "accounts" = regexMatch "proton\\.me|simplelogin|keepass";
             "bank" = regexMatch "sparkasse";
