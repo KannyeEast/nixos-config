@@ -56,8 +56,14 @@ in
               justify-content: center !important;
           }
 
+          #urlbar-results:has(.urlbarView-row[type="top_site"]) {
+              gap: 0 !important;
+          }
+
           #urlbar-results:has(.urlbarView-row[type="top_site"]) > .urlbarView-row {
               flex: 0 0 ${toString tileWidth}px !important;
+              box-sizing: border-box !important;
+              margin: 0 !important;
           }
 
           #urlbar .urlbarView-row:hover .urlbarView-favicon,
