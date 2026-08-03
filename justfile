@@ -95,8 +95,6 @@ fmt:
     fi
 
 # Render the colour scheme into every file listed in flavours/config.toml.
-# Only needed when the scheme changes or a new item is added: the rendered
-# output is committed, so a fresh machine gets its colours from git.
 [group("maintenance")]
 theme scheme="dendrite":
     mkdir -p ~/.local/share/flavours

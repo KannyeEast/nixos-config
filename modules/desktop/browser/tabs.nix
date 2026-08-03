@@ -1,10 +1,41 @@
-{ ... }:
+{ lib, ... }:
+let
+  inherit (lib) optionalAttrs;
+in
 {
   flake.modules.homeManager.browserTabs =
-    { ... }:
+    { host, ... }:
     let
+      inherit (host) hostname;  
+    
+      paletteFile = ../../../hosts/${hostname}/home/.config/nix/zen.json;
+      hasPalette = builtins.pathExists paletteFile;
+      palette = builtins.fromJSON (builtins.readFile paletteFile);
+
+      # @TODO: algorithm/type/lightness/opacity/texture are Zen's gradient
+      # knobs; these are guesses. Set one in the UI and read it back to tune.
+      mkTheme =
+        slot:
+        optionalAttrs hasPalette {
+          theme = {
+            type = "gradient";
+            colors = [
+              (
+                palette.rgb.${slot}
+                // {
+                  algorithm = "floating";
+                  type = "explicit-lightness";
+                  lightness = 50;
+                }
+              )
+            ];
+            opacity = 0.8;
+            texture = 0.5;
+          };
+        };
+
       # ── routes ────────
-      host = alternatives: {
+      regexMatch = alternatives: {
         matchType = "regex";
         reference = "^https?://[^/]*(${alternatives})";
       };
@@ -143,23 +174,25 @@
         "Entertainment" = {
           id = "a8fde799-77d2-4b1c-8c83-37dce87d30be";
           position = 1;
+          theme = mkTheme "base0E";
           routes = {
-            "video" = host "youtube|youtu\\.be|twitch|vimeo|odysee";
-            "music" = host "spotify|bandcamp|soundcloud|last\\.fm";
-            "streaming" = host "netflix|f1tv|formula1|streamed|dpdns";
+            "video" = regexMatch "youtube|youtu\\.be|twitch|vimeo|odysee";
+            "music" = regexMatch "spotify|bandcamp|soundcloud|last\\.fm";
+            "streaming" = regexMatch "netflix|f1tv|formula1|streamed|dpdns";
           };
         };
 
         "Development" = {
           id = "779e73b8-5f81-4538-9d92-e7da96824c56";
           position = 2;
+          theme = mkTheme "base0C";
           routes = {
-            "forges" = host "github|gitlab|codeberg|sr\\.ht|sourcehut";
-            "nix" = host "nixos|nixpkgs|noogle|nixpk\\.gs|nix-community|determinate";
-            "docs" = host "rust-lang|crates\\.io|docs\\.rs|developer\\.mozilla|devdocs|kernel\\.org|man7";
-            "help" = host "stackoverflow|stackexchange|serverfault|superuser";
-            "tools" = host "regex101|starship\\.rs|quickshell|just\\.systems";
-            "infra" = host "dash\\.cloudflare|192\\.168\\.|tailscale";
+            "forges" = regexMatch "github|gitlab|codeberg|sr\\.ht|sourcehut";
+            "nix" = regexMatch "nixos|nixpkgs|noogle|nixpk\\.gs|nix-community|determinate";
+            "docs" = regexMatch "rust-lang|crates\\.io|docs\\.rs|developer\\.mozilla|devdocs|kernel\\.org|man7";
+            "help" = regexMatch "stackoverflow|stackexchange|serverfault|superuser";
+            "tools" = regexMatch "regex101|starship\\.rs|quickshell|just\\.systems";
+            "infra" = regexMatch "dash\\.cloudflare|192\\.168\\.|tailscale";
           };
         };
 
@@ -167,9 +200,9 @@
           id = "6698068a-20c7-436b-9351-b024cde94686";
           position = 3;
           routes = {
-            "accounts" = host "proton\\.me|simplelogin|keepass";
-            "bank" = host "sparkasse";
-            "shopping" = host "amazon|ebay|kleinanzeigen";
+            "accounts" = regexMatch "proton\\.me|simplelogin|keepass";
+            "bank" = regexMatch "sparkasse";
+            "shopping" = regexMatch "amazon|ebay|kleinanzeigen";
           };
         };
       };
