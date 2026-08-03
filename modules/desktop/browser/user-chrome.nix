@@ -33,14 +33,12 @@ in
               border: 2px solid #ffffff13 !important;
           }
 
-          #urlbar[open][zen-floating-urlbar="true"],
-          #urlbar[breakout],
-          #urlbar[breakout-extend] {
+          #urlbar[zen-floating-urlbar="true"][open],
+          #urlbar[zen-floating-urlbar="true"][breakout-extend] {
               width: ${toString urlbarWidth}px !important;
               min-width: 0 !important;
               max-width: ${toString urlbarWidth}px !important;
           }
-
 
           #picture-in-picture-button {
               display: none !important;
@@ -50,17 +48,14 @@ in
               display: none !important;
           }
 
-          #urlbar-results:has(.urlbarView-row[type="top_site"]) {
+          #urlbar[zen-floating-urlbar="true"] #urlbar-results:has(.urlbarView-row[type="top_site"]) {
               display: flex !important;
               flex-wrap: wrap !important;
               justify-content: center !important;
-          }
-
-          #urlbar-results:has(.urlbarView-row[type="top_site"]) {
               gap: 0 !important;
           }
 
-          #urlbar-results:has(.urlbarView-row[type="top_site"]) > .urlbarView-row {
+          #urlbar[zen-floating-urlbar="true"] #urlbar-results:has(.urlbarView-row[type="top_site"]) > .urlbarView-row {
               flex: 0 0 ${toString tileWidth}px !important;
               box-sizing: border-box !important;
               margin: 0 !important;

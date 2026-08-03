@@ -43,7 +43,7 @@ in
           )
         ];
         opacity = 0.8;
-        texture = 0.5;
+        texture = 0.0;
       };
 
       # ── routes ────────
