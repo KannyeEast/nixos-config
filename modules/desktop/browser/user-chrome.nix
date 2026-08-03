@@ -90,18 +90,6 @@
               background-color: rgba(255, 255, 255, 0.17) !important;
           }
 
-          /* @TODO: positional, not identity based. Reordering essentials
-             moves the colours to different tabs. */
-          .tabbrowser-tab[pinned]:nth-of-type(1) .tab-background:is([selected], [multiselected]) {
-              background-color: rgba(255, 134, 134, 0.22) !important;
-              box-shadow: none !important;
-          }
-
-          .tabbrowser-tab[pinned]:nth-of-type(2) .tab-background:is([selected], [multiselected]) {
-              background-color: rgba(161, 197, 255, 0.22) !important;
-              box-shadow: none !important;
-          }
-
           /* Attention dot on changed background tabs */
           .tabbrowser-tab:is([image], [pinned]) > .tab-stack > .tab-content[attention]:not([selected]),
           .tabbrowser-tab > .tab-stack > .tab-content[pinned][titlechanged]:not([selected]) {
