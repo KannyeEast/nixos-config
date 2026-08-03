@@ -48,12 +48,42 @@ let
     }
   ];
 
+  # @TODO: temporary, for testing urlbar width at different tile counts.
+  # Comment entries out to vary the count, then delete this whole block.
+  testTree = [
+    {
+      name = "Test";
+      bookmarks = [
+        {
+          name = "Noogle";
+          url = "https://noogle.dev/";
+          tags = [ "shortcut" ];
+        }
+        {
+          name = "Options";
+          url = "https://mynixos.com/";
+          tags = [ "shortcut" ];
+        }
+        {
+          name = "Packages";
+          url = "https://search.nixos.org/packages";
+          tags = [ "shortcut" ];
+        }
+        {
+          name = "Maps";
+          url = "https://kagi.com/maps";
+          tags = [ "shortcut" ];
+        }
+      ];
+    }
+  ];
+
   flatten = items: concatMap (b: if b ? bookmarks then flatten b.bookmarks else [ b ]) items;
 
   shortcuts = map (b: {
     inherit (b) url;
     label = b.name;
-  }) (filter (b: builtins.elem "shortcut" (b.tags or [ ])) (flatten tree));
+  }) (filter (b: builtins.elem "shortcut" (b.tags or [ ])) (flatten (tree ++ testTree)));
 in
 {
   # user-chrome.nix sizes the urlbar from how many tiles there are

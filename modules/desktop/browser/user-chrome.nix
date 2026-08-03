@@ -55,9 +55,15 @@ in
               justify-content: center !important;
           }
 
-          .urlbarView-row[type="top_site"]:hover .urlbarView-favicon,
-          .urlbarView-row[type="top_site"] .urlbarView-favicon:hover {
+          /* Two nested boxes highlight on hover. Keep the tile's, drop the
+             inner one, which sits tight around the favicon. */
+          .urlbarView-row[type="top_site"] .urlbarView-row-inner,
+          .urlbarView-row[type="top_site"] .urlbarView-row-inner:hover,
+          .urlbarView-row[type="top_site"]:hover .urlbarView-row-inner,
+          .urlbarView-row[type="top_site"] .urlbarView-no-wrap,
+          .urlbarView-row[type="top_site"] .urlbarView-favicon {
               background: none !important;
+              background-color: transparent !important;
               box-shadow: none !important;
               outline: none !important;
           }
