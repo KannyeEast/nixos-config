@@ -62,4 +62,27 @@ cursor = "CellForeground"
 
 # Everything between these markers is written by `flavours apply`.
 # Start flavours
+[colors.primary]
+background = "#0c0c12"
+foreground = "#a5b6cf"
+
+[colors.normal]
+black = "#1c1e27"
+red = "#e26c7c"
+green = "#95d3af"
+yellow = "#f1d8a5"
+blue = "#8baff1"
+magenta = "#c79bf0"
+cyan = "#98d3ee"
+white = "#a5b6cf"
+
+[colors.bright]
+black = "#323947"
+red = "#e26c7c"
+green = "#95d3af"
+yellow = "#f1d8a5"
+blue = "#8baff1"
+magenta = "#c79bf0"
+cyan = "#98d3ee"
+white = "#d0d3d8"
 # End flavours
