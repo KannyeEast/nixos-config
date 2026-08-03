@@ -39,11 +39,11 @@
 
           /* "Switch to Tab" adds a second line and knocks that tile out of
              alignment with the rest of the grid. Badge the favicon instead. */
-          .urlbarView-row[type="top_site"] .urlbarView-switchToTab {
+          .urlbarView-switchToTab {
               display: none !important;
           }
 
-          .urlbarView-row[type="top_site"]:has(.urlbarView-switchToTab) .urlbarView-type-icon {
+          .urlbarView-row:has(.urlbarView-switchToTab) .urlbarView-type-icon {
               background-color: currentColor;
               mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='M13 6l6 6-6 6'/></svg>");
               mask-size: contain;
