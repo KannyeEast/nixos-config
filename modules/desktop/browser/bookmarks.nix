@@ -52,6 +52,17 @@ let
 
   flatten = items: concatMap (b: if b ? bookmarks then flatten b.bookmarks else [ b ]) items;
 
+  forBookmarks = map (
+    b:
+    if b ? bookmarks then
+      b // { bookmarks = forBookmarks b.bookmarks; }
+    else
+      builtins.removeAttrs b [
+        "icon"
+        "iconSize"
+      ]
+  );
+
   # @TODO: unverified whether the urlbar honours this or only the new tab page.
   shortcuts = map (
     b:
@@ -75,7 +86,7 @@ in
       config = {
         programs.zen-browser.profiles.default = {
           bookmarks.force = true;
-          bookmarks.settings = tree;
+          bookmarks.settings = forBookmarks tree;
 
           settings = {
             "browser.newtabpage.pinned" = builtins.toJSON shortcuts;
