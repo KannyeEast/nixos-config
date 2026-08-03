@@ -2,7 +2,7 @@
 let
   tileWidth = 75;
   tileCount = builtins.length config.flake.lib.browserShortcuts;
-  urlbarWidth = lib.min 750 (lib.max 375 (tileWidth * (tileCount + 2)));
+  urlbarWidth = lib.min 750 (lib.max 375 (tileWidth * (tileCount + 1)));
 in
 {
   flake.modules.homeManager.browserUserChrome =
