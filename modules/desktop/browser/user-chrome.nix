@@ -60,8 +60,10 @@ in
               flex: 0 0 ${toString tileWidth}px !important;
           }
 
-          .urlbarView-row[type="top_site"]:hover .urlbarView-favicon {
+          #urlbar .urlbarView-row:hover .urlbarView-favicon,
+          #urlbar .urlbarView-row:hover > .urlbarView-row-inner .urlbarView-favicon {
               background-color: transparent !important;
+              background: none !important;
           }
 
           .urlbarView-switchToTab {
