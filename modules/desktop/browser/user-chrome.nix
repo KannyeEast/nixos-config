@@ -29,19 +29,18 @@ in
               border-radius: 8px !important;
           }
 
-          #urlbar-background {
+          .urlbar-background {
               border: 1px solid #ffffff13 !important;
           }
 
-          #urlbar {
-              --zen-urlbar-width: ${toString urlbarWidth}px !important;
+          #urlbar[open][zen-floating-urlbar="true"],
+          #urlbar[breakout],
+          #urlbar[breakout-extend] {
+              width: ${toString urlbarWidth}px !important;
+              min-width: 0 !important;
               max-width: ${toString urlbarWidth}px !important;
           }
 
-          #urlbar[breakout-extend] .urlbarView-body-inner {
-              max-width: ${toString urlbarWidth}px !important;
-              margin-inline: auto !important;
-          }
 
           #picture-in-picture-button {
               display: none !important;
