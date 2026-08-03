@@ -28,6 +28,10 @@
               border: 1px solid #ffffff13 !important;
           }
 
+          .urlbarView-row[type="top_site"]:not([pinned]) {
+              display: none !important;
+          }
+
           /* ── tabs ──────── */
           .tabbrowser-tab .tab-background {
               transition: background-color 0.2s ease;

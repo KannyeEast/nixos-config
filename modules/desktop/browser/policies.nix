@@ -4,11 +4,6 @@
     { ... }:
     let
       mkPolicy = builtins.mapAttrs (_: Value: { inherit Value; });
-
-      mkLocked = builtins.mapAttrs (_: Value: {
-        inherit Value;
-        Status = "locked";
-      });
     in
     {
       # about:policies#documentation
@@ -151,6 +146,7 @@
           "browser.urlbar.suggest.addons" = false;
           "browser.urlbar.suggest.engines" = false;
           "browser.urlbar.suggest.mdn" = false;
+          # "browser.urlbar.suggest.topsites" = false; Locked by zen
           "browser.urlbar.suggest.trending" = false;
           "browser.urlbar.suggest.weather" = false;
           "browser.urlbar.suggest.yelp" = false;
@@ -162,8 +158,6 @@
           "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
 
           "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
-        } // mkLocked {
-          "browser.urlbar.suggest.topsites" = false;
         };
         UserMessaging = {
           WhatsNew = false;
