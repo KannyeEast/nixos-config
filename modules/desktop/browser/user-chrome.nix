@@ -33,8 +33,10 @@
           }
 
           /* Centre the tile grid rather than left-aligning a short row */
-          #urlbar-results:has(.urlbarView-row[type="top_site"]) {
+          #urlbar-results:has(.urlbarView-row[type="top_site"]),
+          .urlbarView-results:has(.urlbarView-row[type="top_site"]) {
               justify-content: center !important;
+              justify-items: center !important;
           }
 
           /* "Switch to Tab" adds a second line and knocks that tile out of
@@ -43,7 +45,13 @@
               display: none !important;
           }
 
-          .urlbarView-row:has(.urlbarView-switchToTab) .urlbarView-type-icon {
+          .urlbarView-row:has(.urlbarView-switchToTab) .urlbarView-title::after {
+              content: "";
+              display: inline-block;
+              width: 11px;
+              height: 11px;
+              margin-inline-start: 5px;
+              vertical-align: -1px;
               background-color: currentColor;
               mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='M13 6l6 6-6 6'/></svg>");
               mask-size: contain;
