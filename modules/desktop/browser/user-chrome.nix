@@ -35,7 +35,7 @@ in
 
           #urlbar {
               --zen-urlbar-width: ${toString urlbarWidth}px !important;
-              --urlbar-width: ${toString urlbarWidth}px !important;
+              max-width: ${toString urlbarWidth}px !important;
           }
 
           #urlbar[breakout-extend] .urlbarView-body-inner {
