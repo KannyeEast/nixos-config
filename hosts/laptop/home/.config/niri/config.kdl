@@ -631,3 +631,6 @@ binds {
 // moving the mouse or pressing any other key.
     Mod+Shift+P { power-off-monitors; }
 }
+// Colours live here so `flavours apply` can rewrite the whole file.
+// Positional: this must stay last so it overrides the blocks above.
+include "colors.kdl"

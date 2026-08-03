@@ -1,0 +1,39 @@
+{
+  "scheme": "dendrite",
+  "hex": {
+    "base00": "#0C0C12",
+    "base01": "#1c1e27",
+    "base02": "#323947",
+    "base03": "#3f4757",
+    "base04": "#6f7a8f",
+    "base05": "#a5b6cf",
+    "base06": "#cbced3",
+    "base07": "#d0d3d8",
+    "base08": "#e26c7c",
+    "base09": "#e29a6c",
+    "base0A": "#f1d8a5",
+    "base0B": "#95d3af",
+    "base0C": "#98d3ee",
+    "base0D": "#8baff1",
+    "base0E": "#c79bf0",
+    "base0F": "#c296eb"
+  },
+  "rgb": {
+    "base00": { "red": 12, "green": 12, "blue": 18 },
+    "base01": { "red": 28, "green": 30, "blue": 39 },
+    "base02": { "red": 50, "green": 57, "blue": 71 },
+    "base03": { "red": 63, "green": 71, "blue": 87 },
+    "base04": { "red": 111, "green": 122, "blue": 143 },
+    "base05": { "red": 165, "green": 182, "blue": 207 },
+    "base06": { "red": 203, "green": 206, "blue": 211 },
+    "base07": { "red": 208, "green": 211, "blue": 216 },
+    "base08": { "red": 226, "green": 108, "blue": 124 },
+    "base09": { "red": 226, "green": 154, "blue": 108 },
+    "base0A": { "red": 241, "green": 216, "blue": 165 },
+    "base0B": { "red": 149, "green": 211, "blue": 175 },
+    "base0C": { "red": 152, "green": 211, "blue": 238 },
+    "base0D": { "red": 139, "green": 175, "blue": 241 },
+    "base0E": { "red": 199, "green": 155, "blue": 240 },
+    "base0F": { "red": 194, "green": 150, "blue": 235 }
+  }
+}
