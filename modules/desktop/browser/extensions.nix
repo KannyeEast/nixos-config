@@ -41,14 +41,6 @@ in
           id = "proton-pass";
           pinned = true;
         };
-        "namlet@pax.red" = {
-          id = "namlet";
-          pinned = true;
-        };
-        "{a6c4a591-f1b2-4f03-b3ff-767e5bedf4e7}" = {
-          id = "user-agent-string-switcher";
-          pinned = true;
-        };
         "{d867162c-4c38-4c5f-aca4-db6a6592d7da}" = "youtube-tweaks"; # Redundant with custom extensions
         "deArrow@ajay.app" = "dearrow";
         "sponsorBlocker@ajay.app" = "sponsorblock";

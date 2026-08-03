@@ -15,11 +15,11 @@
 
           settings = {
             # Trackpad Animation
-            "user-browser-scale" = "0.98";
-            "user-browser-ease-swipe" = "0.3, 1.2, 0.5, 1";
-            "user-browser-ease-reset" = "0.2, 1.4, 0.3, 1";
+            "user-browser-scale" = "0.99";
+            "user-browser-ease-swipe" = "0.1, 0.5, 0.3, 0.1";
+            "user-browser-ease-reset" = "0.1, 0.5, 0.3, 0.1";
             "user-tab-radius" = "8px";
-            "user-tab-movement" = "2%";
+            "user-tab-movement" = "0.5%";
             "tab-shadow-enabled" = true;
             "border-shadow-disabled" = true;
 

@@ -19,16 +19,15 @@
           AllowRestore = false;
         };
         Certificates.ImportEnterpriseRoots = true;
-        # Can probably do more for cookies
         Cookies = {
           Allow = [
             "file:///"
-            "http://proton.me"
             "https://proton.me"
-            "http://kagi.com"
             "https://kagi.com"
-            "http://simplelogin.io"
             "https://simplelogin.io"
+            "https://github.com"
+            "https://gitlab.com"
+            "https://codeberg.org"
           ];
           Behavior = "reject-tracker-and-partition-foreign";
           BehaviorPrivateBrowsing = "reject-tracker-and-partition-foreign";
@@ -154,10 +153,6 @@
           "browser.urlbar.quicksuggest.enabled" = false;
 
           "general.smoothScroll" = false;
-
-          "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
-
-          "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
         };
         UserMessaging = {
           WhatsNew = false;
@@ -176,6 +171,9 @@
 
         "browser.shell.checkDefaultBrowser" = false;
         "browser.shell.didSkipDefaultBrowserCheckOnFirstRun" = true;
+
+        "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
+        "media.videocontrols.picture-in-picture.enabled" = false;
 
         "font.default.x-western" = "serif";
         "font.name.sans-serif.x-western" = "Inter";

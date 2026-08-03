@@ -28,6 +28,14 @@
               border: 1px solid #ffffff13 !important;
           }
 
+          #urlbar {
+              --zen-urlbar-width: 625px !important;
+          }
+
+          #picture-in-picture-button {
+              display: none !important;
+          }
+
           .urlbarView-row[type="top_site"]:not([pinned]) {
               display: none !important;
           }
@@ -292,14 +300,6 @@
           .titlebar-close:hover > .toolbarbutton-icon {
               background: #f34f5694 !important;
               border: 1px solid #f34f56 !important;
-          }
-        '';
-
-        programs.zen-browser.profiles.default.userContent = ''
-          @-moz-document url-prefix("about:newtab"), url-prefix("about:home") {
-              .top-site-outer:not(:has(.icon-pin-small)) {
-                  display: none !important;
-              }
           }
         '';
       };
