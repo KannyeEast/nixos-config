@@ -23,7 +23,7 @@ let
         {
           name = "F1TV";
           url = "https://f1tv.formula1.com/";
-          icon = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23e10600'/><path d='M25 19l22 13-22 13z' fill='%23fff'/></svg>";
+          icon = "https://f1tv.formula1.com/static/favicon-512x512.png";
           tags = [
             "shortcut"
             "streaming"
