@@ -1,66 +1,8 @@
-{ lib, ... }:
-let
-  inherit (lib) concatMap filter;
-in
+{ ... }:
 {
   flake.modules.homeManager.browserTabs =
     { ... }:
     let
-      # ── bookmarks ────────
-      # Anything tagged "shortcut" also becomes a new-tab tile
-      bookmarks = [
-        {
-          name = "Tools";
-          bookmarks = [
-            {
-              name = "Regex";
-              url = "https://regex101.com/";
-              tags = [
-                "shortcut"
-                "tool"
-              ];
-            }
-          ];
-        }
-        {
-          name = "Streaming";
-          bookmarks = [
-            {
-              name = "F1TV";
-              url = "https://f1tv.formula1.com/";
-              tags = [
-                "shortcut"
-                "streaming"
-              ];
-            }
-            {
-              name = "F1";
-              url = "https://f1live.dpdns.org/1";
-              tags = [
-                "shortcut"
-                "streaming"
-              ];
-            }
-            {
-              name = "Football";
-              url = "https://streamed.pk/";
-              tags = [
-                "shortcut"
-                "streaming"
-              ];
-            }
-          ];
-        }
-      ];
-
-      # Flatten the bookmark tree, then keep the tagged ones for the tile grid
-      flatten = items: concatMap (b: if b ? bookmarks then flatten b.bookmarks else [ b ]) items;
-
-      shortcuts = map (b: {
-        inherit (b) url;
-        label = b.name;
-      }) (filter (b: builtins.elem "shortcut" (b.tags or [ ])) (flatten bookmarks));
-
       # ── routes ────────
       host = alternatives: {
         matchType = "regex";
@@ -235,9 +177,6 @@ in
     {
       config = {
         programs.zen-browser.profiles.default = {
-          bookmarks.force = true;
-          bookmarks.settings = bookmarks;
-
           pinsForce = true;
           inherit pins;
 
@@ -248,10 +187,6 @@ in
           inherit joinedTabs;
 
           spaceRouting.defaultExternalRoute = "most-recent-space";
-
-          settings = {
-            "browser.newtabpage.pinned" = builtins.toJSON shortcuts;
-          };
         };
       };
     };

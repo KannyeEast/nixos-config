@@ -1,4 +1,9 @@
-{ ... }:
+{ config, lib, ... }:
+let
+  tileWidth = 75;
+  tileCount = builtins.length config.flake.lib.browserShortcuts;
+  urlbarWidth = lib.min 750 (lib.max 375 (tileWidth * (tileCount + 2)));
+in
 {
   flake.modules.homeManager.browserUserChrome =
     { ... }:
@@ -29,7 +34,7 @@
           }
 
           #urlbar {
-              --zen-urlbar-width: 625px !important;
+              --zen-urlbar-width: ${toString urlbarWidth}px !important;
           }
 
           #picture-in-picture-button {

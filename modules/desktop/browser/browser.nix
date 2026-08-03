@@ -12,6 +12,7 @@ in
       imports = [
         inputs.zen-browser.homeModules.beta
 
+        homeManager.browserBookmarks
         homeManager.browserContainers
         homeManager.browserExtensions
         homeManager.browserMods

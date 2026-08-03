@@ -23,6 +23,7 @@ in
           homeManager.browser
           homeManager.directories
           homeManager.dotfiles
+          homeManager.theme
         ];
 
         internal.system.bootloader.enable = true;
