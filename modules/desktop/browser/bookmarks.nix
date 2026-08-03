@@ -32,7 +32,7 @@ let
         {
           name = "F1";
           url = "https://f1live.dpdns.org/1";
-          icon = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%2315151e'/><circle cx='32' cy='32' r='5' fill='%23e10600'/><path d='M21 43a15 15 0 0 1 0-22' fill='none' stroke='%23e10600' stroke-width='5' stroke-linecap='round'/><path d='M43 21a15 15 0 0 1 0 22' fill='none' stroke='%23e10600' stroke-width='5' stroke-linecap='round'/></svg>";
+          icon = "https://f1live.dpdns.org/favicon.ico?favicon.2vob68tjqpejf.ico";
           tags = [
             "shortcut"
             "streaming"
