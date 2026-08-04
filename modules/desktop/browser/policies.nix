@@ -139,14 +139,17 @@
         VisualSearchEnabled = true;
         Preferences = mkPolicy {
           "browser.display.document_color_use" = 0;
+          "browser.policies.loglevel" = "debug";
           "browser.newtabpage.activity-stream.default.sites" = "";
+          "browser.shell.checkDefaultBrowser" = false;
+          "browser.shell.didSkipDefaultBrowserCheckOnFirstRun" = true;
           "browser.tabs.warnOnClose" = false;
           "browser.urlbar.clipboard.featureGate" = false;
           "browser.urlbar.addons.featureGate" = false;
           "browser.urlbar.suggest.addons" = false;
           "browser.urlbar.suggest.engines" = false;
           "browser.urlbar.suggest.mdn" = false;
-          # "browser.urlbar.suggest.topsites" = false; Locked by zen
+          "browser.urlbar.suggest.topsites" = false;
           "browser.urlbar.suggest.trending" = false;
           "browser.urlbar.suggest.weather" = false;
           "browser.urlbar.suggest.yelp" = false;
@@ -154,6 +157,9 @@
           "browser.urlbar.quicksuggest.enabled" = false;
 
           "general.smoothScroll" = false;
+  
+          "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
+          "media.videocontrols.picture-in-picture.enabled" = false;
         };
         UserMessaging = {
           WhatsNew = false;
@@ -169,13 +175,6 @@
       programs.zen-browser.profiles.default.settings = {
         "devtools.chrome.enabled" = true;
         "devtools.debugger.remote-enabled" = true;
-        "browser.policies.loglevel" = "debug";
-
-        "browser.shell.checkDefaultBrowser" = false;
-        "browser.shell.didSkipDefaultBrowserCheckOnFirstRun" = true;
-
-        "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
-        "media.videocontrols.picture-in-picture.enabled" = false;
 
         "font.default.x-western" = "serif";
         "font.name.sans-serif.x-western" = "Inter";

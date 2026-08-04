@@ -135,10 +135,29 @@ sync:
     set -euo pipefail
 
     git switch main 2>/dev/null || git switch -c main
+
+    prev=$(git log -1 --format=%B --grep='^Sync from dev' \
+        | sed -n 's/^Sync from dev (\([0-9a-f]\{7,40\}\))$/\1/p')
+
     git rm -rq --ignore-unmatch .
     git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml" ":(exclude)flake.lock"
-    git commit -m "Sync from dev ($(git rev-parse dev))" || echo "Nothing to sync."
-    git push
+
+    if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then
+        range="$prev..dev"
+    else
+        range="dev"
+    fi
+    body=$(git log --no-merges --reverse --format='- %s' "$range")
+
+    if git diff --cached --quiet; then
+        echo "Nothing to sync."
+    else
+        git commit -m "Sync from dev ($(git rev-parse dev))" \
+                   -m "${body:-No individual commits.}"
+
+        git push -u origin main
+    fi
+
     git switch dev
 
 # (Re)build the 'all' remote and pushes to every forge
@@ -166,7 +185,13 @@ remotes:
     git remote set-url --add --push origin "$gitlab"
     
     git fetch --all --prune
-    git branch --set-upstream-to="origin/$(git branch --show-current)" 2>/dev/null || true
+
+    # Every branch, not just the one that happens to be checked out —
+    # otherwise a plain push on the others goes to a single forge.
+    for b in main dev; do
+        git show-ref --verify -q "refs/heads/$b" \
+            && git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
+    done
 
     git remote -v
 
