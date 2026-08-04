@@ -61,56 +61,81 @@ in
               margin: 0 !important;
           }
 
-          /* Anything that isn't a tile spans the row instead of joining
-             the grid — quick actions, search suggestions, history */
-          #urlbar[zen-floating-urlbar="true"] #urlbar-results:has(.urlbarView-row[type="top_site"]) > .urlbarView-row:not([type="top_site"]) {
-              flex: 1 1 100% !important;
-          }
+          /* ── actions ────────
+             Zen's own result provider, dynamicType="zen-actions" — not
+             Firefox's quickactions. Every row is already a full
+             .urlbarView-row-inner with four children: icon, title,
+             prettyName (extension or space, [hidden] when unused) and
+             shortcutContent. Upstream lays the rows out side by side, so
+             with one action per installed extension the prettyName chips
+             clip mid-word. One row per line instead.
 
-          /* ── quick actions ────────
-             A dynamic result type: Firefox builds the row from a template
-             directly into .urlbarView-row-inner, so the buttons are its
-             direct children and their classes carry a numeric suffix.
-             Target them structurally. Upstream lays them out as a wrapping
-             grid of fixed-width cells; Zen registers one action per
-             installed extension, so labels overrun and clip mid-word. */
-          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner {
+             Scoped by :has() on a zen-actions row. Actions mode emits no
+             top_site rows and vice versa, so this and the tile grid above
+             can never both apply. */
+          #urlbar-results:has(.urlbarView-row[dynamicType="zen-actions"]) {
               display: flex !important;
               flex-direction: column !important;
-              align-items: stretch !important;
-              gap: 2px !important;
-              padding-block: 2px !important;
+              flex-wrap: nowrap !important;
+              justify-content: flex-start !important;
+              gap: 0 !important;
           }
 
-          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner > * {
+          .urlbarView-row[dynamicType="zen-actions"] {
+              flex: 0 0 auto !important;
+              width: 100% !important;
+              min-width: 0 !important;
+          }
+
+          .urlbarView-row[dynamicType="zen-actions"] > .urlbarView-row-inner {
               display: flex !important;
               flex-direction: row !important;
               align-items: center !important;
-              justify-content: flex-start !important;
               gap: 8px !important;
-              width: auto !important;
-              height: auto !important;
+              width: 100% !important;
               min-width: 0 !important;
-              padding: 5px 8px !important;
-              border-radius: 4px !important;
           }
 
-          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner > *:hover {
-              background-color: color-mix(in srgb, currentColor 10%, transparent) !important;
+          .urlbarView-dynamic-zen-actions-icon {
+              flex: 0 0 16px !important;
+              width: 16px !important;
+              height: 16px !important;
           }
 
-          /* Label takes the slack and ellipsises; icon stays put */
-          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner > * > * {
+          /* Verb stays whole; the name after it takes the slack */
+          .urlbarView-dynamic-zen-actions-title {
+              flex: 0 0 auto !important;
+              white-space: nowrap !important;
+          }
+
+          .urlbarView-dynamic-zen-actions-prettyName {
+              flex: 0 1 auto !important;
               min-width: 0 !important;
+              overflow: hidden !important;
+          }
+
+          .urlbarView-dynamic-zen-actions-prettyNameTitle {
               overflow: hidden !important;
               white-space: nowrap !important;
               text-overflow: ellipsis !important;
           }
 
-          .urlbarView-row[dynamicType="quickactions"] .urlbarView-favicon {
-              flex: 0 0 auto !important;
+          .urlbarView-dynamic-zen-actions-prettyNameIcon {
+              flex: 0 0 16px !important;
               width: 16px !important;
               height: 16px !important;
+          }
+
+          /* Keybind hugs the right edge */
+          .urlbarView-dynamic-zen-actions-shortcutContent {
+              flex: 0 0 auto !important;
+              margin-inline-start: auto !important;
+              opacity: 0.55 !important;
+          }
+
+          /* display:flex above would otherwise resurrect the [hidden] ones */
+          .urlbarView-row[dynamicType="zen-actions"] [hidden] {
+              display: none !important;
           }
 
           #urlbar .urlbarView-row:hover .urlbarView-favicon,
