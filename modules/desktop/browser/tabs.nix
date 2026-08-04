@@ -6,8 +6,8 @@ in
   flake.modules.homeManager.browserTabs =
     { host, ... }:
     let
-      inherit (host) hostname;  
-    
+      inherit (host) hostname;
+
       paletteFile = ../../../hosts/${hostname}/home/.config/nix/zen.json;
       palette =
         if builtins.pathExists paletteFile then
@@ -22,7 +22,22 @@ in
           };
 
       slots = map (n: "base0${n}") [
-        "0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "A" "B" "C" "D" "E" "F"
+        "0"
+        "1"
+        "2"
+        "3"
+        "4"
+        "5"
+        "6"
+        "7"
+        "8"
+        "9"
+        "A"
+        "B"
+        "C"
+        "D"
+        "E"
+        "F"
       ];
 
       mkTheme = slot: {
@@ -191,7 +206,7 @@ in
             "infra" = regexMatch "dash\\.cloudflare|192\\.168\\.|tailscale";
           };
         };
-        
+
         "Entertainment" = {
           id = "a8fde799-77d2-4b1c-8c83-37dce87d30be";
           position = 1;

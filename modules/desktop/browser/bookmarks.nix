@@ -63,7 +63,7 @@ let
         "iconSize"
       ]
   );
-  
+
   shortcuts = map (
     b:
     {

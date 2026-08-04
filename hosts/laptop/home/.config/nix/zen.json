@@ -1,23 +1,5 @@
 {
   "scheme": "dendrite",
-  "hex": {
-    "base00": "#0C0C12",
-    "base01": "#1c1e27",
-    "base02": "#323947",
-    "base03": "#3f4757",
-    "base04": "#6f7a8f",
-    "base05": "#a5b6cf",
-    "base06": "#cbced3",
-    "base07": "#d0d3d8",
-    "base08": "#e26c7c",
-    "base09": "#e29a6c",
-    "base0A": "#f1d8a5",
-    "base0B": "#95d3af",
-    "base0C": "#98d3ee",
-    "base0D": "#8baff1",
-    "base0E": "#c79bf0",
-    "base0F": "#c296eb"
-  },
   "rgb": {
     "base00": { "red": 12, "green": 12, "blue": 18 },
     "base01": { "red": 28, "green": 30, "blue": 39 },

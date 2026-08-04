@@ -122,7 +122,10 @@
                 }
               ];
               icon = colorIcon;
-              definedAliases = [ "@hex" "rgb" ];
+              definedAliases = [
+                "@hex"
+                "rgb"
+              ];
             };
 
             "bing".metaData.hidden = true;

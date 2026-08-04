@@ -25,7 +25,7 @@ in
         '';
       };
     };
-    
+
   flake.modules.nixos.desktopEnvironment =
     { config, pkgs, ... }:
     let
