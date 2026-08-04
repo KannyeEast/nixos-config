@@ -119,8 +119,6 @@ in
               text-overflow: ellipsis !important;
           }
 
-          /* Only apply shortcut styling when content is present; empty
-             elements get a minimal reset instead of set-then-undo. */
           .urlbarView-dynamic-zen-actions-shortcutContent:not(:empty) {
               flex: 0 0 auto !important;
               margin-inline-start: auto !important;
@@ -129,8 +127,10 @@ in
           }
 
           .urlbarView-dynamic-zen-actions-shortcutContent:empty {
+              display: block !important;
               flex: 1 1 auto !important;
               min-width: 0 !important;
+              margin-inline-start: 0 !important;
               background: none !important;
               border: none !important;
               box-shadow: none !important;
