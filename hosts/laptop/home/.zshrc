@@ -90,9 +90,6 @@ export FZF_DEFAULT_OPTS="
   --color 'info:8,prompt:cyan,pointer:cyan,marker:green,spinner:8,header:8,border:8'
 "
 
-# ── direnv ────────
-export DIRENV_LOG_FORMAT="";
-
 # ── aliases ────────
 alias ls='eza --icons -a --group-directories-first'
 alias ll='eza --icons -a -l --group-directories-first --git --header'
