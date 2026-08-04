@@ -21,6 +21,7 @@ in
       config = {
         home-manager.sharedModules = [
           homeManager.browser
+          homeManager.desktopEnvironment
           homeManager.directories
           homeManager.dotfiles
         ];

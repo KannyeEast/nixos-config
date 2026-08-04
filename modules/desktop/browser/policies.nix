@@ -141,6 +141,7 @@
           "browser.display.document_color_use" = 0;
           "browser.newtabpage.activity-stream.default.sites" = "";
           "browser.tabs.warnOnClose" = false;
+          "browser.urlbar.clipboard.featureGate" = false;
           "browser.urlbar.addons.featureGate" = false;
           "browser.urlbar.suggest.addons" = false;
           "browser.urlbar.suggest.engines" = false;

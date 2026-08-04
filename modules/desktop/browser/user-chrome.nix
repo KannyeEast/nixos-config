@@ -55,10 +55,62 @@ in
               gap: 0 !important;
           }
 
-          #urlbar[zen-floating-urlbar="true"] #urlbar-results:has(.urlbarView-row[type="top_site"]) > .urlbarView-row {
+          #urlbar[zen-floating-urlbar="true"] #urlbar-results:has(.urlbarView-row[type="top_site"]) > .urlbarView-row[type="top_site"] {
               flex: 0 0 ${toString tileWidth}px !important;
               box-sizing: border-box !important;
               margin: 0 !important;
+          }
+
+          /* Anything that isn't a tile spans the row instead of joining
+             the grid — quick actions, search suggestions, history */
+          #urlbar[zen-floating-urlbar="true"] #urlbar-results:has(.urlbarView-row[type="top_site"]) > .urlbarView-row:not([type="top_site"]) {
+              flex: 1 1 100% !important;
+          }
+
+          /* ── quick actions ────────
+             A dynamic result type: Firefox builds the row from a template
+             directly into .urlbarView-row-inner, so the buttons are its
+             direct children and their classes carry a numeric suffix.
+             Target them structurally. Upstream lays them out as a wrapping
+             grid of fixed-width cells; Zen registers one action per
+             installed extension, so labels overrun and clip mid-word. */
+          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner {
+              display: flex !important;
+              flex-direction: column !important;
+              align-items: stretch !important;
+              gap: 2px !important;
+              padding-block: 2px !important;
+          }
+
+          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner > * {
+              display: flex !important;
+              flex-direction: row !important;
+              align-items: center !important;
+              justify-content: flex-start !important;
+              gap: 8px !important;
+              width: auto !important;
+              height: auto !important;
+              min-width: 0 !important;
+              padding: 5px 8px !important;
+              border-radius: 4px !important;
+          }
+
+          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner > *:hover {
+              background-color: color-mix(in srgb, currentColor 10%, transparent) !important;
+          }
+
+          /* Label takes the slack and ellipsises; icon stays put */
+          .urlbarView-row[dynamicType="quickactions"] > .urlbarView-row-inner > * > * {
+              min-width: 0 !important;
+              overflow: hidden !important;
+              white-space: nowrap !important;
+              text-overflow: ellipsis !important;
+          }
+
+          .urlbarView-row[dynamicType="quickactions"] .urlbarView-favicon {
+              flex: 0 0 auto !important;
+              width: 16px !important;
+              height: 16px !important;
           }
 
           #urlbar .urlbarView-row:hover .urlbarView-favicon,

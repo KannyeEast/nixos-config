@@ -112,7 +112,7 @@ in
         # ── entertainment ────────
         "F1 Stream" = {
           id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";
-          url = "https://f1live.dpdns.org/1"; # @TODO: Replace with F1TV if that works in zen
+          url = "https://f1tv.formula1.com/";
           position = 201;
           workspace = spaces."Entertainment".id;
         };

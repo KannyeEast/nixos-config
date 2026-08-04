@@ -3,6 +3,7 @@ let
   inherit (lib) concatMap filter optionalAttrs;
 
   # Anything tagged "shortcut" also becomes a new-tab tile
+  # get icons: curl -sL <website url> | grep -oE '<link[^>]+(icon|manifest)[^>]*>'
   tree = [
     {
       name = "Tools";
@@ -62,8 +63,7 @@ let
         "iconSize"
       ]
   );
-
-  # @TODO: unverified whether the urlbar honours this or only the new tab page.
+  
   shortcuts = map (
     b:
     {

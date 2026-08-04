@@ -38,8 +38,6 @@
                 "easyprivacy"
                 "urlhaus-1"
                 "plowe-0"
-                "fanboy-cookiemonster"
-                "ublock-cookies-easylist"
                 "fanboy-social"
                 "fanboy-ai-suggestions"
                 "easylist-chat"
