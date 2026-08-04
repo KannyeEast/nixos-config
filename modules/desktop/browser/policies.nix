@@ -169,6 +169,7 @@
       programs.zen-browser.profiles.default.settings = {
         "devtools.chrome.enabled" = true;
         "devtools.debugger.remote-enabled" = true;
+        "browser.policies.loglevel" = "debug";
 
         "browser.shell.checkDefaultBrowser" = false;
         "browser.shell.didSkipDefaultBrowserCheckOnFirstRun" = true;

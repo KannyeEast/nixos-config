@@ -119,10 +119,12 @@ in
               text-overflow: ellipsis !important;
           }
 
-          /* Keybind hugs the right edge */
           .urlbarView-dynamic-zen-actions-shortcutContent {
-              flex: 0 0 auto !important;
-              margin-inline-start: auto !important;
+              display: block !important;
+              flex: 1 1 auto !important;
+              min-width: 0 !important;
+              text-align: end !important;
+              white-space: nowrap !important;
               opacity: 0.55 !important;
           }
 
