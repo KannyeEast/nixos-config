@@ -149,7 +149,6 @@
           "browser.urlbar.suggest.addons" = false;
           "browser.urlbar.suggest.engines" = false;
           "browser.urlbar.suggest.mdn" = false;
-          "browser.urlbar.suggest.topsites" = false;
           "browser.urlbar.suggest.trending" = false;
           "browser.urlbar.suggest.weather" = false;
           "browser.urlbar.suggest.yelp" = false;
