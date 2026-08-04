@@ -136,8 +136,7 @@ sync:
 
     git switch main 2>/dev/null || git switch -c main
     git rm -rq --ignore-unmatch .
-    git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml"
-    git checkout dev -- hosts/default
+    git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml" ":(exclude)flake.lock"
     git commit -m "Sync from dev ($(git rev-parse dev))" || echo "Nothing to sync."
     git push
     git switch dev
