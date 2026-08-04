@@ -125,6 +125,10 @@ in
               min-width: 0 !important;
               text-align: end !important;
               white-space: nowrap !important;
+              background: none !important;
+              border: none !important;
+              box-shadow: none !important;
+              padding: 0 !important;
               opacity: 0.55 !important;
           }
 
