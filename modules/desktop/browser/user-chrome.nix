@@ -119,7 +119,9 @@ in
               text-overflow: ellipsis !important;
           }
 
-          .urlbarView-dynamic-zen-actions-shortcutContent {
+          /* Only apply shortcut styling when content is present; empty
+             elements get a minimal reset instead of set-then-undo. */
+          .urlbarView-dynamic-zen-actions-shortcutContent:not(:empty) {
               flex: 0 0 auto !important;
               margin-inline-start: auto !important;
               white-space: nowrap !important;
@@ -127,10 +129,8 @@ in
           }
 
           .urlbarView-dynamic-zen-actions-shortcutContent:empty {
-              display: block !important;
               flex: 1 1 auto !important;
               min-width: 0 !important;
-              margin-inline-start: 0 !important;
               background: none !important;
               border: none !important;
               box-shadow: none !important;
@@ -145,13 +145,11 @@ in
               order: 1;
           }
 
-          /* display:flex would otherwise resurrect the [hidden] children */
           .urlbarView-row[dynamicType="zen-actions"] [hidden] {
               display: none !important;
           }
 
-          #urlbar .urlbarView-row:hover .urlbarView-favicon,
-          #urlbar .urlbarView-row:hover > .urlbarView-row-inner .urlbarView-favicon {
+          #urlbar .urlbarView-row:hover .urlbarView-favicon {
               background-color: transparent !important;
               background: none !important;
           }
@@ -187,14 +185,9 @@ in
           #TabsToolbar #firefox-view-button[open] > .toolbarbutton-icon,
           .tab-background:is([selected], [multiselected]) {
               box-shadow: none !important;
-              border-top: 1px solid #ffffff2d !important;
-              border-bottom: 1px solid #0000002d !important;
+              border-top-color: #ffffff2d !important;
+              border-bottom-color: #0000002d !important;
               background-color: rgba(255, 255, 255, 0.17) !important;
-          }
-
-          .tabbrowser-tab[pinned] .tab-background:is([selected], [multiselected]) {
-              border-top: 1px solid #ffffff1f !important;
-              border-bottom: 1px solid #0000001f !important;
           }
 
           /* Non-essential pins get a full box so they read as chips */
@@ -243,7 +236,7 @@ in
           }
 
           .tab-label:not([fadein]) {
-              display: flex !important;
+              display: block !important;
           }
 
           .tab-close-button {

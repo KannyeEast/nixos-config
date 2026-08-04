@@ -48,20 +48,20 @@ style = "Italic"
 family = "JetBrainsMonoNL Nerd Font Mono"
 style = "Bold Italic"
 
+# Everything between these markers is written by `flavours apply`.
+# Start flavours
 [colors.cursor]
 cursor = "CellForeground"
 text = "CellBackground"
 
 [colors.selection]
 text = "CellForeground"
-background = "0x303340"
+background = "#323947"
 
 [colors.vi_mode_cursor]
 text = "CellBackground"
 cursor = "CellForeground"
 
-# Everything between these markers is written by `flavours apply`.
-# Start flavours
 [colors.primary]
 background = "#0c0c12"
 foreground = "#a5b6cf"
