@@ -67,64 +67,35 @@ in
               margin: 0 !important;
           }
 
-          /* ── actions ────────
-             Zen's own result provider, dynamicType="zen-actions" — not
-             Firefox's quickactions. Every row is already a full
-             .urlbarView-row-inner with four children: icon, title,
-             prettyName (extension or space, [hidden] when unused) and
-             shortcutContent. Upstream lays the rows out side by side, so
-             with one action per installed extension the prettyName chips
-             clip mid-word. One row per line instead.
-
-             Scoped two ways. [searchmode] lands on #urlbar before the rows
-             are built, so the layout is right on the first paint; :has()
-             alone only matches once the rows exist, which is the flash.
-             Neither can collide with the tile grid — that needs a top_site
-             row, and actions mode emits none. */
-          #urlbar[searchmode] #urlbar-results,
+          /* ── actions ──────── */
           #urlbar-results:has(.urlbarView-row[dynamicType="zen-actions"]) {
               display: flex !important;
               flex-direction: column !important;
-              flex-wrap: nowrap !important;
-              justify-content: flex-start !important;
               align-items: stretch !important;
-              gap: 0 !important;
           }
 
+          /* The row is the flex container, not row-inner. row-inner is a
+             <span>, so it stays inline-level unless told otherwise and any
+             centring on the row is what actually moves it — styling
+             row-inner alone left some rows centred. */
           .urlbarView-row[dynamicType="zen-actions"] {
-              flex: 0 0 auto !important;
-              width: 100% !important;
-              min-width: 0 !important;
-          }
-
-          /* justify-content and text-align both matter: Zen centres some
-             rows and not others, and the text-align is inherited */
-          .urlbarView-row[dynamicType="zen-actions"] > .urlbarView-row-inner {
               display: flex !important;
-              flex-direction: row !important;
-              align-items: center !important;
               justify-content: flex-start !important;
               text-align: start !important;
-              gap: 8px !important;
               width: 100% !important;
+          }
+
+          .urlbarView-row[dynamicType="zen-actions"] > .urlbarView-row-inner {
+              flex: 1 1 auto !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: flex-start !important;
+              gap: 8px !important;
               min-width: 0 !important;
           }
 
-          .urlbarView-row[dynamicType="zen-actions"] {
-              order: 0;
-          }
-
-          /* Space switches: "Focus on <space>", named but not an extension */
-          .urlbarView-row[dynamicType="zen-actions"]:has(.urlbarView-dynamic-zen-actions-prettyName:not([hidden])):not(:has(.urlbarView-dynamic-zen-actions-icon[src*="zen-icons/extension.svg"])) {
-              order: -1;
-          }
-
-          /* Extensions, plus "Manage Extensions" which shares the glyph */
-          .urlbarView-row[dynamicType="zen-actions"]:has(.urlbarView-dynamic-zen-actions-icon[src*="zen-icons/extension.svg"]) {
-              order: 1;
-          }
-
-          .urlbarView-dynamic-zen-actions-icon {
+          .urlbarView-dynamic-zen-actions-icon,
+          .urlbarView-dynamic-zen-actions-prettyNameIcon {
               flex: 0 0 16px !important;
               width: 16px !important;
               height: 16px !important;
@@ -148,12 +119,6 @@ in
               text-overflow: ellipsis !important;
           }
 
-          .urlbarView-dynamic-zen-actions-prettyNameIcon {
-              flex: 0 0 16px !important;
-              width: 16px !important;
-              height: 16px !important;
-          }
-
           /* Keybind hugs the right edge */
           .urlbarView-dynamic-zen-actions-shortcutContent {
               flex: 0 0 auto !important;
@@ -161,7 +126,7 @@ in
               opacity: 0.55 !important;
           }
 
-          /* display:flex above would otherwise resurrect the [hidden] ones */
+          /* display:flex would otherwise resurrect the [hidden] children */
           .urlbarView-row[dynamicType="zen-actions"] [hidden] {
               display: none !important;
           }
