@@ -32,7 +32,7 @@ hotkey-overlay {
 }
 
 animations {
-    slowdown 0.5
+    slowdown 0.25
 }
 
 gestures {
@@ -44,6 +44,6 @@ gestures {
 recent-windows {
     highlight {
         padding 8
-        corner-radius 8
+        corner-radius 16
     }
 }
