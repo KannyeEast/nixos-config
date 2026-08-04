@@ -44,6 +44,12 @@ in
               display: none !important;
           }
 
+          /* CA name next to the padlock. Windows leaves it collapsed, Linux
+             renders it, and long issuer names shove the urlbar around */
+          #identity-icon-label {
+              display: none !important;
+          }
+
           .urlbarView-row[type="top_site"]:not([pinned]) {
               display: none !important;
           }
@@ -70,14 +76,18 @@ in
              with one action per installed extension the prettyName chips
              clip mid-word. One row per line instead.
 
-             Scoped by :has() on a zen-actions row. Actions mode emits no
-             top_site rows and vice versa, so this and the tile grid above
-             can never both apply. */
+             Scoped two ways. [searchmode] lands on #urlbar before the rows
+             are built, so the layout is right on the first paint; :has()
+             alone only matches once the rows exist, which is the flash.
+             Neither can collide with the tile grid — that needs a top_site
+             row, and actions mode emits none. */
+          #urlbar[searchmode] #urlbar-results,
           #urlbar-results:has(.urlbarView-row[dynamicType="zen-actions"]) {
               display: flex !important;
               flex-direction: column !important;
               flex-wrap: nowrap !important;
               justify-content: flex-start !important;
+              align-items: stretch !important;
               gap: 0 !important;
           }
 
@@ -87,13 +97,31 @@ in
               min-width: 0 !important;
           }
 
+          /* justify-content and text-align both matter: Zen centres some
+             rows and not others, and the text-align is inherited */
           .urlbarView-row[dynamicType="zen-actions"] > .urlbarView-row-inner {
               display: flex !important;
               flex-direction: row !important;
               align-items: center !important;
+              justify-content: flex-start !important;
+              text-align: start !important;
               gap: 8px !important;
               width: 100% !important;
               min-width: 0 !important;
+          }
+
+          .urlbarView-row[dynamicType="zen-actions"] {
+              order: 0;
+          }
+
+          /* Space switches: "Focus on <space>", named but not an extension */
+          .urlbarView-row[dynamicType="zen-actions"]:has(.urlbarView-dynamic-zen-actions-prettyName:not([hidden])):not(:has(.urlbarView-dynamic-zen-actions-icon[src*="zen-icons/extension.svg"])) {
+              order: -1;
+          }
+
+          /* Extensions, plus "Manage Extensions" which shares the glyph */
+          .urlbarView-row[dynamicType="zen-actions"]:has(.urlbarView-dynamic-zen-actions-icon[src*="zen-icons/extension.svg"]) {
+              order: 1;
           }
 
           .urlbarView-dynamic-zen-actions-icon {
