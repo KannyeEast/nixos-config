@@ -2,6 +2,10 @@
 /.config/niri/colors.kdl
 /.config/nix/zen.json
 
+# Different monitor setups
+/.config/niri/output.kdl
+
 # Laptop only
+/.config/kanshi
 
 # Desktop only

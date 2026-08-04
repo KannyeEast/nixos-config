@@ -23,9 +23,9 @@
           # games = "${home.homeDirectory}/Games";
           # misc = "${home}/Misc";
           # projects = "${home}/Projects";
-          screencasts = "${home.homeDirectory}/Videos/screencasts";
-          screenshots = "${home.homeDirectory}/Pictures/screenshots";
-          wallpapers = "${home.homeDirectory}/Pictures/wallpapers";
+          screencasts = "${home.homeDirectory}/Videos/Screencasts";
+          screenshots = "${home.homeDirectory}/Pictures/Screenshots";
+          wallpapers = "${home.homeDirectory}/Pictures/Wallpapers";
         };
       };
     };

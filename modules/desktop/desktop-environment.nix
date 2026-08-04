@@ -10,6 +10,7 @@ let
     "waybar"
     "mako"
     "xwayland-satellite"
+    "keepassxc"
   ];
 
   mkSpawn = c: ''spawn-at-startup "${c}"'';
@@ -69,13 +70,15 @@ in
         environment.systemPackages = [
           pkgs.mako
           pkgs.xwayland-satellite
-
+          
+          pkgs.kanshi
           pkgs.lxqt.lxqt-policykit
           pkgs.brightnessctl
           pkgs.playerctl
           pkgs.alacritty
           pkgs.nautilus
           pkgs.wl-clipboard
+          pkgs.bibata-cursors
 
           # Temporary until quickshell works
           pkgs.fuzzel
@@ -92,8 +95,12 @@ in
 
         environment.sessionVariables = {
           NIXOS_OZONE_WL = "1";
+          
           XKB_DEFAULT_LAYOUT = user.xkb.layout;
           XKB_DEFAULT_VARIANT = user.xkb.variant;
+          XCURSOR_THEME="Bibata-Modern-Ice";
+          XCURSOR_SIZE="24";
+          
           TERMINAL = "alacritty";
         };
 
