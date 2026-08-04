@@ -120,16 +120,29 @@ in
           }
 
           .urlbarView-dynamic-zen-actions-shortcutContent {
+              flex: 0 0 auto !important;
+              margin-inline-start: auto !important;
+              white-space: nowrap !important;
+              opacity: 0.55 !important;
+          }
+
+          .urlbarView-dynamic-zen-actions-shortcutContent:empty {
               display: block !important;
               flex: 1 1 auto !important;
               min-width: 0 !important;
-              text-align: end !important;
-              white-space: nowrap !important;
+              margin-inline-start: 0 !important;
               background: none !important;
               border: none !important;
               box-shadow: none !important;
               padding: 0 !important;
-              opacity: 0.55 !important;
+          }
+
+          .urlbarView-row[dynamicType="zen-actions"]:has(.urlbarView-dynamic-zen-actions-icon[src$="/forward.svg"]):has(.urlbarView-dynamic-zen-actions-prettyName:not([hidden])) {
+              order: -1;
+          }
+
+          .urlbarView-row[dynamicType="zen-actions"]:has(.urlbarView-dynamic-zen-actions-icon[src$="/extension.svg"]):has(.urlbarView-dynamic-zen-actions-prettyName:not([hidden])) {
+              order: 1;
           }
 
           /* display:flex would otherwise resurrect the [hidden] children */
