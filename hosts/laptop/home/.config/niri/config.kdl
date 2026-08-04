@@ -43,7 +43,7 @@ gestures {
 
 recent-windows {
     highlight {
-        padding 15
-        corner-radius 12
+        padding 8
+        corner-radius 8
     }
 }

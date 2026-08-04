@@ -1,5 +1,5 @@
 layout {
-    gaps 8
+    gaps 4
     center-focused-column "never"
     //always-center-single-column
 
@@ -15,7 +15,7 @@ layout {
     
     border {
         on
-        width 4
+        width 3
     }
 
     focus-ring {
@@ -24,7 +24,7 @@ layout {
 
     tab-indicator {
         hide-when-single-tab
-        width 5
+        width 4
         length total-proportion=0.33
         gaps-between-tabs 0
     }
