@@ -1,4 +1,4 @@
-﻿output "BOE NE160WUM-NX2 Unknown" {
+output "BOE NE160WUM-NX2 Unknown" {
     mode 1920x1200@165.015
     position 0,0
     scale 1

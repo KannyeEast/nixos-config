@@ -1,4 +1,4 @@
-﻿// Kanshi defines the monitor output profiles
+// Kanshi defines the monitor output profiles
 // @TODO: Script to auto switch monitor inputs. Either when usb switcher button is pressed or when kanshi triggers profile switch
 spawn-at-startup "kanshi"
 

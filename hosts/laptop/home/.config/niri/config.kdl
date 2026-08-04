@@ -38,6 +38,7 @@ gestures {
         off
     }
 }
+
 recent-windows {
     highlight {
         padding 15
