@@ -1,7 +1,7 @@
 layout {
     gaps 8
     center-focused-column "never"
-    always-center-single-column
+    //always-center-single-column
 
     default-column-display "tabbed"
 
