@@ -1,0 +1,8 @@
+# Generated per host by `flavours apply`
+/.config/niri/colors.kdl
+/.config/nix/zen.json
+
+# Laptop only
+/.zshrc
+
+# Desktop only

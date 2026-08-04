@@ -20,7 +20,7 @@ default:
 [group("default")]
 todo:
     @echo TO-DOs in:
-    @rg -g '!justfile' -C 5 TODO || echo "Everything's done!"
+    @rg -g '!justfile' -g '!*.md' -g '!*.txt' -C 5 TODO || echo "Everything's done!"
 
 # ── system ────────
 # Rebuild and activate the configuration
