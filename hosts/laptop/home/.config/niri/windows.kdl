@@ -1,6 +1,6 @@
 // @TODO: Have a proper look at window/layer rules
 workspace "side" {
-    open-on-output "PNP(BNQ) ZOWIE XL LCD EBLAL012665SL0"
+    open-on-output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0"
 }
 
 window-rule {

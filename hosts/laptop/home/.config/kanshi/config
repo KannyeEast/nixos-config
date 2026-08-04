@@ -19,7 +19,7 @@ output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 0x01010101" {
     alias $DESKTOP_02
 }
 
-output "PNP(BNQ) ZOWIE XL LCD EBLAL012665SL0" {
+output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0" {
     mode 1920x1080@60
     position 4992,0
     transform 90
