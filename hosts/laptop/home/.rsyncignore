@@ -3,6 +3,5 @@
 /.config/nix/zen.json
 
 # Laptop only
-/.zshrc
 
 # Desktop only

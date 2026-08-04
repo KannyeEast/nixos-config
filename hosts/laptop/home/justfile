@@ -10,7 +10,7 @@ keep := "--exclude-from=" + flake / "hosts" / me / "home" / ".rsyncignore"
 default:
     @just --list
 
-# Which host this is, and where it syncs to
+# Which host this is and where it syncs to
 [group("default")]
 whoami:
     @echo "{{me}} -> {{you}}"
