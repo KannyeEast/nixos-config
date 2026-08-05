@@ -3,6 +3,7 @@ let
   inherit (lib)
     concatStringsSep
     mkOption
+    mkForce
     types
     ;
 
@@ -102,11 +103,13 @@ in
           
           TERMINAL = "alacritty";
         };
-
+        
         programs.niri.enable = true;
         programs.dconf.enable = true;
         security.polkit.enable = true;
+        
         services = {
+          gnome.gnome-keyring.enable = mkForce false;
           xserver = {
             enable = true;
             xkb.layout = user.xkb.layout;
