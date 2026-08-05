@@ -6,7 +6,6 @@
       config = {
         environment.systemPackages = [
           pkgs.flavours
-          pkgs.keepassxc
         ];
       };
     };

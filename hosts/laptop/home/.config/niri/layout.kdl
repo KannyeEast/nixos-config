@@ -1,7 +1,8 @@
 layout {
     gaps 4
     center-focused-column "never"
-    //always-center-single-column
+    // Wait for https://github.com/niri-wm/niri/pull/2240 to merge
+    // always-center-single-column
 
     default-column-display "tabbed"
 

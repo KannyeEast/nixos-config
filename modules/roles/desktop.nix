@@ -24,6 +24,7 @@ in
           homeManager.desktopEnvironment
           homeManager.directories
           homeManager.dotfiles
+          homeManager.passwords
         ];
 
         internal.system.bootloader.enable = true;

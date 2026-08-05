@@ -10,7 +10,6 @@ let
     "waybar"
     "mako"
     "xwayland-satellite"
-    "keepassxc"
   ];
 
   mkSpawn = c: ''spawn-at-startup "${c}"'';
@@ -65,6 +64,7 @@ in
         };
 
         # @TODO: Look for other package combos with niri
+        # @TODO: Clean this up
         # https://github.com/niri-wm/awesome-niri
         # https://niri-wm.github.io/niri/Important-Software.html
         environment.systemPackages = [
@@ -91,7 +91,6 @@ in
         # Temporary until quickshell works
         programs.waybar.enable = true;
         security.pam.services.swaylock = { };
-        security.pam.services.sddm.enableGnomeKeyring = true;
 
         environment.sessionVariables = {
           NIXOS_OZONE_WL = "1";
@@ -108,7 +107,6 @@ in
         programs.dconf.enable = true;
         security.polkit.enable = true;
         services = {
-          gnome.gnome-keyring.enable = true;
           xserver = {
             enable = true;
             xkb.layout = user.xkb.layout;

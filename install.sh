@@ -855,10 +855,16 @@ writeHardwareNix() {
         cat <<'EOF'
 { ... }:
 let
-    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
+  inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
 in
 {
-    flake.modules.nixos."${hostname}Hardware" = { config, lib, pkgs, modulesPath, ... }:
+  flake.modules.nixos."${hostname}Hardware" =
+    { 
+      config, 
+      lib, 
+      modulesPath, 
+      ...
+    }:
     {
 EOF
         printf '%s\n' "$body"
