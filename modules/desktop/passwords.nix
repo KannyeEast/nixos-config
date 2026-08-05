@@ -1,11 +1,14 @@
 { lib, ... }:
 let
+  inherit (lib) mkForce;
 in
 {
   flake.modules.homeManager.passwords =
     { ... }:
     {
       config = {
+        services.gnome.gnome-keyring.enable = mkForce false;
+      
         xdg.autostart.enable = true;
         programs.keepassxc = {
           autostart = true;
