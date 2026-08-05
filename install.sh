@@ -9,6 +9,7 @@ set -Eeuo pipefail
 # ── script variables ────────
 # == flags ==
 VERBOSE=false
+MODE="new"
 
 # == host ==
 HOSTNAME=""
@@ -99,7 +100,10 @@ trapError() {
 trap trapError ERR
 
 cleanup() {
-    [[ -n ${TEMP_DIR:-} && -d ${TEMP_DIR:-} ]] && rm -rf "$TEMP_DIR"
+    if [[ -n ${TEMP_DIR:-} ]]; then
+        umount -R "$TEMP_DIR/old" 2>/dev/null || true
+        [[ -d $TEMP_DIR ]] && rm -rf "$TEMP_DIR"
+    fi
     printf '\033[?25h' >&2
 }
 trap cleanup EXIT
@@ -110,6 +114,8 @@ showFlags() {
 Usage: sudo ./installer.sh [OPTIONS]
 
 Options:
+  -i, --install           Install an existing host: reuse its files and keys,
+                          repartition from its committed disko.nix, install.
   -v, --verbose           Show every command and its output
   -h, --help              This message
 EOF
@@ -118,6 +124,7 @@ EOF
 parseArgs() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            -i|--install) MODE="install"; shift ;;
             -v|--verbose) VERBOSE=true; shift ;;
             -h|--help) showFlags; exit 0 ;;
             *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
@@ -308,6 +315,18 @@ listDirs() {
         \( -path /nix -o -path /proc -o -path /sys -o -path /dev -o -path /run \
            -o -name .git -o -name .cache -o -name node_modules \) -prune -o \
         -type d -print 2>/dev/null | sort -u
+}
+
+# == list public ssh keys on disk ==
+listKeys() {
+    local root="$1"
+    find "$root" -maxdepth 8 \
+        -type d \( -name store -o -name .cache -o -name node_modules \) -prune -o \
+        -type f -name '*.pub' -size -20k -print 2>/dev/null \
+    | while read -r f; do
+        head -c 20 "$f" 2>/dev/null | grep -qE '^(ssh-|ecdsa-|sk-)' \
+            && printf '%s\n' "${f#"$root"/}"
+      done | sort
 }
 
 # ── information gathering ────────
@@ -529,11 +548,91 @@ EOF
     done
 }
 
+# ── install an existing host ────────
+# == pick / validate the host ==
+load() {
+    formHeader "Existing host"
+
+    formChoose HOSTNAME "Host to install" $(find "$FLAKE/hosts" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+
+    for f in host.json disko.nix hardware.nix profile.nix secrets.json; do
+        [[ -f $FLAKE/hosts/$HOSTNAME/$f ]] || die "hosts/$HOSTNAME/$f is missing"
+    done
+
+    USERNAME="$(jq -r '.user.name' "$FLAKE/hosts/$HOSTNAME/host.json")"
+    USEREMAIL="$(jq -r '.user.email' "$FLAKE/hosts/$HOSTNAME/host.json")"
+    USER_KEY="$(jq -r '.user.sshKeys[0] // ""' "$FLAKE/hosts/$HOSTNAME/host.json")"
+    SYSTEM="$(jq -r '.system' "$FLAKE/hosts/$HOSTNAME/host.json")"
+    DISK="$(sed -n 's/.*device = "\([^"]*\)".*/\1/p' "$FLAKE/hosts/$HOSTNAME/disko.nix" | head -1)"
+
+    [[ -n $USERNAME && $USERNAME != null ]] || die "Could not read user.name from host.json"
+    [[ -n $DISK ]] || die "Could not read the device from hosts/$HOSTNAME/disko.nix"
+
+    gum style --border="rounded" --padding="1 2" --margin="1 0" \
+        <<EOF
+    Hostname       $HOSTNAME
+    SYSTEM         $SYSTEM
+    User           $USERNAME <$USEREMAIL>
+    Disk           $DISK
+EOF
+
+    formConfirm "Continue?" "n" || die "Cancelled"
+}
+
+# == copy the existing keys off the disk ==
+harvest() {
+    formHeader "Recovering keys"
+
+    local part
+    part="$(lsblk -nrpo NAME,FSTYPE "$DISK" 2>/dev/null | awk '$2 == "btrfs" { print $1; exit }')"
+    
+    if [[ -z $part ]]; then
+        die "No btrfs partition on $DISK"
+    fi
+    
+    mkdir -p "$TEMP_DIR/old"
+    mount -o ro,subvolid=5 "$part" "$TEMP_DIR/old" || die "Could not mount $part"
+
+    local candidates
+    candidates="$(listKeys "$TEMP_DIR/old")"
+    [[ -n $candidates ]] || die "No ssh public keys found on $part"
+
+    local hostPick userPick
+    formFilter hostPick "Host key" "$candidates" "e.g. persistent/etc/ssh/ssh_host_ed25519_key.pub" \
+        || die "Cancelled"
+    formFilter userPick "User key for '$USERNAME'" "$candidates" "e.g. root/home/$USERNAME/.ssh/id_$USERNAME.pub" \
+        || die "Cancelled"
+
+    [[ $hostPick != "$userPick" ]] || die "Host and user key cannot be the same file"
+
+    install -m 644 "$TEMP_DIR/old/$hostPick" "$TEMP_DIR/ssh_host_ed25519_key.pub"
+    install -m 600 "$TEMP_DIR/old/${hostPick%.pub}" "$TEMP_DIR/ssh_host_ed25519_key"
+    install -m 644 "$TEMP_DIR/old/$userPick" "$TEMP_DIR/id_${USERNAME}.pub"
+    install -m 600 "$TEMP_DIR/old/${userPick%.pub}" "$TEMP_DIR/id_${USERNAME}"
+
+    HOST_AGE="$(ssh-to-age < "$TEMP_DIR/ssh_host_ed25519_key.pub")"
+    USER_AGE="$(ssh-to-age < "$TEMP_DIR/id_$USERNAME.pub")"
+
+    umount -R "$TEMP_DIR/old"
+
+    grep -qF "&$HOSTNAME $HOST_AGE" "$FLAKE/.sops.yaml" \
+        || die "Recovered host key is not a recipient in .sops.yaml"
+    grep -qF "&${USERNAME}_${HOSTNAME} $USER_AGE" "$FLAKE/.sops.yaml" \
+        || die "Recovered user key is not a recipient in .sops.yaml"
+
+    logDebug "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
+    logDebug "User fingerprint: $(ssh-keygen -lf "$TEMP_DIR/id_$USERNAME.pub")"
+    logInfo "Recovered both keys"
+}
+
 # ── partition disk ────────
 partition() {
     formHeader "Partitioning";
     
-    cat > "$TEMP_DIR/disko.nix" <<EOF
+    if [[ $MODE == "install" ]]; then
+      disko --mode destroy,format,mount --flake "$FLAKE#$HOSTNAME"
+    else
+      cat > "$TEMP_DIR/disko.nix" <<EOF
 { ... }:
 let
     device = "$DISK";
@@ -592,8 +691,8 @@ in
     };
 }
 EOF
-
-    disko --mode destroy,format,mount "$TEMP_DIR/disko.nix"
+        disko --mode destroy,format,mount "$TEMP_DIR/disko.nix"
+    fi
 }
 
 # ── generate ssh keys ────────
@@ -962,7 +1061,6 @@ installSystem() {
     
     # == install ==
     logWarn "First install can take a while"
-    logInfo "While waiting you can already register $USER_KEY to GitHub/GitLab/Codeberg/etc."
     nixos-install --root /mnt --flake .#"$HOSTNAME" --no-root-passwd
   
     # == user home ==
@@ -998,10 +1096,17 @@ main() {
     TEMP_DIR="$(mktemp -d)"
     chmod 700 "$TEMP_DIR"
 
-    gather
-    partition
-    generate
-    write
+    if [[ $MODE == "install" ]]; then
+        load
+        harvest
+        partition
+    else
+        gather
+        partition
+        generate
+        write
+    fi
+
     installSystem
 }
 
