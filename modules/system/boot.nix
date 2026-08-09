@@ -8,7 +8,6 @@ let
     mkForce
     types
     recursiveUpdate
-    optionalString
     concatMapAttrs
     escapeShellArg
     makeBinPath
@@ -16,7 +15,7 @@ let
 in
 {
   flake.modules.nixos.boot =
-    { config, pkgs, ... }:
+    { config, pkgs, host, ... }:
     let
       inherit (config.profile.system) bootloader;
       iBoot = config.internal.system.bootloader;
@@ -39,34 +38,8 @@ in
         in
         collect "${src}" "";
 
-      refindTheme = bootloader.refind.theme.name != null && bootloader.refind.theme.source != null;
-
-      refindIcons =
-        pkgs.runCommand "refind-icons"
-          {
-            nativeBuildInputs = [ pkgs.librsvg ];
-          }
-          ''
-            mkdir -p $out
-            cp -r ${refindOverride}/share/refind/icons/* $out/
-            chmod -R u+w $out
-            rsvg-convert -w 128 -h 128 \
-                ${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg \
-                -o $out/os_nixos.png
-          '';
-
-      refindIconsDir =
-        if refindTheme then
-          "EFI/refind/themes/${bootloader.refind.theme.name}/icons"
-        else
-          "EFI/refind/icons";
-
-      refindAssets =
-        if refindTheme then
-          getFiles bootloader.refind.theme.source "EFI/refind/themes/${bootloader.refind.theme.name}"
-        else
-          getFiles refindIcons "EFI/refind/icons";
-
+      # Implements [a63681]
+      # https://sourceforge.net/u/l0sermcl0ser/refind/ci/a63681fca1e5135e619dc3127c29810d87e5e487/  
       refindOverride = pkgs.refind.overrideAttrs (old: {
         postPatch = (old.postPatch or "") + ''
           substituteInPlace refind/config.c \
@@ -79,38 +52,15 @@ in
         '';
       });
 
-      refindConfig = pkgs.writeText "refind.conf" ''
-        #
-        # refind.conf
-        # Configuration file for the rEFInd boot menu
-        # https://rodsbooks.com/refind/configfile.html
-        #
-
-        timeout 20
-        use_nvram false
-
-        # Specify which entries we want
-        scanfor manual
-
-        showtools shell,memtest,about,reboot,shutdown,firmware
-
-        ${optionalString refindTheme "include themes/${bootloader.refind.theme.name}/theme.conf"}
-
-        menuentry "NixOS" {
-            icon /${refindIconsDir}/os_nixos.png
-            loader /EFI/NixOS-boot/grubx64.efi
-        }
-      '';
-
-      refindFiles = refindAssets // {
+      refindFiles = getFiles ../../hosts/${host.hostname}/home/.config/refind "EFI/refind" // {
         "EFI/refind/refind_x64.efi" = "${refindOverride}/share/refind/refind_x64.efi";
-        "EFI/refind/refind.conf" = refindConfig;
         "EFI/tools/shellx64.efi" = "${pkgs.edk2-uefi-shell}/shell.efi";
         "EFI/tools/memtest86.efi" = "${pkgs.memtest86-efi}/BOOTX64.efi";
       };
 
       refindInstaller = pkgs.writeShellScript "install-refind" ''
         set -eu
+        
         export PATH=${
           makeBinPath [
             pkgs.efibootmgr
@@ -122,8 +72,8 @@ in
 
         esp=${escapeShellArg config.boot.loader.efi.efiSysMountPoint}
 
-        part_dev=$(findmnt -no SOURCE --target "$esp")      # e.g. /dev/nvme0n1p1
-        disk=/dev/$(lsblk -no PKNAME "$part_dev")           # e.g. /dev/nvme0n1
+        part_dev=$(findmnt -no SOURCE --target "$esp")
+        disk=/dev/$(lsblk -no PKNAME "$part_dev")
         part=$(cat "/sys/class/block/$(basename "$part_dev")/partition")
 
         # Drop stale entries so this stays idempotent across rebuilds.
@@ -131,21 +81,7 @@ in
             efibootmgr -q -b "$n" -B
         done
 
-        efibootmgr -q -c -d "$disk" -p "$part" \
-            -L "rEFInd" -l '\EFI\refind\refind_x64.efi'
-
-        win=$esp/EFI/Microsoft/Boot/bootmgfw.efi
-        if [ -f "$win" ];
-        then
-        cat >> "$esp/EFI/refind/refind.conf" <<EOF
-
-        menuentry "Windows" {
-            volume "ESP"
-            icon   /${refindIconsDir}/os_win.png
-            loader /EFI/Microsoft/Boot/bootmgfw.efi
-        }
-        EOF
-        fi
+        efibootmgr -q -c -d "$disk" -p "$part" -L "rEFInd" -l '\EFI\refind\refind_x64.efi'
       '';
 
       refindUninstaller = pkgs.writeShellScript "uninstall-refind" ''
@@ -184,19 +120,6 @@ in
             default = { };
             description = "Plymouth configuration";
           };
-          refind = {
-            enable = mkEnableOption "Enable rEFInd for dual-booting NixOS";
-            theme.name = mkOption {
-              type = types.nullOr types.str;
-              default = null;
-              description = "rEFInd theme name";
-            };
-            theme.source = mkOption {
-              type = types.nullOr types.path;
-              default = null;
-              description = "rEFInd theme config";
-            };
-          };
         };
       };
 
@@ -225,7 +148,7 @@ in
           };
         })
 
-        (mkIf (iBoot.enable && bootloader.refind.enable) {
+        (mkIf (iBoot.enable && builtins.pathExists ../../hosts/${host.hostname}/home/.config/refind) {
           environment.systemPackages = [
             refindOverride
             pkgs.efibootmgr
@@ -237,7 +160,7 @@ in
           };
         })
 
-        (mkIf (iBoot.enable && !bootloader.refind.enable) {
+        (mkIf (iBoot.enable && !builtins.pathExists ../../hosts/${host.hostname}/home/.config/refind) {
           boot.loader.grub.extraInstallCommands = "${refindUninstaller}";
         })
 

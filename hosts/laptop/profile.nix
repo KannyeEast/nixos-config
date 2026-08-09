@@ -27,16 +27,6 @@ in
               })
             ];
           };
-
-          # Dual boot - rEFInd
-          bootloader.refind = {
-            enable = false;
-            theme.name = "rEFInd-darkflake";
-            theme.source = builtins.fetchGit {
-              url = "https://github.com/KannyeEast/rEFInd-darkflake";
-              rev = "cad7dbee033cfb331faa0cacdc70b52767d38818";
-            };
-          };
         };
 
         profile.user = {

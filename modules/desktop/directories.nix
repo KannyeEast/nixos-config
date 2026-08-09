@@ -13,7 +13,7 @@
         desktop = "${home.homeDirectory}/Desktop";
         documents = "${home.homeDirectory}/Documents";
         download = "${home.homeDirectory}/Downloads";
-        music = "${home.homeDirectory}/Music";
+        # music = "${home.homeDirectory}/Music";
         pictures = "${home.homeDirectory}/Pictures";
         publicShare = "${home.homeDirectory}/Public";
         templates = "${home.homeDirectory}/Templates";
@@ -21,8 +21,8 @@
 
         extraConfig = {
           # games = "${home.homeDirectory}/Games";
-          # misc = "${home}/Misc";
-          # projects = "${home}/Projects";
+          # misc = "${home.homeDirectory}/Misc";
+          # projects = "${home.homeDirectory}/Projects";
           screencasts = "${home.homeDirectory}/Videos/Screencasts";
           screenshots = "${home.homeDirectory}/Pictures/Screenshots";
           wallpapers = "${home.homeDirectory}/Pictures/Wallpapers";

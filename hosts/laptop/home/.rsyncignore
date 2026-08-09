@@ -9,3 +9,4 @@
 /.config/kanshi
 
 # Desktop only
+/.config/refind # @TODO: Right now in laptop for testing

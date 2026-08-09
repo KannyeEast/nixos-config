@@ -1,0 +1,3 @@
+[submodule "hosts/laptop/home/.config/refind/themes/rEFInd-darkflake"]
+	path = hosts/laptop/home/.config/refind/themes/rEFInd-darkflake
+	url = https://github.com/KannyeEast/rEFInd-darkflake.git
