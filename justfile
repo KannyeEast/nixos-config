@@ -198,9 +198,10 @@ remotes:
     git remote -v
 
 # ── private helpers ────────
-# Make new files visible without committing them
+# Make files visible to evaluation without committing them
 [private]
 _stage:
+    @git -C {{flake}} submodule update --init --recursive
     @git -C {{flake}} add --intent-to-add .
     
 # Check if PROGRAM is currently running
