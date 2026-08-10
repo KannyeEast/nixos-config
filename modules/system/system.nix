@@ -8,6 +8,8 @@ in
     let
       inherit (host) repoPath;
       inherit (config.internal) system;
+      
+      ref = "git+file://${repoPath}?submodules=1";
     in
     {
       options = {
@@ -20,9 +22,9 @@ in
           };
           repo = mkOption {
             type = types.str;
-            default = "git+ssh://git@github.com/KannyeEast/nixos-config";
+            default = "git+ssh://git@codeberg.org/KanyeSouth/nixos-config.git";
             internal = true;
-            description = "The git repo this is associated with";
+            description = "The main git repo the config is associated with";
           };
           version = mkOption {
             type = types.str;
@@ -47,14 +49,14 @@ in
         #
 
         environment.sessionVariables = {
-          NH_FLAKE = repoPath;
+          NH_FLAKE = ref;
         };
 
         programs.nh = {
           enable = true;
           clean.enable = true;
           clean.extraArgs = "--keep-since 4d --keep 5";
-          flake = repoPath;
+          flake = ref;
         };
 
         nix = {

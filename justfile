@@ -1,4 +1,6 @@
-flake := env("NH_FLAKE", justfile_directory())
+flake := justfile_directory()
+flakeRef := env("NH_FLAKE", "git+file://" + flake + "?submodules=1")
+
 host := shell("hostname -s")
 
 # ── aliases ────────
@@ -26,17 +28,17 @@ todo:
 # Rebuild and activate the configuration
 [group("system")]
 switch *ARGS: pull _stage (_closed "zen-beta" "Zen")
-    nh os switch --ask {{flake}} -H {{host}} {{ARGS}}
+    nh os switch --ask "{{flakeRef}}" -H {{host}} {{ARGS}}
 
 # Build and activate on the next reboot
 [group("system")]
 boot *ARGS: pull _stage
-    nh os boot --ask {{flake}} -H {{host}} {{ARGS}}
+    nh os boot --ask "{{flakeRef}}" -H {{host}} {{ARGS}}
 
 # Build without activating
 [group("system")]
 build *ARGS: pull _stage && diff
-    nh os build {{flake}} -H {{host}} {{ARGS}}
+    nh os build "{{flakeRef}}" -H {{host}} {{ARGS}}
 
 # Show what switching would change
 [group("system")]
@@ -46,14 +48,14 @@ diff:
 # Boot the config in a VM
 [group("system")]
 vm: pull _stage
-    nixos-rebuild build-vm --flake {{flake}}#{{host}}
+    nixos-rebuild build-vm --flake "{{flakeRef}}#{{host}}"
     ./result/bin/run-{{host}}-vm
 
 # ── flake ────────
 # Evaluate every output
 [group("flake")]
 check *ARGS: _stage
-    nix flake check {{flake}} {{ARGS}}
+    nix flake check "{{flakeRef}}" {{ARGS}}
     
 # Update a single or all inputs
 [group("flake")]
