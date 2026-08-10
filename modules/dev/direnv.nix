@@ -1,7 +1,10 @@
 { ... }:
 {
   flake.modules.nixos.direnv =
-    { ... }:
+    { host, ... }:
+    let
+      inherit (host) repoPath;
+    in
     {
       config = {
         programs.direnv = {
@@ -13,6 +16,9 @@
         environment.etc."direnv/direnv.toml".text = ''
           [global]
           hide_env_diff = true
+
+	  [whitelist]
+	  prefix = [ "${repoPath}" ]
         '';
       };
     };
