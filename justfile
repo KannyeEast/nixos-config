@@ -142,7 +142,7 @@ sync:
         | sed -n 's/^Sync from dev (\([0-9a-f]\{7,40\}\))$/\1/p')
 
     git rm -rq --ignore-unmatch .
-    git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml" ":(exclude)flake.lock"
+    git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml" ":(exclude)flake.lock" ":(exclude).gitmodules"
 
     if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then
         range="$prev..dev"
