@@ -157,7 +157,7 @@ sync:
         git commit -m "Sync from dev ($(git rev-parse dev))" \
                    -m "${body:-No individual commits.}"
 
-        git push -u origin main
+        git push -u origin main --force
     fi
 
     git switch dev
