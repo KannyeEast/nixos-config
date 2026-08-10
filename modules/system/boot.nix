@@ -156,7 +156,7 @@ in
           };
         })
 
-        (mkIf (iBoot.enable && config.internal.system.bootloader.dualBoot.enable) {
+        (mkIf (iBoot.enable && config.internal.system.dualBoot.enable) {
           environment.systemPackages = [
             refindOverride
             pkgs.efibootmgr
@@ -168,7 +168,7 @@ in
           };
         })
 
-        (mkIf (iBoot.enable && !config.internal.system.bootloader.dualBoot.enable) {
+        (mkIf (iBoot.enable && !config.internal.system.dualBoot.enable) {
           boot.loader.grub.extraInstallCommands = "${refindUninstaller}";
         })
 
