@@ -17,6 +17,7 @@ in
   flake.modules.nixos.boot =
     { config, pkgs, host, ... }:
     let
+      inherit (host) hostname;
       inherit (config.profile.system) bootloader;
       iBoot = config.internal.system.bootloader;
 
@@ -52,7 +53,7 @@ in
         '';
       });
 
-      refindFiles = getFiles ../../hosts/${host.hostname}/home/.config/refind "EFI/refind" // {
+      refindFiles = getFiles ../../hosts/${hostname}/home/.config/refind "EFI/refind" // {
         "EFI/refind/refind_x64.efi" = "${refindOverride}/share/refind/refind_x64.efi";
         "EFI/tools/shellx64.efi" = "${pkgs.edk2-uefi-shell}/shell.efi";
         "EFI/tools/memtest86.efi" = "${pkgs.memtest86-efi}/BOOTX64.efi";
@@ -106,8 +107,13 @@ in
     in
     {
       options = {
-        internal.system.bootloader.enable = mkEnableOption "Enable boot-loader" // {
-          internal = true;
+        internal.system = {
+          bootloader.enable = mkEnableOption "Enable boot-loader" // {
+            internal = true;
+          };
+          dualBoot.enable = mkEnableOption "Enable dual-booting" // {
+            internal = true;
+          };
         };
         profile.system.bootloader = {
           settings = mkOption {
@@ -124,6 +130,8 @@ in
       };
 
       config = mkMerge [
+        { internal.system.dualBoot.enable = builtins.pathExists ../../hosts/${hostname}/home/.config/refind; }
+
         (mkIf iBoot.enable {
           boot = {
             loader.efi.canTouchEfiVariables = true;
@@ -148,7 +156,7 @@ in
           };
         })
 
-        (mkIf (iBoot.enable && builtins.pathExists ../../hosts/${host.hostname}/home/.config/refind) {
+        (mkIf (iBoot.enable && config.internal.system.bootloader.dualBoot.enable) {
           environment.systemPackages = [
             refindOverride
             pkgs.efibootmgr
@@ -160,7 +168,7 @@ in
           };
         })
 
-        (mkIf (iBoot.enable && !builtins.pathExists ../../hosts/${host.hostname}/home/.config/refind) {
+        (mkIf (iBoot.enable && !config.internal.system.bootloader.dualBoot.enable) {
           boot.loader.grub.extraInstallCommands = "${refindUninstaller}";
         })
 

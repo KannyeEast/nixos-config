@@ -12,7 +12,7 @@ in
   flake.modules.nixos.hardware =
     { config, host, ... }:
     let
-      inherit (config.profile) system;
+      inherit (config.internal) system;
       inherit (host) hardware;
     in
     {
@@ -44,7 +44,7 @@ in
           internal.system.nvidia.enable = elem "nvidia" hardware.gpu;
 
           hardware.graphics.enable = hardware.gpu != [ ];
-          time.hardwareClockInLocalTime = system.bootloader.refind.enable;
+          time.hardwareClockInLocalTime = system.dualBoot.enable;
         }
       ];
     };
