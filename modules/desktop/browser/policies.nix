@@ -156,7 +156,7 @@
           "browser.urlbar.quicksuggest.enabled" = false;
 
           "general.smoothScroll" = false;
-  
+
           "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
           "media.videocontrols.picture-in-picture.enabled" = false;
         };
