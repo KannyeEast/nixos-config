@@ -71,7 +71,7 @@ in
         environment.systemPackages = [
           pkgs.mako
           pkgs.xwayland-satellite
-          
+
           pkgs.kanshi
           pkgs.lxqt.lxqt-policykit
           pkgs.brightnessctl
@@ -95,19 +95,19 @@ in
 
         environment.sessionVariables = {
           NIXOS_OZONE_WL = "1";
-          
+
           XKB_DEFAULT_LAYOUT = user.xkb.layout;
           XKB_DEFAULT_VARIANT = user.xkb.variant;
-          XCURSOR_THEME="Bibata-Modern-Ice";
-          XCURSOR_SIZE="24";
-          
+          XCURSOR_THEME = "Bibata-Modern-Ice";
+          XCURSOR_SIZE = "24";
+
           TERMINAL = "alacritty";
         };
-        
+
         programs.niri.enable = true;
         programs.dconf.enable = true;
         security.polkit.enable = true;
-        
+
         services = {
           gnome.gnome-keyring.enable = mkForce false;
           xserver = {

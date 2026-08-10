@@ -8,7 +8,7 @@ in
     let
       inherit (host) repoPath;
       inherit (config.internal) system;
-      
+
       ref = "git+file://${repoPath}?submodules=1";
     in
     {

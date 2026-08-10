@@ -3,7 +3,7 @@
   flake.modules.homeManager.passwords =
     { ... }:
     {
-      config = {      
+      config = {
         xdg.autostart.enable = true;
         programs.keepassxc = {
           autostart = true;

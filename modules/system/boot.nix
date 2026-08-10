@@ -15,7 +15,12 @@ let
 in
 {
   flake.modules.nixos.boot =
-    { config, pkgs, host, ... }:
+    {
+      config,
+      pkgs,
+      host,
+      ...
+    }:
     let
       inherit (host) hostname;
       inherit (config.profile.system) bootloader;
@@ -40,7 +45,7 @@ in
         collect "${src}" "";
 
       # Implements [a63681]
-      # https://sourceforge.net/u/l0sermcl0ser/refind/ci/a63681fca1e5135e619dc3127c29810d87e5e487/  
+      # https://sourceforge.net/u/l0sermcl0ser/refind/ci/a63681fca1e5135e619dc3127c29810d87e5e487/
       refindOverride = pkgs.refind.overrideAttrs (old: {
         postPatch = (old.postPatch or "") + ''
           substituteInPlace refind/config.c \
@@ -61,7 +66,7 @@ in
 
       refindInstaller = pkgs.writeShellScript "install-refind" ''
         set -eu
-        
+
         export PATH=${
           makeBinPath [
             pkgs.efibootmgr
@@ -130,7 +135,9 @@ in
       };
 
       config = mkMerge [
-        { internal.system.dualBoot.enable = builtins.pathExists ../../hosts/${hostname}/home/.config/refind; }
+        {
+          internal.system.dualBoot.enable = builtins.pathExists ../../hosts/${hostname}/home/.config/refind;
+        }
 
         (mkIf iBoot.enable {
           boot = {
