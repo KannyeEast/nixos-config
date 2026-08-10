@@ -2,11 +2,10 @@
 ## Simple checklist to keep track of functionality of all the modules
 
 ### Desktop
-- [ ] Browser
-  - Needs polish
-  - Make it more host driven → No default spaces/tabs/bookmarks, etc.
-  - Put all browser settings into private Repo and let it all be declarative through profile
-    - Figure out how to set all extension settings
+- [X] Browser
+  - Figure out how to set all extension settings
+    - Extensions using managed or sync storage can be declared
+    - Local storage doesnt seem feasible 
 - [ ] Audio
   - Not tested
 - [ ] Bluetooth
@@ -30,12 +29,9 @@
 
 ### Hardware
 - [X] AMD
-  - Works, might need refinement
 - [X] Common
 - [X] Intel
-  - Works, might need refinement
 - [X] Nvidia
-  - Works, might need refinement
 
 ### Roles
 - [X] Base
@@ -49,22 +45,16 @@
 
 ### System
 - [X] Boot
-  - Works, maybe make own refind package?
 - [X] Git
-  - Works, authorization could be improved
   - YubiKeys?
 - [X] Home Manager
 - [ ] Impermanence
-  - Not implemented, next on the list
+  - Implemented, but not really doing anything at the moment
 - [X] Locale
 - [X] Networking
 - [X] Secrets
-  - Sops itself works, needs to be polished and flawless implemented 
 - [X] System
 - [X] User
 
 ### Host
-- [ ] Installer
-  - Works but needs lots of tweaks
-  - Better wifi prompt.
-  - Only for live env tested. ISO install doesnt work
+- [X] Installer
