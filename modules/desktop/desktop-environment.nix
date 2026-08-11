@@ -87,7 +87,7 @@ in
         security.polkit.enable = true;
 
         services = {
-          gnome.gnome-keyring.enable = mkForce false;
+          gnome.gnome-keyring.enable = lib.mkForce false;
           xserver.enable = true;
         };
       };
