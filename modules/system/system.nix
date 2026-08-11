@@ -6,10 +6,10 @@ in
   flake.modules.nixos.system =
     { config, host, ... }:
     let
-      inherit (host) repoPath;
+      inherit (host) configPath locale;
       inherit (config.internal) system;
 
-      ref = "git+file://${repoPath}?submodules=1";
+      ref = "git+file://${configPath}?submodules=1";
     in
     {
       options = {
@@ -42,8 +42,6 @@ in
       };
 
       config = {
-        console.keyMap = "us";
-
         #
         # Nix system settings
         #
@@ -103,14 +101,14 @@ in
           # Auto upgrade
           autoUpgrade = {
             enable = system.autoUpgrade;
-            dates = "03:00";
+            dates = "Sat *-*-* 01:00:00 ${locale.timeZone}";
+            operation = "boot";
             flake = system.repo;
-            randomizedDelaySec = "45min";
             flags = [
               "--print-build-logs"
             ];
           };
-
+          
           # NixOS Version
           stateVersion = system.version;
         };

@@ -1,47 +1,35 @@
 { lib, ... }:
-let
-  inherit (lib)
-    mkOption
-    mkForce
-    types
-    recursiveUpdate
-    ;
-in
 {
   flake.modules.nixos.displayManager =
-    { config, pkgs, ... }:
+    { pkgs, host, ... }:
     let
-      inherit (config.profile.desktop) displayManager;
-
-      createConfig = preset: settings: (recursiveUpdate preset settings) // { enable = mkForce true; };
+      inherit (host) hostname;
+      
+      hostConfigDir = ../../hosts/${hostname}/home/.config/system;
+      sddmDir = hostConfigDir + "/sddm";
+      
+      hasSddmTheme = builtins.pathExists (sddmDir + "/theme.json");
+      
+      sddm = if hasSddmTheme 
+        then builtins.fromJSON (builtins.readFile (sddmDir + "/theme.json"))
+        else { package = ""; theme = ""; };
+        
+      sddmTheme = pkgs.runCommand "sddm-theme-${sddm.theme}" { } ''
+        dest=$out/share/sddm/themes/${sddm.theme}
+        mkdir -p "$dest"
+        cp -r ${pkgs.${sddm.package}}/share/sddm/themes/${sddm.theme}/. "$dest"/
+        cp ${sddmDir + "/theme.conf"} "$dest"/theme.conf
+      '';
     in
     {
-      options = {
-        profile.desktop.displayManager = {
-          settings = mkOption {
-            type = types.attrsOf types.anything;
-            default = { };
-            description = "Extra options for theming and configuring the display-manager";
-          };
-          extraPackages = mkOption {
-            type = types.listOf types.package;
-            default = [ ];
-            description = "Extra packages to import as systemPackages alongside the display-manager";
-          };
-        };
-      };
-
       config = {
-        services.displayManager.sddm = createConfig {
-          wayland = {
-            enable = true;
-            compositor = "kwin";
-          };
+        services.displayManager.sddm = {
+          enable = true;
+          wayland.enable = true;
           package = pkgs.kdePackages.sddm;
-          extraPackages = displayManager.extraPackages;
-        } displayManager.settings;
-
-        environment.systemPackages = displayManager.extraPackages;
+        } // lib.optionalAttrs hasSddmTheme {
+          theme = "${sddmTheme}/share/sddm/themes/${sddm.theme}";
+        };
       };
     };
 }

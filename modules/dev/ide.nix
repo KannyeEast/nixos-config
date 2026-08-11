@@ -8,14 +8,15 @@
       sharedPlugins = [
         "com.chrisrm.idea.MaterialThemeUI"
         "com.mallowigi"
+        "com.fapiko.jetbrains.plugins.better_direnv"
       ];
     in
     {
       config = {
         environment.systemPackages = [
           pkgs.jetbrains-toolbox
-          (buildIdeWithPlugins pkgs "clion" ([ ] ++ sharedPlugins))
-          (buildIdeWithPlugins pkgs "pycharm" ([ ] ++ sharedPlugins))
+          # (buildIdeWithPlugins pkgs "clion" ([ ] ++ sharedPlugins))
+          # (buildIdeWithPlugins pkgs "pycharm" ([ ] ++ sharedPlugins))
           (buildIdeWithPlugins pkgs "rider" ([ ] ++ sharedPlugins))
           (buildIdeWithPlugins pkgs "webstorm" ([ ] ++ sharedPlugins))
         ];

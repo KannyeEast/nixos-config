@@ -1,10 +1,21 @@
-{ ... }:
+{ lib, ... }:
 {
   flake.modules.nixos.user =
     { config, host, ... }:
     let
       inherit (host) user;
       inherit (config) sops;
+      
+      hostsDir = ../../hosts;
+      
+      hostNames = lib.attrNames (
+        lib.filterAttrs (n: t: t == "directory" && builtins.pathExists (hostsDir + "/${n}/host.json"))
+          (builtins.readDir hostsDir)
+      );
+      
+      allKeys = lib.concatMap
+        (n: (builtins.fromJSON (builtins.readFile (hostsDir + "/${n}/host.json"))).user.sshKeys or [ ])
+        hostNames;
     in
     {
       config = {
@@ -23,7 +34,7 @@
           ];
 
           hashedPasswordFile = sops.secrets.userPassword.path;
-          openssh.authorizedKeys.keys = user.sshKeys;
+          openssh.authorizedKeys.keys = allKeys;
         };
 
         security.sudo.extraConfig = "Defaults lecture=never";

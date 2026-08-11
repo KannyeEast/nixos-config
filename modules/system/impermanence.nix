@@ -16,7 +16,8 @@
         environment.persistence."/persistent" = {
           hideMounts = true;
           directories = [
-            # "/home/${user.name}"
+            "/home/${user.name}"
+            "/var/cache/fontconfig"
             "/var/lib/bluetooth"
             "/var/lib/NetworkManager"
             "/var/lib/nixos"

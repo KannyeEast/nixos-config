@@ -23,6 +23,12 @@
           LC_TIME = locale.localeExtra;
           LC_COLLATE = locale.localeExtra;
         };
+
+        console.useXkbConfig = true;
+        services.xserver = {
+          xkb.layout = locale.xkbLayout;
+          xkb.variant = locale.xkbVariant;
+        };
       };
     };
 }

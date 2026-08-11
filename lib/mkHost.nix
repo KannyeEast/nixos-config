@@ -11,12 +11,9 @@ in
     inherit system;
     specialArgs = { inherit inputs host; };
     modules = [
-      nixos."${hostname}Configuration"
-      nixos."${hostname}Hardware"
-      nixos."${hostname}Disko"
+      (hostDir + "/hardware.nix")
+      (hostDir + "/disko.nix")
     ]
     ++ map (role: nixos.${role}) host.roles;
-
-    # Planned additions: DevEnv, Docker (compose), Disko, Impermanence
   };
 }

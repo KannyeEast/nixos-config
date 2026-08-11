@@ -11,6 +11,7 @@
 - [ ] Bluetooth
   - Not tested
 - [X] DE
+  - Needs polish, scripts, etc. Will take some time to get to 100%
 - [ ] Shell
   - Not implemented
 - [X] Directories
@@ -58,3 +59,4 @@
 
 ### Host
 - [X] Installer
+  - Test new changes

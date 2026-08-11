@@ -101,7 +101,6 @@
       imports = [
         inputs.flake-parts.flakeModules.modules
         (inputs.import-tree [
-          ./hosts
           ./modules
         ])
       ];

@@ -37,14 +37,6 @@ optional wifi, then partitions, generates SSH and age keys, writes the host
 files and runs `nixos-install`. Everything it writes is shown for review before
 anything destructive happens.
 
-### Reinstalling an existing host
-
-When the disk layout changes and the host files and keys should survive, you can reinstall an existing host:
-
-```sh
-sudo ./install.sh -i
-```
-
 ## Day to day
 
 ```sh

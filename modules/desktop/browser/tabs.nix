@@ -8,7 +8,7 @@ in
     let
       inherit (host) hostname;
 
-      paletteFile = ../../../hosts/${hostname}/home/.config/nix/zen.json;
+      paletteFile = ../../../hosts/${hostname}/home/.config/system/zen.json;
       palette =
         if builtins.pathExists paletteFile then
           builtins.fromJSON (builtins.readFile paletteFile)

@@ -16,7 +16,7 @@
           pkgs.ssh-to-age
         ];
 
-        environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i /home/${user.name}/.ssh/id_${user.name}";
+        environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i /home/${user.name}/.ssh/id_ed25519";
 
         sops = {
           defaultSopsFile = ../../hosts/${hostname}/secrets.json;
@@ -28,7 +28,7 @@
 
           secrets = {
             userPrivateKey = {
-              path = "/home/${user.name}/.ssh/id_${user.name}";
+              path = "/home/${user.name}/.ssh/id_ed25519";
               owner = user.name;
               mode = "0600";
             };

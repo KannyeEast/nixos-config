@@ -1,0 +1,64 @@
+desktop-color: "#0c0c12"
+title-text: ""
+
+message-color: "#6f7a8f"
+message-bg-color: "#0c0c12"
+
+terminal-left: "0"
+terminal-top: "0"
+terminal-width: "100%"
+terminal-height: "100%"
+terminal-border: "0"
+
++ label {
+    text = "nixos"
+    color = "#8aa2ff"
+    align = "center"
+    left = 0
+    top = 15%
+    width = 100%
+    height = 40
+}
+
++ label {
+    text = "select an entry"
+    color = "#6f7a8f"
+    align = "center"
+    left = 0
+    top = 20%
+    width = 100%
+    height = 24
+}
+
++ boot_menu {
+    left = 25%
+    width = 50%
+    top = 30%
+    height = 45%
+
+    item_height = 28
+    item_padding = 6
+    item_spacing = 6
+    item_color = "#a5b6cf"
+    selected_item_color = "#8aa2ff"
+
+    icon_width = 0
+    icon_height = 0
+    item_icon_space = 0
+
+    scrollbar = false
+}
+
++ progress_bar {
+    id = "__timeout__"
+    left = 0
+    top = 100%-18
+    width = 100%
+    height = 18
+
+    show_text = true
+    text_color = "12, 12, 18"
+    fg_color = "#8aa2ff"
+    bg_color = "#1c1e27"
+    border_color = "#1c1e27"
+}

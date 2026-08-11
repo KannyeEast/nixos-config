@@ -97,11 +97,19 @@ fmt:
     fi
 
 # Render the colour scheme into every file listed in flavours/config.toml.
+# Second argument rebuilds afterwards: `just theme litmus switch` or `... boot`.
 [group("maintenance")]
-theme scheme="dendrite":
+theme scheme="dendrite" rebuild="":
+    #!/usr/bin/env bash
+    set -euo pipefail
     mkdir -p ~/.local/share/flavours
     flavours apply {{scheme}}
     flavours current
+    case "{{rebuild}}" in
+        switch) just switch ;;
+        boot) just boot ;;
+        *) echo "Unknown rebuild mode '{{rebuild}}' (use 'switch' or 'boot')." >&2; exit 1 ;;
+    esac
 
 # ── git ────────
 # Add changes to be committed

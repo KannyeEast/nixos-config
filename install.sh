@@ -9,7 +9,6 @@ set -Eeuo pipefail
 # ── script variables ────────
 # == flags ==
 VERBOSE=false
-MODE="new"
 
 # == host ==
 HOSTNAME=""
@@ -24,6 +23,8 @@ HW_MODULES=()
 TIMEZONE=""
 LOCALE=""
 LOCALE_EXTRA=""
+KEYBOARD=""
+KEYBOARD_VARIANT=""
 
 # == secrets ==
 HOST_AGE=""
@@ -101,7 +102,6 @@ trap trapError ERR
 
 cleanup() {
     if [[ -n ${TEMP_DIR:-} ]]; then
-        umount -R "$TEMP_DIR/old" 2>/dev/null || true
         [[ -d $TEMP_DIR ]] && rm -rf "$TEMP_DIR"
     fi
     printf '\033[?25h' >&2
@@ -114,8 +114,6 @@ showFlags() {
 Usage: sudo ./installer.sh [OPTIONS]
 
 Options:
-  -i, --install           Install an existing host: reuse its files and keys,
-                          repartition from its committed disko.nix, install.
   -v, --verbose           Show every command and its output
   -h, --help              This message
 EOF
@@ -124,7 +122,6 @@ EOF
 parseArgs() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -i|--install) MODE="install"; shift ;;
             -v|--verbose) VERBOSE=true; shift ;;
             -h|--help) showFlags; exit 0 ;;
             *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
@@ -295,13 +292,23 @@ listSupportedTimezones() {
     printf '%s\n' "$zones"
 }
 
-# == locales ==
+# == locale ==
 listSupportedLocales() {
     command -v locale &>/dev/null || return 1
     locale -a 2>/dev/null \
         | grep -iE '\.utf-?8$' \
         | sed -E 's/\.utf-?8$/.UTF-8/I' \
         | sort -u
+}
+
+# == keyboard layouts ==
+listKeyboardLayouts() {
+    localectl list-x11-keymap-layouts 2>/dev/null | awk 'NF'
+}
+
+listKeyboardVariants() {
+    printf '(none)\n'
+    localectl list-x11-keymap-variants "$1" 2>/dev/null || true
 }
 
 # == disks ==
@@ -315,18 +322,6 @@ listDirs() {
         \( -path /nix -o -path /proc -o -path /sys -o -path /dev -o -path /run \
            -o -name .git -o -name .cache -o -name node_modules \) -prune -o \
         -type d -print 2>/dev/null | sort -u
-}
-
-# == list public ssh keys on disk ==
-listKeys() {
-    local root="$1"
-    find "$root" -maxdepth 8 \
-        -type d \( -name store -o -name .cache -o -name node_modules \) -prune -o \
-        -type f -name '*.pub' -size -20k -print 2>/dev/null \
-    | while read -r f; do
-        head -c 20 "$f" 2>/dev/null | grep -qE '^(ssh-|ecdsa-|sk-)' \
-            && printf '%s\n' "${f#"$root"/}"
-      done | sort
 }
 
 # ── information gathering ────────
@@ -392,6 +387,12 @@ gather() {
             || die "No locale found"
             
         LOCALE_EXTRA=$LOCALE
+        
+        formFilter KEYBOARD "Keyboard layout" "$(listKeyboardLayouts)" "e.g. us, de, fr..." \
+            || die "No layouts found"
+        
+        formFilter KEYBOARD_VARIANT "Layout variant" "$(listKeyboardVariants "$KEYBOARD")" "(none) for the default"
+        [[ $KEYBOARD_VARIANT == "(none)" ]] && KEYBOARD_VARIANT=""
 
         # == hardware ==
         formHeader "Hardware"
@@ -534,6 +535,7 @@ gather() {
     HW modules     ${HW_MODULES[*]:-skip}
     Timezone       $TIMEZONE
     Locale         $LOCALE / $LOCALE_EXTRA
+    Keyboard       $KEYBOARD / $KEYBOARD_VARIANT
     Disk           $DISK
     Swap           $SWAP
     Wi-Fi          ${wifi_str:-skip}
@@ -548,151 +550,76 @@ EOF
     done
 }
 
-# ── install an existing host ────────
-# == pick / validate the host ==
-load() {
-    formHeader "Existing host"
-
-    formChoose HOSTNAME "Host to install" $(find "$FLAKE/hosts" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
-
-    for f in host.json disko.nix hardware.nix profile.nix secrets.json; do
-        [[ -f $FLAKE/hosts/$HOSTNAME/$f ]] || die "hosts/$HOSTNAME/$f is missing"
-    done
-
-    USERNAME="$(jq -r '.user.name' "$FLAKE/hosts/$HOSTNAME/host.json")"
-    USEREMAIL="$(jq -r '.user.email' "$FLAKE/hosts/$HOSTNAME/host.json")"
-    USER_KEY="$(jq -r '.user.sshKeys[0] // ""' "$FLAKE/hosts/$HOSTNAME/host.json")"
-    SYSTEM="$(jq -r '.system' "$FLAKE/hosts/$HOSTNAME/host.json")"
-    DISK="$(sed -n 's/.*device = "\([^"]*\)".*/\1/p' "$FLAKE/hosts/$HOSTNAME/disko.nix" | head -1)"
-
-    [[ -n $USERNAME && $USERNAME != null ]] || die "Could not read user.name from host.json"
-    [[ -n $DISK ]] || die "Could not read the device from hosts/$HOSTNAME/disko.nix"
-
-    gum style --border="rounded" --padding="1 2" --margin="1 0" \
-        <<EOF
-    Hostname       $HOSTNAME
-    SYSTEM         $SYSTEM
-    User           $USERNAME <$USEREMAIL>
-    Disk           $DISK
-EOF
-
-    formConfirm "Continue?" "n" || die "Cancelled"
-}
-
-# == copy the existing keys off the disk ==
-harvest() {
-    formHeader "Recovering keys"
-
-    local part
-    part="$(lsblk -nrpo NAME,FSTYPE "$DISK" 2>/dev/null | awk '$2 == "btrfs" { print $1; exit }')"
-    
-    if [[ -z $part ]]; then
-        die "No btrfs partition on $DISK"
-    fi
-    
-    mkdir -p "$TEMP_DIR/old"
-    mount -o ro,subvolid=5 "$part" "$TEMP_DIR/old" || die "Could not mount $part"
-
-    local candidates
-    candidates="$(listKeys "$TEMP_DIR/old")"
-    [[ -n $candidates ]] || die "No ssh public keys found on $part"
-
-    local hostPick userPick
-    formFilter hostPick "Host key" "$candidates" "e.g. persistent/etc/ssh/ssh_host_ed25519_key.pub" \
-        || die "Cancelled"
-    formFilter userPick "User key for '$USERNAME'" "$candidates" "e.g. root/home/$USERNAME/.ssh/id_$USERNAME.pub" \
-        || die "Cancelled"
-
-    [[ $hostPick != "$userPick" ]] || die "Host and user key cannot be the same file"
-
-    install -m 644 "$TEMP_DIR/old/$hostPick" "$TEMP_DIR/ssh_host_ed25519_key.pub"
-    install -m 600 "$TEMP_DIR/old/${hostPick%.pub}" "$TEMP_DIR/ssh_host_ed25519_key"
-    install -m 644 "$TEMP_DIR/old/$userPick" "$TEMP_DIR/id_${USERNAME}.pub"
-    install -m 600 "$TEMP_DIR/old/${userPick%.pub}" "$TEMP_DIR/id_${USERNAME}"
-
-    HOST_AGE="$(ssh-to-age < "$TEMP_DIR/ssh_host_ed25519_key.pub")"
-    USER_AGE="$(ssh-to-age < "$TEMP_DIR/id_$USERNAME.pub")"
-
-    umount -R "$TEMP_DIR/old"
-
-    grep -qF "&$HOSTNAME $HOST_AGE" "$FLAKE/.sops.yaml" \
-        || die "Recovered host key is not a recipient in .sops.yaml"
-    grep -qF "&${USERNAME}_${HOSTNAME} $USER_AGE" "$FLAKE/.sops.yaml" \
-        || die "Recovered user key is not a recipient in .sops.yaml"
-
-    logDebug "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
-    logDebug "User fingerprint: $(ssh-keygen -lf "$TEMP_DIR/id_$USERNAME.pub")"
-    logInfo "Recovered both keys"
-}
-
 # ── partition disk ────────
 partition() {
     formHeader "Partitioning";
     
-    if [[ $MODE == "install" ]]; then
-      disko --mode destroy,format,mount --flake "$FLAKE#$HOSTNAME"
-    else
-      cat > "$TEMP_DIR/disko.nix" <<EOF
-{ ... }:
+    mkdir -p "$FLAKE/hosts/$HOSTNAME"
+    cat > "$FLAKE/hosts/$HOSTNAME/disko.nix" <<EOF
+{ inputs, ... }:
 let
-    device = "$DISK";
+  device = "$DISK";
 in
 {
-    disko.devices.disk.main = {
-        inherit device;
-        type = "disk";
-        content = {
-            type = "gpt";
-            partitions = {
-                ESP = {
-                    type = "EF00";
-                    size = "512M";
-                    content = {
-                        type = "filesystem";
-                        format = "vfat";
-                        mountpoint = "/boot";
-                        mountOptions = [
-                            "defaults"
-                            "umask=0077" 
-                        ];
-                    };
-                };
-                swap = {
-                    priority = 2;
-                    size = "${SWAP}G";
-                    content = {
-                        type = "swap";
-                        discardPolicy = "both";
-                        resumeDevice = $HIBERNATE;
-                    };
-                };
-                root = {
-                    size = "100%";
-                    content = {
-                        type = "btrfs";
-                        subvolumes = {
-                            "/root" = {
-                                mountpoint = "/";
-                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                            };
-                            "/nix" = {
-                                mountpoint = "/nix";
-                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                            };
-                            "/persistent" = {
-                                mountpoint = "/persistent";
-                                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                            };
-                        };
-                    };
-                };
-            };
+  imports = [
+    inputs.disko.nixosModules.disko
+  ];
+  
+  disko.devices.disk.main = {
+    inherit device;
+    type = "disk";
+    content = {
+      type = "gpt";
+      partitions = {
+        ESP = {
+          type = "EF00";
+          size = "512M";
+          content = {
+            type = "filesystem";
+            format = "vfat";
+            mountpoint = "/boot";
+            mountOptions = [
+              "defaults"
+              "umask=0077" 
+            ];
+          };
         };
+        swap = {
+          priority = 2;
+          size = "${SWAP}G";
+          content = {
+            type = "swap";
+            discardPolicy = "both";
+            resumeDevice = $HIBERNATE;
+          };
+        };
+        root = {
+          size = "100%";
+          content = {
+            type = "btrfs";
+            subvolumes = {
+              "/root" = {
+                mountpoint = "/";
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+              };
+              "/nix" = {
+                mountpoint = "/nix";
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+              };
+              "/persistent" = {
+                mountpoint = "/persistent";
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+              };
+            };
+          };
+        };
+      };
     };
+  };
 }
 EOF
-        disko --mode destroy,format,mount "$TEMP_DIR/disko.nix"
-    fi
+      git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/disko.nix"
+      disko --mode destroy,format,mount "$FLAKE/hosts/$HOSTNAME/disko.nix"
 }
 
 # ── generate ssh keys ────────
@@ -703,14 +630,14 @@ generate() {
     run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$TEMP_DIR/ssh_host_ed25519_key"
     HOST_AGE="$(ssh-to-age < "$TEMP_DIR/ssh_host_ed25519_key.pub")"
     
-    logDebug "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
+    logInfo "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
     
     # == user keys == 
-    run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$TEMP_DIR/id_$USERNAME"
-    USER_AGE="$(ssh-to-age < "$TEMP_DIR/id_$USERNAME.pub")"
-    USER_KEY="$(< "$TEMP_DIR/id_$USERNAME.pub")"
+    run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$TEMP_DIR/id_ed25519"
+    USER_AGE="$(ssh-to-age < "$TEMP_DIR/id_ed25519.pub")"
+    USER_KEY="$(< "$TEMP_DIR/id_ed25519.pub")"
     
-    logDebug "User fingerprint: $(ssh-keygen -lf "$TEMP_DIR/id_$USERNAME.pub")"
+    logInfo "User fingerprint: $(ssh-keygen -lf "$TEMP_DIR/id_ed25519.pub")"
 }
 
 # ── write .sops.yaml ────────
@@ -774,7 +701,7 @@ writeSecrets() {
 
     jq -n \
         --arg pw "$hash" \
-        --rawfile key "$TEMP_DIR/id_$USERNAME" \
+        --rawfile key "$TEMP_DIR/id_ed25519" \
         --argjson wifi "$WIFI" \
         '{ userPassword: $pw, userPrivateKey: $key }
          + (if $wifi == {} then {} else { wifi: $wifi } end)' \
@@ -798,20 +725,22 @@ writeHostJson() {
     jq -n \
         --arg hostname "$HOSTNAME" \
         --arg system "$SYSTEM" \
-        --arg repoPath "/home/${USERNAME}/nixos-config" \
+        --arg configPath "/home/${USERNAME}/nixos-config" \
+        --argjson roles "$rolesJson" \
         --arg userName "$USERNAME" \
         --arg userEmail "$USEREMAIL" \
         --arg userKey "$USER_KEY" \
+        --argjson gpu "$gpuJson" \
+        --argjson modules "$modulesJson" \
         --arg tz "$TIMEZONE" \
         --arg locale "$LOCALE" \
         --arg extra "$LOCALE_EXTRA" \
-        --argjson roles "$rolesJson" \
-        --argjson gpu "$gpuJson" \
-        --argjson modules "$modulesJson" \
+        --arg layout "$KEYBOARD" \
+        --arg variant "$KEYBOARD_VARIANT" \
         '{
             hostname: $hostname,
             system: $system,
-            repoPath: $repoPath,
+            configPath: $configPath,
             roles: $roles,
             user: {
                 name: $userName,
@@ -825,7 +754,9 @@ writeHostJson() {
             locale: {
                 timeZone: $tz,
                 localeDefault: $locale,
-                localeExtra: $extra
+                localeExtra: $extra,
+                xkbLayout: $layout,
+                xkbVariant: $variant
             }
         }' > "$FLAKE/hosts/$HOSTNAME/host.json"
 
@@ -836,186 +767,74 @@ writeHostJson() {
 
 # ── hardware.nix ────────
 writeHardwareNix() {
-    local body
+    nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$FLAKE/hosts/$HOSTNAME/hardware.nix"
 
-    # Generates hardware config and deletes: 
-    # - The "Do not modify this file!" comment
-    # - Argument header
-    # - Opening and closing curly brackets
-    body="$(nixos-generate-config --show-hardware-config --no-filesystems --root /mnt \
-        | sed -e '/^ *#/d' \
-              -e '/^{.*}:$/d' \
-              -e '/^{$/d' \
-              -e '/^}$/d')"
-
-    # shellcheck disable=SC2001
-    body="$(sed -e 's/^./        &/' <<< "$body" | cat -s)"
-    
-    {
-        cat <<'EOF'
-{ ... }:
-let
-  inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
-in
-{
-  flake.modules.nixos."${hostname}Hardware" =
-    { 
-      config, 
-      lib, 
-      modulesPath, 
-      ...
-    }:
-    {
-EOF
-        printf '%s\n' "$body"
-        cat <<'EOF'
-    };
-}
-EOF
-    } > "$FLAKE/hosts/$HOSTNAME/hardware.nix"
-    
     git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/hardware.nix"
     
     logInfo "Generated hardware configuration"
 }
 
-# ── disko.nix ────────
-writeDiskoNix() {
-    cat > "$FLAKE/hosts/$HOSTNAME/disko.nix" <<EOF
-{ inputs, ... }:
-let
-    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
-    device = "$DISK";
-in
-{
-    flake.modules.nixos."\${hostname}Disko" = { ... }: {
-        imports = [ inputs.disko.nixosModules.disko ];
+# ── drop submodules whose path no longer exists ────────
+# The cloned branch carries whatever .gitmodules its author had. Those paths
+# point at their hosts, not ours, and a section without a matching gitlink
+# makes `git submodule update --init` noisy for every later rebuild.
+pruneSubmodules() {
+    local name path
 
-        disko.devices.disk.main = {
-            inherit device;
-            type = "disk";
-            content = {
-                type = "gpt";
-                partitions = {
-                    ESP = {
-                        type = "EF00";
-                        size = "512M";
-                        content = {
-                            type = "filesystem";
-                            format = "vfat";
-                            mountpoint = "/boot";
-                            mountOptions = [
-                                "defaults"
-                                "umask=0077" 
-                            ];
-                        };
-                    };
-                    swap = {
-                        priority = 2;
-                        size = "${SWAP}G";
-                        content = {
-                            type = "swap";
-                            discardPolicy = "both";
-                            resumeDevice = $HIBERNATE;
-                        };
-                    };
-                    root = {
-                        size = "100%";
-                        content = {
-                            type = "btrfs";
-                            subvolumes = {
-                                "/root" = {
-                                    mountpoint = "/";
-                                    mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                                };
-                                "/nix" = {
-                                    mountpoint = "/nix";
-                                    mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                                };
-                                "/persistent" = {
-                                    mountpoint = "/persistent";
-                                    mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-                                };
-                            };
-                        };
-                    };
-                };
-            };
-        };
-    };
-}
-EOF
-    git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/disko.nix"
-    
-    logInfo "Wrote disko file"
-}
+    [[ -f $FLAKE/.gitmodules ]] || return 0
 
-# ── profile.nix ────────
-writeProfileNix() {
-    cat > "$FLAKE/hosts/$HOSTNAME/profile.nix" <<'EOF'
-{ ... }:
-let
-    inherit (builtins.fromJSON (builtins.readFile ./host.json)) hostname;
-in
-{
-    imports = [
-        (import ../../lib/mkHost.nix ./.)
-    ];
+    while read -r name; do
+        name=${name#submodule.}
+        name=${name%.path}
 
-    flake.modules.nixos."${hostname}Configuration" = { ... }:
-    {
-        config = {
-            profile.system = {
-                bootloader.settings = { };
-                bootloader.plymouth = { };
+        path=$(git -C "$FLAKE" config -f .gitmodules --get "submodule.$name.path" || true)
 
-                bootloader.refind = {
-                    enable = false;
-                    theme.name = null;
-                    theme.source = null;
-                };
-            };
+        if [[ -n $path && -e $FLAKE/$path ]]; then
+            continue
+        fi
 
-            profile.user = {
-                xkb.layout = "us";
-                xkb.variant = "";
-            };
+        git -C "$FLAKE" config -f .gitmodules --remove-section "submodule.$name"
+        logWarn "Dropped stale submodule '$name'"
+    done < <(git -C "$FLAKE" config -f .gitmodules --name-only \
+                --get-regexp '^submodule\..*\.path$' || true)
 
-            profile.desktop = {
-                displayManager.settings = { };
-                displayManager.extraPackages = [ ];
-            };
-        };
-    };
-}
-EOF
-    git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/profile.nix"
-    
-    logInfo "Wrote host profile"
+    if [[ ! -s $FLAKE/.gitmodules ]]; then
+        rm -f "$FLAKE/.gitmodules"
+        return 0
+    fi
+
+    git -C "$FLAKE" add --intent-to-add .gitmodules
 }
 
 # ── write dotfiles ────────
 writeDotfiles() {
-    mkdir -p "$FLAKE/hosts/$HOSTNAME/home"
+    local dest="$FLAKE/hosts/$HOSTNAME/home"
+
+    mkdir -p "$dest"
 
     if [[ -z $DOTFILES ]]; then
+        pruneSubmodules
         return 0
     fi
 
     if [[ $DOTFILES_METHOD == "path" ]]; then
-        run cp -rT "$DOTFILES" "$FLAKE/hosts/$HOSTNAME/home"
-        run rm -rf "$FLAKE/hosts/$HOSTNAME/home/.git"
+        run cp -rT "$DOTFILES" "$dest"
     else
-        if run git clone "$DOTFILES" "$TEMP_DIR/home"; then
-            run cp -rT "$TEMP_DIR/home" "$FLAKE/hosts/$HOSTNAME/home"
-            run rm -rf "$FLAKE/hosts/$HOSTNAME/home/.git"
-        else 
-            die "Failed to clone git repository"
-        fi
+        run git clone --recurse-submodules "$DOTFILES" "$TEMP_DIR/home" \
+            || die "Failed to clone git repository"
+        run cp -rT "$TEMP_DIR/home" "$dest"
     fi
-    
+
+    # Flatten. A nested .git — a directory for the clone itself, a file for each
+    # submodule — makes the outer repo treat that path as a gitlink, and we have
+    # no .gitmodules entry to back it. Plain tracked files always evaluate.
+    run find "$dest" -name .git -prune -exec rm -rf {} +
+    rm -f "$dest/.gitmodules"
+
+    pruneSubmodules
+
     git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/home"
-    
+
     logInfo "Copied dotfiles"
 }
 
@@ -1023,14 +842,10 @@ writeDotfiles() {
 write() {
     formHeader "Writing files";
     
-    mkdir -p "$FLAKE/hosts/$HOSTNAME"
-    
     writeSopsYaml
     writeSecrets
     writeHostJson
     writeHardwareNix
-    writeDiskoNix
-    writeProfileNix
     writeDotfiles
     
     if formConfirm "Validate files?" "y"; then
@@ -1039,7 +854,6 @@ write() {
         gum pager < "$FLAKE/hosts/$HOSTNAME/host.json"
         gum pager < "$FLAKE/hosts/$HOSTNAME/hardware.nix"
         gum pager < "$FLAKE/hosts/$HOSTNAME/disko.nix"
-        gum pager < "$FLAKE/hosts/$HOSTNAME/profile.nix"
         ls -la -R "$FLAKE/hosts/$HOSTNAME/home"
         
         if ! formConfirm "Everything fine?" "y"; then
@@ -1061,21 +875,25 @@ installSystem() {
     run systemctl restart nix-daemon
     
     # == host keys ==
-    run install -d -m 755 /mnt/persistent/etc/ssh
-    run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" /mnt/persistent/etc/ssh/ssh_host_ed25519_key.pub
-    run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" /mnt/persistent/etc/ssh/ssh_host_ed25519_key
+    local ssh="/mnt/persistent/etc/ssh"
+    
+    run install -d -m 755 $ssh
+    run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" "$ssh/ssh_host_ed25519_key.pub"
+    run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" "$ssh/ssh_host_ed25519_key"
     
     # == install ==
     logWarn "First install can take a while"
-    nixos-install --root /mnt --flake .#"$HOSTNAME" --no-root-passwd
+    nixos-install --root /mnt --flake "git+file://$FLAKE?submodules=1#$HOSTNAME" --no-root-passwd
   
     # == user home ==
-    run install -d -m 755 "/mnt/home/$USERNAME"
-    run cp -rT "$FLAKE" "/mnt/home/$USERNAME/nixos-config"
-    run install -d -m 700 "/mnt/home/$USERNAME/.ssh"
-    run install -m 644 "$TEMP_DIR/id_$USERNAME.pub" "/mnt/home/$USERNAME/.ssh/id_$USERNAME.pub"
-    run install -m 600 "$TEMP_DIR/id_$USERNAME" "/mnt/home/$USERNAME/.ssh/id_$USERNAME"
-    run chown -R 1000:100 "/mnt/home/$USERNAME"
+    local home="/mnt/persistent/home/$USERNAME"
+    
+    run install -d -m 755 "$home"
+    run cp -rT "$FLAKE" "$home/nixos-config"
+    run install -d -m 700 "$home/.ssh"
+    run install -m 644 "$TEMP_DIR/id_ed25519.pub" "$home/.ssh/id_ed25519.pub"
+    run install -m 600 "$TEMP_DIR/id_ed25519" "$home/.ssh/id_ed25519"
+    run chown -R 1000:100 "$home"
 
     logInfo "Installed $HOSTNAME"
     formConfirm "Reboot now?" "y" || die "Reboot manually"
@@ -1102,16 +920,10 @@ main() {
     TEMP_DIR="$(mktemp -d)"
     chmod 700 "$TEMP_DIR"
 
-    if [[ $MODE == "install" ]]; then
-        load
-        harvest
-        partition
-    else
-        gather
-        partition
-        generate
-        write
-    fi
+    gather
+    partition
+    generate
+    write
 
     installSystem
 }

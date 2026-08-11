@@ -41,7 +41,7 @@ in
           enableDefaultConfig = false;
 
           settings = genAttrs (builtins.attrNames forges) (_: {
-            IdentityFile = [ "${config.home.homeDirectory}/.ssh/id_${user.name}" ];
+            IdentityFile = [ "${config.home.homeDirectory}/.ssh/id_ed25519" ];
             IdentitiesOnly = true;
           });
         };
