@@ -15,9 +15,9 @@ terminal-border: "0"
     color = "#{{base0D-hex}}"
     align = "center"
     left = 0
-    top = 15%
+    top = 11%
     width = 100%
-    height = 40
+    height = 72
 }
 
 + label {
@@ -25,21 +25,21 @@ terminal-border: "0"
     color = "#{{base04-hex}}"
     align = "center"
     left = 0
-    top = 20%
+    top = 18%
     width = 100%
-    height = 24
+    height = 40
 }
 
 + boot_menu {
-    left = 25%
-    width = 50%
-    top = 30%
-    height = 45%
+    left = 27%
+    width = 46%
+    top = 28%
+    height = 50%
 
-    item_height = 28
-    item_padding = 6
-    item_spacing = 6
-    item_color = "#{{base05-hex}}"
+    item_height = 48
+    item_padding = 10
+    item_spacing = 8
+    item_color = "#{{base04-hex}}"
     selected_item_color = "#{{base0D-hex}}"
 
     icon_width = 0
@@ -51,14 +51,24 @@ terminal-border: "0"
 
 + progress_bar {
     id = "__timeout__"
-    left = 0
-    top = 100%-18
-    width = 100%
-    height = 18
+    left = 27%
+    top = 85%
+    width = 46%
+    height = 36
 
     show_text = true
-    text_color = "{{base00-rgb-r}}, {{base00-rgb-g}}, {{base00-rgb-b}}"
+    text_color = "{{base05-rgb-r}}, {{base05-rgb-g}}, {{base05-rgb-b}}"
     fg_color = "#{{base0D-hex}}"
     bg_color = "#{{base01-hex}}"
-    border_color = "#{{base01-hex}}"
+    border_color = "#{{base02-hex}}"
+}
+
++ label {
+    text = "e edit  ·  c console"
+    color = "#{{base03-hex}}"
+    align = "center"
+    left = 0
+    top = 92%
+    width = 100%
+    height = 32
 }
