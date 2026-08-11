@@ -132,7 +132,7 @@ parseArgs() {
 # ── shell packages ────────
 declare -A MODULE_PKGS=(
     [base]="gum git jq"
-    [locales]="glibcLocales"
+    [locales]="glibcLocales xkeyboard_config"
     [secrets]="age mkpasswd openssh sops ssh-to-age"
     [iso]="disko"
 )
@@ -302,13 +302,59 @@ listSupportedLocales() {
 }
 
 # == keyboard layouts ==
+XKB_RULES=""
+
+xkbRules() {
+    local p
+
+    if [[ -n $XKB_RULES ]]; then
+        printf '%s\n' "$XKB_RULES"
+        return 0
+    fi
+
+    # shellcheck disable=SC2086
+    for p in ${buildInputs:-} \
+             /run/current-system/sw \
+             /usr; do
+        if [[ -r $p/share/X11/xkb/rules/base.lst ]]; then
+            XKB_RULES="$p/share/X11/xkb/rules/base.lst"
+            printf '%s\n' "$XKB_RULES"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 listKeyboardLayouts() {
-    localectl list-x11-keymap-layouts 2>/dev/null | awk 'NF'
+    local out lst
+
+    out=$(localectl list-x11-keymap-layouts 2>/dev/null | awk 'NF' || true)
+
+    if [[ -z $out ]] && lst=$(xkbRules); then
+        out=$(awk '/^! layout/{f=1;next} /^!/{f=0} f&&NF{print $1}' "$lst")
+    fi
+
+    if [[ -n $out ]]; then
+        printf '%s\n' "$out"
+    fi
 }
 
 listKeyboardVariants() {
+    local out lst
+
     printf '(none)\n'
-    localectl list-x11-keymap-variants "$1" 2>/dev/null || true
+
+    out=$(localectl list-x11-keymap-variants "$1" 2>/dev/null | awk 'NF' || true)
+
+    if [[ -z $out ]] && lst=$(xkbRules); then
+        # Variant rows read "  nodeadkeys   de: German (no dead keys)"
+        out=$(awk -v l="$1" '/^! variant/{f=1;next} /^!/{f=0} f&&$2==l":"{print $1}' "$lst")
+    fi
+
+    if [[ -n $out ]]; then
+        printf '%s\n' "$out"
+    fi
 }
 
 # == disks ==
@@ -388,11 +434,19 @@ gather() {
             
         LOCALE_EXTRA=$LOCALE
         
-        formFilter KEYBOARD "Keyboard layout" "$(listKeyboardLayouts)" "e.g. us, de, fr..." \
-            || die "No layouts found"
-        
-        formFilter KEYBOARD_VARIANT "Layout variant" "$(listKeyboardVariants "$KEYBOARD")" "(none) for the default"
-        [[ $KEYBOARD_VARIANT == "(none)" ]] && KEYBOARD_VARIANT=""
+        if ! formFilter KEYBOARD "Keyboard layout" "$(listKeyboardLayouts)" "e.g. us, de, fr..."; then
+            logWarn "No layout list available; enter one by hand"
+            formInput KEYBOARD "Keyboard layout" "e.g. us, de, fr..."
+        fi
+
+        if ! formFilter KEYBOARD_VARIANT "Layout variant" \
+                "$(listKeyboardVariants "$KEYBOARD")" "(none) for the default"; then
+            KEYBOARD_VARIANT=""
+        fi
+
+        if [[ $KEYBOARD_VARIANT == "(none)" ]]; then
+            KEYBOARD_VARIANT=""
+        fi
 
         # == hardware ==
         formHeader "Hardware"
