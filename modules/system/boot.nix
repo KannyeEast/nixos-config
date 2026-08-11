@@ -126,6 +126,7 @@ in
                 dest=$out/share/plymouth/themes/${plymouthName}
                 mkdir -p "$dest"
                 cp -r ${plymouthDir}/${plymouthName}/. "$dest"/
+                chmod -R u+w "$dest"
                 for f in "$dest"/*.plymouth; do
                 substituteInPlace "$f" --replace-fail "@THEME_DIR@" "$dest"
                 done

@@ -18,6 +18,7 @@
         dest=$out/share/sddm/themes/${sddm.theme}
         mkdir -p "$dest"
         cp -r ${pkgs.${sddm.package}}/share/sddm/themes/${sddm.theme}/. "$dest"/
+        chmod -R u+w "$dest"
         cp ${sddmDir + "/theme.conf"} "$dest"/theme.conf
       '';
     in
