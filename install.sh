@@ -589,7 +589,7 @@ gather() {
     HW modules     ${HW_MODULES[*]:-skip}
     Timezone       $TIMEZONE
     Locale         $LOCALE / $LOCALE_EXTRA
-    Keyboard       $KEYBOARD / $KEYBOARD_VARIANT
+    Keyboard       $KEYBOARD / ${KEYBOARD_VARIANT:-skip}
     Disk           $DISK
     Swap           $SWAP
     Wi-Fi          ${wifi_str:-skip}
@@ -610,15 +610,10 @@ partition() {
     
     mkdir -p "$FLAKE/hosts/$HOSTNAME"
     cat > "$FLAKE/hosts/$HOSTNAME/disko.nix" <<EOF
-{ inputs, ... }:
 let
   device = "$DISK";
 in
 {
-  imports = [
-    inputs.disko.nixosModules.disko
-  ];
-  
   disko.devices.disk.main = {
     inherit device;
     type = "disk";

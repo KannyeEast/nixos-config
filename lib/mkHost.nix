@@ -11,6 +11,7 @@ in
     inherit system;
     specialArgs = { inherit inputs host; };
     modules = [
+      inputs.disko.nixosModules.disko
       (hostDir + "/hardware.nix")
       (hostDir + "/disko.nix")
     ]
