@@ -73,9 +73,6 @@ in
         esp=${escapeShellArg esp}
       '';
 
-      # Match the loader path, not the label. Newer efibootmgr appends the
-      # device path to the entry line, so anchoring the label to end-of-line
-      # silently matches nothing and every rebuild leaves another entry behind.
       removeStaleRefind = ''
         for n in $(efibootmgr -v | grep -iE '^Boot[0-9A-Fa-f]{4}\*?.*refind_x64\.efi' | cut -c5-8 || true); do
           efibootmgr -q -b "$n" -B
