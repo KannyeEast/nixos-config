@@ -19,13 +19,33 @@
             theme = "";
           };
 
-      sddmTheme = pkgs.runCommand "sddm-theme-${sddm.theme}" { } ''
-        dest=$out/share/sddm/themes/${sddm.theme}
-        mkdir -p "$dest"
-        cp -r ${pkgs.${sddm.package}}/share/sddm/themes/${sddm.theme}/. "$dest"/
-        chmod -R u+w "$dest"
-        cp ${sddmDir + "/theme.conf"} "$dest"/theme.conf
-      '';
+      sddmTheme = pkgs.runCommand "sddm-theme-${sddm.theme}" { } (
+        ''
+          dest=$out/share/sddm/themes/${sddm.theme}
+          mkdir -p "$dest"
+          cp -r ${pkgs.${sddm.package}}/share/sddm/themes/${sddm.theme}/. "$dest"/
+          chmod -R u+w "$dest"
+          cp ${sddmDir + "/theme.conf"} "$dest"/theme.conf
+        ''
+        + lib.optionalString (sddm ? hint) ''
+          substituteInPlace "$dest"/Main.qml --replace-fail \
+            'Component.onCompleted: {' \
+            'Text {
+                      id: hintMessage
+                      text: "${sddm.hint}"
+                      color: textColor
+                      font.pointSize: helpFontSize
+                      font.family: helpFont
+                      anchors {
+                          bottom: parent.bottom
+                          bottomMargin: 30
+                          horizontalCenter: parent.horizontalCenter
+                      }
+                  }
+
+                  Component.onCompleted: {'
+        ''
+      );
     in
     {
       config = {

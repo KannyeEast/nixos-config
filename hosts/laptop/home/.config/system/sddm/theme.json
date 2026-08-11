@@ -1,4 +1,5 @@
 {
   "package": "where-is-my-sddm-theme",
-  "theme": "where_is_my_sddm_theme"
+  "theme": "where_is_my_sddm_theme",
+  "hint": "f1 help  ·  f2 user  ·  f3 session  ·  f10 suspend  ·  f11 off  ·  f12 reboot"
 }
