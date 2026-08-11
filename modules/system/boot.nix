@@ -145,7 +145,7 @@ in
                 "EFI/tools/shellx64.efi" = "${pkgs.edk2-uefi-shell}/shell.efi";
                 "EFI/tools/memtest86.efi" = "${pkgs.memtest86-efi}/BOOTX64.efi";
               };
-              extraInstallCommands = pkgs.writeShellScript "install-refind" (
+              extraInstallCommands = "${pkgs.writeShellScript "install-refind" (
                 efibootmgrSetup config.boot.loader.efi.efiSysMountPoint
                 + ''
                   part_dev=$(findmnt -no SOURCE --target "$esp")
@@ -156,18 +156,18 @@ in
                 + ''
                   efibootmgr -q -c -d "$disk" -p "$part" -L "rEFInd" -l '\EFI\refind\refind_x64.efi'
                 ''
-              );
+              )}";
             };
           })
 
           (mkIf (!system.dualBoot.enable) {
-            boot.loader.grub.extraInstallCommands = pkgs.writeShellScript "uninstall-refind" (
+            boot.loader.grub.extraInstallCommands = "${pkgs.writeShellScript "uninstall-refind" (
               efibootmgrSetup config.boot.loader.efi.efiSysMountPoint
               + removeStaleRefind
               + ''
                 rm -rf "$esp/EFI/refind"
               ''
-            );
+            )}";
           })
         ]))
         
