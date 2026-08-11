@@ -3,32 +3,37 @@ background=
 backgroundFill=#{{base00-hex}}
 backgroundFillMode=fill
 
-font=Inter
-basicTextColor=#{{base05-hex}}
+# Same face as GRUB and the terminal, so boot, login and shell agree.
+font=JetBrainsMono Nerd Font
+basicTextColor=#{{base04-hex}}
 hideCursor=false
 
+# Font size is in POINTS, not pixels. Upstream ships 96 with a 0.5 width —
+# the huge field is the theme's whole idea, so don't shrink it too far.
 passwordCharacter=•
 passwordMask=true
-passwordFontSize=28
-passwordInputWidth=0.22
-passwordInputRadius=12
+passwordFontSize=42
+passwordInputWidth=0.34
+passwordInputRadius=8
 passwordInputBackground=#{{base01-hex}}
 passwordInputBorderWidth=1
 passwordInputBorderColor=#{{base02-hex}}
 passwordTextColor=#{{base07-hex}}
 passwordCursorColor=#{{base0D-hex}}
 passwordInputCursorVisible=true
+passwordAllowEmpty=false
 cursorBlinkAnimation=true
 
+# Drawn around the whole screen, not around the input.
 wrongPasswordBorderColor=#{{base08-hex}}
-wrongPasswordBorderRadius=12
+wrongPasswordBorderRadius=0
 
 showUsersByDefault=true
 showUserRealNameByDefault=false
-usersFontSize=16
+usersFontSize=14
 
 showSessionsByDefault=true
 sessionsFontSize=12
 
-helpFont=Inter
-helpFontSize=11
+helpFont=JetBrainsMono Nerd Font
+helpFontSize=12
