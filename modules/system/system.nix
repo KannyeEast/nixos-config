@@ -108,7 +108,7 @@ in
               "--print-build-logs"
             ];
           };
-          
+
           # NixOS Version
           stateVersion = system.version;
         };

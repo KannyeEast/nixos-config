@@ -2,8 +2,9 @@
 let
   dir = ../hosts;
   names = lib.attrNames (
-    lib.filterAttrs (n: t: t == "directory" && builtins.pathExists (dir + "/${n}/host.json"))
-      (builtins.readDir dir)
+    lib.filterAttrs (n: t: t == "directory" && builtins.pathExists (dir + "/${n}/host.json")) (
+      builtins.readDir dir
+    )
   );
 in
 {

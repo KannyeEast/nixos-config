@@ -17,7 +17,7 @@ in
             mountpoint = "/boot";
             mountOptions = [
               "defaults"
-              "umask=0077" 
+              "umask=0077"
             ];
           };
         };
@@ -37,15 +37,27 @@ in
             subvolumes = {
               "/root" = {
                 mountpoint = "/";
-                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                mountOptions = [
+                  "compress=zstd"
+                  "noatime"
+                  "space_cache=v2"
+                ];
               };
               "/nix" = {
                 mountpoint = "/nix";
-                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                mountOptions = [
+                  "compress=zstd"
+                  "noatime"
+                  "space_cache=v2"
+                ];
               };
               "/persistent" = {
                 mountpoint = "/persistent";
-                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+                mountOptions = [
+                  "compress=zstd"
+                  "noatime"
+                  "space_cache=v2"
+                ];
               };
             };
           };

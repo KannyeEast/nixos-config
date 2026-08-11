@@ -4,16 +4,21 @@
     { pkgs, host, ... }:
     let
       inherit (host) hostname;
-      
+
       hostConfigDir = ../../hosts/${hostname}/home/.config/system;
       sddmDir = hostConfigDir + "/sddm";
-      
+
       hasSddmTheme = builtins.pathExists (sddmDir + "/theme.json");
-      
-      sddm = if hasSddmTheme 
-        then builtins.fromJSON (builtins.readFile (sddmDir + "/theme.json"))
-        else { package = ""; theme = ""; };
-        
+
+      sddm =
+        if hasSddmTheme then
+          builtins.fromJSON (builtins.readFile (sddmDir + "/theme.json"))
+        else
+          {
+            package = "";
+            theme = "";
+          };
+
       sddmTheme = pkgs.runCommand "sddm-theme-${sddm.theme}" { } ''
         dest=$out/share/sddm/themes/${sddm.theme}
         mkdir -p "$dest"
@@ -29,7 +34,8 @@
           wayland.enable = true;
           package = pkgs.kdePackages.sddm;
           extraPackages = [ pkgs.kdePackages.qt5compat ];
-        } // lib.optionalAttrs hasSddmTheme {
+        }
+        // lib.optionalAttrs hasSddmTheme {
           theme = "${sddmTheme}/share/sddm/themes/${sddm.theme}";
         };
       };

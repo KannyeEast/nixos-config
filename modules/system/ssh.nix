@@ -31,9 +31,6 @@ in
 
   flake.modules.homeManager.ssh =
     { config, host, ... }:
-    let
-      inherit (host) user;
-    in
     {
       config = {
         programs.ssh = {

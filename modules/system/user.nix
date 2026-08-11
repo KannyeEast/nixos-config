@@ -5,17 +5,18 @@
     let
       inherit (host) user;
       inherit (config) sops;
-      
+
       hostsDir = ../../hosts;
-      
+
       hostNames = lib.attrNames (
-        lib.filterAttrs (n: t: t == "directory" && builtins.pathExists (hostsDir + "/${n}/host.json"))
-          (builtins.readDir hostsDir)
+        lib.filterAttrs (n: t: t == "directory" && builtins.pathExists (hostsDir + "/${n}/host.json")) (
+          builtins.readDir hostsDir
+        )
       );
-      
-      allKeys = lib.concatMap
-        (n: (builtins.fromJSON (builtins.readFile (hostsDir + "/${n}/host.json"))).user.sshKeys or [ ])
-        hostNames;
+
+      allKeys = lib.concatMap (
+        n: (builtins.fromJSON (builtins.readFile (hostsDir + "/${n}/host.json"))).user.sshKeys or [ ]
+      ) hostNames;
     in
     {
       config = {
