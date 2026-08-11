@@ -115,7 +115,7 @@ in
                 gfxmodeEfi = "1920x1080";
                 splashImage = null;
                 font = "${pkgs.jetbrains-mono}/share/fonts/truetype/JetBrainsMono-Regular.ttf";
-                fontSize = 32;
+                fontSize = 24;
               } // optionalAttrs hasGrubTheme { theme = grubDir; };
             };
           }
