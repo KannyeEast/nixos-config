@@ -157,8 +157,9 @@ binds {
     XF86AudioPrev allow-when-locked=true { spawn-sh "playerctl previous"; }
     XF86AudioNext allow-when-locked=true { spawn-sh "playerctl next"; }
 
-    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+5%"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "5%-"; }
+    // Geometric steps with a 5% floor; see modules/desktop/desktop-environment.nix
+    XF86MonBrightnessUp allow-when-locked=true { spawn "backlight" "up"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "backlight" "down"; }
     
     XF86KbdBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--device=asus::kbd_backlight" "set" "+1"; }
     XF86KbdBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--device=asus::kbd_backlight" "set" "1-"; }
