@@ -3,6 +3,13 @@ flakeRef := env("NH_FLAKE", "git+file://" + flake + "?submodules=1")
 
 host := shell("hostname -s")
 
+# List of all forges we push/pull from
+# The first entry is treated as the origin
+# Any changes to this must be followed by a `just remotes`
+forges := "codeberg=git@codeberg.org:KanyeSouth/nixos-config.git " + \
+          "github=git@github.com:KannyeEast/nixos-config.git " + \
+          "gitlab=git@gitlab.com:KanyeNorth/nixos-config.git"
+
 # ── aliases ────────
 alias bump := update
 alias deploy := switch
@@ -140,14 +147,44 @@ pull:
     set -euo pipefail
 
     branch=$(git branch --show-current)
-    forges=(codeberg github gitlab)
-    
+    originUrl=$(git remote get-url origin 2>/dev/null || true)
+
+    primary=""
+    rest=()
+    for r in $(git remote); do
+        if [[ $r == origin ]]; then
+            continue
+        elif [[ -n $originUrl && $(git remote get-url "$r") == "$originUrl" ]]; then
+            primary="$r"
+        else
+            rest+=("$r")
+        fi
+    done
+
+    forges=()
+    if [[ -n $primary ]]; then
+        forges+=("$primary")
+    fi
+    forges+=("${rest[@]}")
+
+    if [[ ${#forges[@]} -eq 0 ]]; then
+        echo "No forges configured. Run 'just remotes'." >&2
+        exit 1
+    fi
+
+    width=0
+    for r in "${forges[@]}"; do
+        if [[ ${#r} -gt $width ]]; then
+            width=${#r}
+        fi
+    done
+
     # 1. Fetch all forges, recording their status
     declare -A state
     for r in "${forges[@]}"; do
         if ! git remote get-url "$r" >/dev/null 2>&1; then
             state[$r]="not configured"
-        elif git fetch --prune --quiet "$r" 2>/dev/null; then
+        elif git fetch --prune --quiet "$r" 2>/dev/null; then 
             state[$r]="ok"
         else
             state[$r]="unreachable"
@@ -190,17 +227,17 @@ pull:
     for r in "${forges[@]}"; do
         ref="refs/remotes/$r/$branch"
         if [[ ${state[$r]} != ok ]]; then
-            printf '  %-9s %s\n' "$r" "${state[$r]}"
+            printf "  %-${width}s  %s\n" "$r" "${state[$r]}"
         elif ! git show-ref -q --verify "$ref"; then
-            printf '  %-9s no %s\n' "$r" "$branch"
+            printf "  %-${width}s  no %s\n" "$r" "$branch"
         elif [[ $(git rev-parse "$ref") == $(git rev-parse "$best") ]]; then
             if [[ $r == "$winner" ]]; then
-                printf '  %-9s up to date  <- source\n' "$r"
+                printf "  %-${width}s  up to date  <- source\n" "$r"
             else
-                printf '  %-9s up to date\n' "$r"
+                printf "  %-${width}s  up to date\n" "$r"
             fi
         else
-            printf '  %-9s behind by %s\n' "$r" "$(git rev-list --count "$ref..$best")"
+            printf "  %-${width}s  behind by %s\n" "$r" "$(git rev-list --count "$ref..$best")"
         fi
     done
     echo
@@ -250,35 +287,41 @@ sync:
 
     git switch dev
 
-# (Re)build the 'all' remote and pushes to every forge
+# (Re)build every forge remote from the `forges` variable
 [group("git")]
 remotes:
     #!/usr/bin/env bash
     set -euo pipefail
-    
-    codeberg="git@codeberg.org:KanyeSouth/nixos-config.git"
-    github="git@github.com:KannyeEast/nixos-config.git"
-    gitlab="git@gitlab.com:KanyeNorth/nixos-config.git"
-    
-    for r in origin all codeberg github gitlab; do
+
+    read -ra pairs <<< "{{forges}}"
+
+    for p in "${pairs[@]}"; do
+        git remote remove "${p%%=*}" 2>/dev/null || true
+    done
+    for r in origin all; do
         git remote remove "$r" 2>/dev/null || true
     done
-    
-    git remote add codeberg "$codeberg"
-    git remote add github "$github"
-    git remote add gitlab "$gitlab"
-    
-    git remote add origin "$codeberg"
-    
-    git remote set-url --add --push origin "$codeberg"
-    git remote set-url --add --push origin "$github"
-    git remote set-url --add --push origin "$gitlab"
-    
+
+    for p in "${pairs[@]}"; do
+        git remote add "${p%%=*}" "${p#*=}"
+    done
+
+    # origin fetches from the first entry and pushes to all of them. `pull`
+    # infers the canonical forge by matching this URL, so reordering `forges`
+    # is the only change needed to promote a different one.
+    git remote add origin "${pairs[0]#*=}"
+    for p in "${pairs[@]}"; do
+        git remote set-url --add --push origin "${p#*=}"
+    done
+
     git fetch --all --prune
 
+    # Every branch, not just the one checked out — otherwise a plain push on
+    # the others goes to a single forge.
     for b in main dev; do
-        git show-ref --verify -q "refs/heads/$b" \
-            && git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
+        if git show-ref --verify -q "refs/heads/$b"; then
+            git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
+        fi
     done
 
     git remote -v
