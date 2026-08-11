@@ -149,15 +149,31 @@ pull:
     branch=$(git branch --show-current)
     originUrl=$(git remote get-url origin 2>/dev/null || true)
 
+    declare -A state
     primary=""
     rest=()
+    width=0
+
+    # Pass 1 - discover, order, fetch. Order decides tie-breaks
     for r in $(git remote); do
         if [[ $r == origin ]]; then
             continue
-        elif [[ -n $originUrl && $(git remote get-url "$r") == "$originUrl" ]]; then
+        fi
+
+        if [[ ${#r} -gt $width ]]; then
+            width=${#r}
+        fi
+
+        if [[ -n $originUrl && $(git remote get-url "$r") == "$originUrl" ]]; then
             primary="$r"
         else
             rest+=("$r")
+        fi
+
+        if git fetch --prune --quiet "$r" 2>/dev/null; then
+            state[$r]="ok"
+        else
+            state[$r]="unreachable"
         fi
     done
 
@@ -172,38 +188,27 @@ pull:
         exit 1
     fi
 
-    width=0
-    for r in "${forges[@]}"; do
-        if [[ ${#r} -gt $width ]]; then
-            width=${#r}
-        fi
-    done
-
-    # 1. Fetch all forges, recording their status
-    declare -A state
-    for r in "${forges[@]}"; do
-        if ! git remote get-url "$r" >/dev/null 2>&1; then
-            state[$r]="not configured"
-        elif git fetch --prune --quiet "$r" 2>/dev/null; then 
-            state[$r]="ok"
-        else
-            state[$r]="unreachable"
-        fi
-    done
-
-    # 2. Find the "best" (most advanced) ref among reachable forges (origin has priority)
+    # Pass 2 - pick the tip containing all others
     best=""
     winner=""
     for r in "${forges[@]}"; do
         ref="refs/remotes/$r/$branch"
-        git show-ref -q --verify "$ref" || continue
-    
+        if [[ ${state[$r]} != ok ]] || ! git show-ref -q --verify "$ref"; then
+            continue
+        fi
+
         if [[ -z $best ]]; then
             best="$ref"
             winner="$r"
-        elif git merge-base --is-ancestor "$best" "$ref" && [[ $(git rev-parse "$best") != $(git rev-parse "$ref") ]]; then
-            best="$ref"
-            winner="$r"
+        elif git merge-base --is-ancestor "$best" "$ref"; then
+            if [[ $(git rev-parse "$best") != $(git rev-parse "$ref") ]]; then
+                best="$ref"
+                winner="$r"
+            fi
+        elif ! git merge-base --is-ancestor "$ref" "$best"; then
+            echo "Forges have diverged: $r/$branch and $winner/$branch share no descendant." >&2
+            echo "Resolve by hand before pulling." >&2
+            exit 1
         fi
     done
 
@@ -212,18 +217,7 @@ pull:
         exit 1
     fi
 
-    # 3. Guard against divergence (A is ahead of B, but B is also ahead of A)
-    for r in "${forges[@]}"; do
-        ref="refs/remotes/$r/$branch"
-        git show-ref -q --verify "$ref" || continue
-        if ! git merge-base --is-ancestor "$ref" "$best"; then
-            echo "Forges have diverged: $r/$branch is not contained in $winner/$branch." >&2
-            echo "Resolve by hand before pulling." >&2
-            exit 1
-        fi
-    done
-
-    # 4. Print status table
+    # Pass 3 - report
     for r in "${forges[@]}"; do
         ref="refs/remotes/$r/$branch"
         if [[ ${state[$r]} != ok ]]; then
@@ -242,7 +236,6 @@ pull:
     done
     echo
 
-    # 5. Perform the pull / rebase if needed
     old=$(git rev-parse HEAD)
     if [[ $(git rev-list --count "$old..$best") -eq 0 ]]; then
         echo "Nothing to pull."
@@ -306,9 +299,6 @@ remotes:
         git remote add "${p%%=*}" "${p#*=}"
     done
 
-    # origin fetches from the first entry and pushes to all of them. `pull`
-    # infers the canonical forge by matching this URL, so reordering `forges`
-    # is the only change needed to promote a different one.
     git remote add origin "${pairs[0]#*=}"
     for p in "${pairs[@]}"; do
         git remote set-url --add --push origin "${p#*=}"
@@ -316,8 +306,6 @@ remotes:
 
     git fetch --all --prune
 
-    # Every branch, not just the one checked out — otherwise a plain push on
-    # the others goes to a single forge.
     for b in main dev; do
         if git show-ref --verify -q "refs/heads/$b"; then
             git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
