@@ -164,12 +164,8 @@ pull:
         if [[ -z $best ]]; then
             best="$ref"
             winner="$r"
-        elif git merge-base --is-ancestor "$best" "$ref"; then
-            # "$ref" is strictly more advanced than our current best
+        elif git merge-base --is-ancestor "$best" "$ref" && [[ $(git rev-parse "$best") != $(git rev-parse "$ref") ]]; then
             best="$ref"
-            winner="$r"
-        elif [[ $(git rev-parse "$best") == $(git rev-parse "$ref") ]] && [[ "$r" == "codeberg" ]]; then
-            # If they are at the exact same commit, prefer codeberg/origin as the canonical source
             winner="$r"
         fi
     done
