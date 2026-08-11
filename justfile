@@ -133,10 +133,57 @@ commit MESSAGE: stage
 push MESSAGE: (commit MESSAGE)
     git -C {{flake}} push
 
-# Pull changes from the repo
+# Pull changes from every forge, not just origin
 [group("git")]
 pull:
-    git -C {{flake}} pull --rebase --autostash
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    branch=$(git -C {{flake}} branch --show-current)
+    forges=(codeberg github gitlab)
+
+    for r in "${forges[@]}"; do
+        git -C {{flake}} remote get-url "$r" >/dev/null 2>&1 || continue
+        git -C {{flake}} fetch --prune --quiet "$r" 2>/dev/null \
+            || echo "warning: $r unreachable, skipping"
+    done
+
+    # Take the tip that already contains every other tip.
+    best=""
+    for r in "${forges[@]}"; do
+        ref="refs/remotes/$r/$branch"
+        git -C {{flake}} show-ref -q --verify "$ref" || continue
+        if [[ -z $best ]] || git -C {{flake}} merge-base --is-ancestor "$best" "$ref"; then
+            best="$ref"
+        fi
+    done
+
+    if [[ -z $best ]]; then
+        echo "No forge has '$branch'." >&2
+        exit 1
+    fi
+
+    # A single pass can be fooled by ordering, so verify containment properly.
+    for r in "${forges[@]}"; do
+        ref="refs/remotes/$r/$branch"
+        git -C {{flake}} show-ref -q --verify "$ref" || continue
+        if ! git -C {{flake}} merge-base --is-ancestor "$ref" "$best"; then
+            echo "Forges have diverged: $ref is not contained in $best." >&2
+            echo "Resolve by hand before pulling." >&2
+            exit 1
+        fi
+    done
+
+    git -C {{flake}} rebase --autostash "$best"
+
+    for r in "${forges[@]}"; do
+        ref="refs/remotes/$r/$branch"
+        if ! git -C {{flake}} show-ref -q --verify "$ref" \
+           || [[ $(git -C {{flake}} rev-parse "$ref") != $(git -C {{flake}} rev-parse HEAD) ]]; then
+            echo "note: $r is behind — 'just push' will heal it"
+            break
+        fi
+    done
 
 # Sync dev branch to main
 [group("git")]

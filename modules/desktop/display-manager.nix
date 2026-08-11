@@ -58,6 +58,8 @@
         // lib.optionalAttrs hasSddmTheme {
           theme = "${sddmTheme}/share/sddm/themes/${sddm.theme}";
         };
+        
+        services.asusd.enable = true;
       };
     };
 }
