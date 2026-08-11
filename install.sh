@@ -455,7 +455,7 @@ gather() {
         
         formMulti GPU "Select GPU. Both discrete and/or integrated" "amd" "intel" "nvidia"
         
-        if formConfirm "Use nixos-hardware modules?" "n"; then            
+        if formConfirm "Use nixos-hardware modules?" "y"; then            
             if formConfirm "Add a specific model from nixos-hardware?" "n"; then
                 local models selection=""
                 models="$(listNixosHardwareModules || true)"

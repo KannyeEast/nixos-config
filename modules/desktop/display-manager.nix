@@ -28,6 +28,7 @@
           enable = true;
           wayland.enable = true;
           package = pkgs.kdePackages.sddm;
+          extraPackages = [ pkgs.kdePackages.qt5compat ];
         } // lib.optionalAttrs hasSddmTheme {
           theme = "${sddmTheme}/share/sddm/themes/${sddm.theme}";
         };
