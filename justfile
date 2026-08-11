@@ -139,22 +139,29 @@ pull:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    branch=$(git -C {{flake}} branch --show-current)
+    branch=$(git branch --show-current)
     forges=(codeberg github gitlab)
+    declare -A state
 
     for r in "${forges[@]}"; do
-        git -C {{flake}} remote get-url "$r" >/dev/null 2>&1 || continue
-        git -C {{flake}} fetch --prune --quiet "$r" 2>/dev/null \
-            || echo "warning: $r unreachable, skipping"
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            state[$r]="not configured"
+        elif git fetch --prune --quiet "$r" 2>/dev/null; then
+            state[$r]="ok"
+        else
+            state[$r]="unreachable"
+        fi
     done
 
     # Take the tip that already contains every other tip.
     best=""
+    winner=""
     for r in "${forges[@]}"; do
         ref="refs/remotes/$r/$branch"
-        git -C {{flake}} show-ref -q --verify "$ref" || continue
-        if [[ -z $best ]] || git -C {{flake}} merge-base --is-ancestor "$best" "$ref"; then
+        git show-ref -q --verify "$ref" || continue
+        if [[ -z $best ]] || git merge-base --is-ancestor "$best" "$ref"; then
             best="$ref"
+            winner="$r"
         fi
     done
 
@@ -166,24 +173,44 @@ pull:
     # A single pass can be fooled by ordering, so verify containment properly.
     for r in "${forges[@]}"; do
         ref="refs/remotes/$r/$branch"
-        git -C {{flake}} show-ref -q --verify "$ref" || continue
-        if ! git -C {{flake}} merge-base --is-ancestor "$ref" "$best"; then
-            echo "Forges have diverged: $ref is not contained in $best." >&2
+        git show-ref -q --verify "$ref" || continue
+        if ! git merge-base --is-ancestor "$ref" "$best"; then
+            echo "Forges have diverged: $r/$branch is not contained in $winner/$branch." >&2
             echo "Resolve by hand before pulling." >&2
             exit 1
         fi
     done
 
-    git -C {{flake}} rebase --autostash "$best"
-
     for r in "${forges[@]}"; do
         ref="refs/remotes/$r/$branch"
-        if ! git -C {{flake}} show-ref -q --verify "$ref" \
-           || [[ $(git -C {{flake}} rev-parse "$ref") != $(git -C {{flake}} rev-parse HEAD) ]]; then
-            echo "note: $r is behind — 'just push' will heal it"
-            break
+        if [[ ${state[$r]} != ok ]]; then
+            printf '  %-9s %s\n' "$r" "${state[$r]}"
+        elif ! git show-ref -q --verify "$ref"; then
+            printf '  %-9s no %s\n' "$r" "$branch"
+        elif [[ $(git rev-parse "$ref") == $(git rev-parse "$best") ]]; then
+            if [[ $r == "$winner" ]]; then
+                printf '  %-9s up to date  <- source\n' "$r"
+            else
+                printf '  %-9s up to date\n' "$r"
+            fi
+        else
+            printf '  %-9s behind by %s\n' "$r" "$(git rev-list --count "$ref..$best")"
         fi
     done
+    echo
+
+    old=$(git rev-parse HEAD)
+
+    if [[ $(git rev-list --count "$old..$best") -eq 0 ]]; then
+        echo "Nothing to pull."
+        exit 0
+    fi
+
+    git log --oneline --no-decorate --reverse "$old..$best" | sed 's/^/  /'
+    echo
+
+    git rebase --autostash --quiet "$best"
+    git --no-pager diff --stat "$old" HEAD
 
 # Sync dev branch to main
 [group("git")]
