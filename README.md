@@ -26,8 +26,12 @@ installer creates your own either way.
 From the NixOS installer ISO:
 
 ```sh
+# Clone the repo
 git clone -b main https://codeberg.org/KanyeSouth/nixos-config
+git clone https://codeberg.org/KanyeSouth/nixos-config
 cd nixos-config
+# Give the installer permission to partition the disk and install nixos
+chmod 700 ./install.sh
 sudo ./install.sh
 ```
 

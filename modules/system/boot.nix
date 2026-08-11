@@ -26,6 +26,12 @@ in
       grubDir =  hostConfigDir + "/grub";
       plymouthDir = hostConfigDir + "/plymouth";
 
+      plymouthName =
+        if builtins.pathExists (plymouthDir + "/theme") then
+          lib.removeSuffix "\n" (builtins.readFile (plymouthDir + "/theme"))
+        else
+          "";
+
       hasRefind = builtins.pathExists (refindDir + "/refind.conf");
       hasPlymouth = builtins.pathExists (plymouthDir + "/${plymouthName}");
       hasGrubTheme = builtins.pathExists (grubDir + "/theme.txt");
