@@ -67,6 +67,10 @@ in
           pkgs.libnotify
         ];
 
+        services.udev.packages = [
+          pkgs.brightnessctl
+        ];
+
         # Temporary until quickshell works
         programs.waybar.enable = true;
         security.pam.services.swaylock = { };
