@@ -144,29 +144,32 @@ sync:
     set -euo pipefail
 
     git switch main 2>/dev/null || git switch -c main
-
+    
     prev=$(git log -1 --format=%B --grep='^Sync from dev' \
         | sed -n 's/^Sync from dev (\([0-9a-f]\{7,40\}\))$/\1/p')
-
+    
+    # Wipe everything from the working tree
     git rm -rq --ignore-unmatch .
-    git checkout dev -- . ":(exclude)hosts" ":(exclude).sops.yaml" ":(exclude)flake.lock" ":(exclude).gitmodules"
-
+    
+    # Opt-in: Only check out what belongs on main
+    git checkout dev -- install.sh modules/ lib/ docs/ flake.nix README.md 2>/dev/null || true
+    
     if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then
         range="$prev..dev"
     else
         range="dev"
     fi
     body=$(git log --no-merges --reverse --format='- %s' "$range")
-
+    
     if git diff --cached --quiet; then
         echo "Nothing to sync."
     else
         git commit -m "Sync from dev ($(git rev-parse dev))" \
                    -m "${body:-No individual commits.}"
-
+    
         git push -u origin main --force
     fi
-
+    
     git switch dev
 
 # (Re)build the 'all' remote and pushes to every forge
