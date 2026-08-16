@@ -905,9 +905,15 @@ write() {
         gum pager < "$FLAKE/hosts/$HOSTNAME/disko.nix"
         ls -la -R "$FLAKE/hosts/$HOSTNAME/home"
         
-        if ! formConfirm "Everything fine?" "y"; then
-            die "Remove created files and rerun script"
-        fi
+        while :; do
+            if ! formConfirm "Everything fine?" "y"; then
+                logWarn "Try fixing the file(s) manually and retry"
+                logWarn "Or remove created files and rerun the installer"
+                logInfo "If that doesnt fix it please create an issue/pr at https://github.com/KannyeEast/nixos-config"
+                continue
+            fi
+            break
+        done
     fi
 }
 

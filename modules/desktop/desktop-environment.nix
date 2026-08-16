@@ -1,7 +1,6 @@
 { lib, ... }:
 let
   components = [
-    "waybar"
     "mako"
     "xwayland-satellite"
   ];
