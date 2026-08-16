@@ -8,8 +8,7 @@
     - Local storage doesnt seem feasible
   - Could maybe also move (partially) to dotfiles
   - Sync icon disappears when logged in to github; becomes normal folder icon
-- [ ] Audio
-  - Not tested
+- [X] Audio
 - [ ] Bluetooth
   - Not tested
 - [X] DE

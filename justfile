@@ -135,7 +135,8 @@ push MESSAGE: (commit MESSAGE)
 # Pull changes from the repo
 [group("git")]
 pull:
-    git -C {{flake}} pull --rebase --autostash
+    git -C {{flake}} pull --rebase --autostash --recurse-submodules
+    git -C {{flake}} submodule update --init --recursive
 
 # Sync dev branch to main
 [group("git")]
@@ -209,7 +210,7 @@ remotes:
 # Make files visible to evaluation without committing them
 [private]
 _stage:
-    @git -C {{flake}} submodule update --init --recursive
+    @git -C {{flake}} submodule update --init --recursive --remote
     @git -C {{flake}} add --intent-to-add .
     
 # Check if PROGRAM is currently running
