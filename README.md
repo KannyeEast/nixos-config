@@ -1,7 +1,5 @@
 # nixos-config
 
----
-
 ## Philosophy
 
 The goal of this config is to be truly host-dependent. Each machine is described

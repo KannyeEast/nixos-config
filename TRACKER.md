@@ -61,11 +61,14 @@
 - [X] System
 - [X] User
 
-### Host
+### Config    
 - [ ] Installer
   - Add support for submodules in dotfiles
   - Headless server install
 - [ ] Readme
   - Create [anatomy diagram](https://codeberg.org/EmergentMind/nix-config#structure-quick-reference)
+- [ ] Justfile
+  - Also add submodule support
+  - Conventional Commits: `fix`, `feat`, `chore`, `docs`, `sync`, `revert`
 - [ ] Docs
   - Very much out of date
