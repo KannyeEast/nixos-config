@@ -3,6 +3,11 @@ flakeRef := env("NH_FLAKE", "git+file://" + flake + "?submodules=1")
 
 host := shell("hostname -s")
 
+# List of forges: The first entry is treated as the primary/origin.
+forges := "codeberg=git@codeberg.org:KanyeSouth/nixos-config.git " + \
+          "github=git@github.com:KannyeEast/nixos-config.git " + \
+          "gitlab=git@gitlab.com:KanyeNorth/nixos-config.git"
+
 # ── aliases ────────
 alias bump := update
 alias deploy := switch
@@ -178,30 +183,39 @@ sync:
 remotes:
     #!/usr/bin/env bash
     set -euo pipefail
-    
-    codeberg="git@codeberg.org:KanyeSouth/nixos-config.git"
-    github="git@github.com:KannyeEast/nixos-config.git"
-    gitlab="git@gitlab.com:KanyeNorth/nixos-config.git"
-    
-    for r in origin all codeberg github gitlab; do
+
+    read -ra pairs <<< "{{forges}}"
+
+    # Clean up all possible remotes from the list + origin + all
+    for p in "${pairs[@]}"; do
+        git remote remove "${p%%=*}" 2>/dev/null || true
+    done
+    for r in origin all; do
         git remote remove "$r" 2>/dev/null || true
     done
-    
-    git remote add codeberg "$codeberg"
-    git remote add github "$github"
-    git remote add gitlab "$gitlab"
-    
-    git remote add origin "$codeberg"
-    
-    git remote set-url --add --push origin "$codeberg"
-    git remote set-url --add --push origin "$github"
-    git remote set-url --add --push origin "$gitlab"
-    
+
+    # Add individual named remotes
+    for p in "${pairs[@]}"; do
+        git remote add "${p%%=*}" "${p#*=}"
+    done
+
+    # Set up origin to point to the first forge ([0])
+    git remote add origin "${pairs[0]#*=}"
+
+    # Clear any existing push URLs on origin just in case 'remotes' is run twice
+    git remote set-url --delete --push origin '.*' 2>/dev/null || true
+
+    # Add all forge URLs as push targets for origin (multiplexing)
+    for p in "${pairs[@]}"; do
+        git remote set-url --add --push origin "${p#*=}"
+    done
+
     git fetch --all --prune
 
     for b in main dev; do
-        git show-ref --verify -q "refs/heads/$b" \
-            && git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
+        if git show-ref --verify -q "refs/heads/$b"; then
+            git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
+        fi
     done
 
     git remote -v
