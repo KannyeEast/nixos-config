@@ -6,7 +6,8 @@
   - Figure out how to set all extension settings
     - Extensions using managed or sync storage can be declared
     - Local storage doesnt seem feasible
-  - Could maybe also move to dotfiles
+  - Could maybe also move (partially) to dotfiles
+  - Sync icon disappears when logged in to github; becomes normal folder icon
 - [ ] Audio
   - Not tested
 - [ ] Bluetooth

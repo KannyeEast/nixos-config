@@ -1,15 +1,23 @@
 # nixos-config
 
-A dendritic multi-host NixOS config that stays host-driven. Each machine is described as
-data in `hosts/<host>/host.json` and the modules assemble themselves from that.
+---
 
-Application config stays in plain dotfiles under `hosts/<host>/home/`,
-which mimics `/home/<user>` and is then symlinked out of the store rather than generated into it. Editing
-`niri/bindings.kdl` or `keepassxc.ini` works the way it always has: change the
-file, the change applies, and it's already in the repo.
+## Philosophy
 
-Nix owns packages, services and system state; the dotfiles own everything you'd normally tweak by
-hand.
+The goal of this config is to be truly host-dependent. Each machine is described
+as data in `hosts/<host>/host.json` and the modules assemble themselves from that.
+
+Modules under modules/ are only declared and preconfigured with what I believe every host needs.
+A shared baseline and nothing more.
+
+Everything beyond that baseline is driven through classic dotfiles living in `hosts/<host>/home/`,
+which mimics `/home/<user>` and is symlinked out of the store rather than generated into it.
+This means each host can be completely different while still building on the same module set.
+You don't configure your desktop experience in Nix; you drop a `.config/` tree into `home/` and it gets symlinked into place.
+If a host doesn't need something, it just doesn't have the file.
+
+Nix owns packages, services and system state; the dotfiles own everything you'd
+normally tweak by hand. Same modules, different hosts.
 
 ## Branches
 
@@ -26,12 +34,15 @@ installer creates your own either way.
 From the NixOS installer ISO:
 
 ```sh
-# Clone the repo
-git clone -b main https://codeberg.org/KanyeSouth/nixos-config
-git clone https://codeberg.org/KanyeSouth/nixos-config
+# Clone the repo; pick whichever branch you want:
+git clone https://codeberg.org/KanyeSouth/nixos-config                    # dev (my personal config)
+git clone -b main https://codeberg.org/KanyeSouth/nixos-config            # main (config only)
 cd nixos-config
+
 # Give the installer permission to partition the disk and install nixos
 chmod 700 ./install.sh
+
+# Run the installer and follow its instructions
 sudo ./install.sh
 ```
 
@@ -41,16 +52,22 @@ optional wifi, then partitions, generates SSH and age keys, writes the host
 files and runs `nixos-install`. Everything it writes is shown for review before
 anything destructive happens.
 
-## Day to day
+## Structure
 
-```sh
-just switch       # rebuild and activate
-just boot         # activate on next boot
-just build        # build only, then show the diff
-just check        # evaluate every output
-just update       # update flake inputs
-just edit-secrets # decrypt, edit and re-encrypt with sops
 ```
-
-`just switch` pulls, initialises submodules, stages untracked files so Nix can
-see them, and refuses to run while the browser is open.
+nixos-config/
+├── hosts/
+│   └── <host>/
+│       ├── home/           # This hosts configuration of provided modules/programs
+│       │   ├── .config/
+│       │   ├── .zshrc
+│       │   ...
+│       ├── host.json
+│       ├── secrets.json
+│       ├── hardware.nix
+│       └── disko.nix
+└── modules/                # Declare and preconfigure modules/programs
+    ├── desktop/
+    ├── server/
+    ...
+```
