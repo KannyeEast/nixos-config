@@ -1,0 +1,3 @@
+[submodule "hosts/laptop/home/.config/system/refind/themes/rEFInd-dark-theme"]
+	path = hosts/laptop/home/.config/system/refind/themes/rEFInd-dark-theme
+	url = https://github.com/KannyeEast/rEFInd-dark-theme.git
