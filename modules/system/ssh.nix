@@ -30,7 +30,7 @@ in
     };
 
   flake.modules.homeManager.ssh =
-    { config, host, ... }:
+    { config, ... }:
     {
       config = {
         programs.ssh = {

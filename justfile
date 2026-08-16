@@ -165,7 +165,7 @@ commit MESSAGE="": stage
 
 # Push changes to repo
 [group("git")]
-push MESSAGE: (commit MESSAGE)
+push MESSAGE="": (commit MESSAGE)
   git -C {{flake}} push
 
 # Pull changes from the repo
