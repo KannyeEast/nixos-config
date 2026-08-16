@@ -67,3 +67,5 @@
   - Headless server install
 - [ ] Readme
   - Create [anatomy diagram](https://codeberg.org/EmergentMind/nix-config#structure-quick-reference)
+- [ ] Docs
+  - Very much out of date

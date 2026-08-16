@@ -66,7 +66,7 @@ nixos-config/
 │       ├── secrets.json
 │       ├── hardware.nix
 │       └── disko.nix
-└── modules/                # Declare and preconfigure modules/programs
+├── modules/                # Declare and preconfigure modules/programs
 │   ├── desktop/
 │   ├── server/
 │   ...
