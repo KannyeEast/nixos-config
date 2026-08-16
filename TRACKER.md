@@ -15,7 +15,7 @@
 - [X] DE
   - Needs polish, scripts, etc. Will take some time to get to 100%
 - [ ] Shell
-  - Port Ricelin to Niri and make tweaks
+  - Port [ricelin](https://github.com/Gakuseei/Ricelin) to niri and make tweaks
 - [X] Directories
 - [X] SDDM
 - [X] Dotfiles
@@ -23,6 +23,9 @@
 - [X] Packages
 - [X] Passwords
   - See if keepassxc works with cli only
+
+### Server
+- Profile nonexistent
 
 ### Dev
 - Entire profile needs polish/rework pass
@@ -37,22 +40,19 @@
 - [X] Base
 - [ ] Main roles
   - [X] Desktop
-  - [X] Server
+  - [ ] Server
 - [ ] Add-ons
-  - [X] Dev
+  - [ ] Dev
   - [ ] Media
   - [ ] LLM
   - [ ] 3D
-
-### Server
-- Profile nonexistent 
 
 ### System
 - [X] Boot
 - [X] Git
   - YubiKeys?
 - [X] Home Manager
-- [X] Impermanence
+- [ ] Impermanence
   - Implemented, but not really doing anything at the moment
 - [X] Locale
 - [X] Networking
@@ -62,6 +62,8 @@
 - [X] User
 
 ### Host
-- [X] Installer
+- [ ] Installer
   - Add support for submodules in dotfiles
   - Headless server install
+- [ ] Readme
+  - Create [anatomy diagram](https://codeberg.org/EmergentMind/nix-config#structure-quick-reference)

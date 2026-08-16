@@ -67,7 +67,8 @@ nixos-config/
 │       ├── hardware.nix
 │       └── disko.nix
 └── modules/                # Declare and preconfigure modules/programs
-    ├── desktop/
-    ├── server/
-    ...
+│   ├── desktop/
+│   ├── server/
+│   ...
+└── flake.nix
 ```
