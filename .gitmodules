@@ -1,3 +1,6 @@
 [submodule "hosts/laptop/home/.config/system/refind/themes/rEFInd-dark-theme"]
 	path = hosts/laptop/home/.config/system/refind/themes/rEFInd-dark-theme
 	url = https://github.com/KannyeEast/rEFInd-dark-theme.git
+[submodule "hosts/laptop/home/.config/quickshell"]
+	path = hosts/laptop/home/.config/quickshell
+	url = https://github.com/KannyeEast/ricelin-niri-shell.git
