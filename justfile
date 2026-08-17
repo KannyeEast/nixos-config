@@ -143,7 +143,7 @@ commit MESSAGE="": stage
         skip) break ;;
         "") echo "Invalid selection"; exit 1 ;;
         *) 
-          read -p "Enter scope (optional, e.g. modules): " scope
+          read -p "Enter scope: " scope
           read -p "Enter description: " desc
           if [ -n "$scope" ]; then
             msg="$type($scope): $desc"

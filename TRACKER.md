@@ -36,6 +36,7 @@
 - [X] Nvidia
 
 ### Roles
+- Modules need to check which main role is active and choose if they want to activate or not 
 - [X] Base
 - [ ] Main roles
   - [X] Desktop
@@ -66,8 +67,7 @@
   - Headless server install
 - [ ] Readme
   - Create [anatomy diagram](https://codeberg.org/EmergentMind/nix-config#structure-quick-reference)
-- [ ] Justfile
-  - Also add submodule support
-  - Conventional Commits: `fix`, `feat`, `chore`, `docs`, `sync`, `revert`
+  - Also just update with configuration changes
+- [X] Justfile
 - [ ] Docs
   - Very much out of date
