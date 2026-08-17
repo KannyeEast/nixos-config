@@ -4,6 +4,9 @@ include "bindings.kdl"
 include "layout.kdl"
 include "windows.kdl"
 
+// Testing quickshell bar
+include "~/.config/niri/ricelin.kdl"
+
 // Generated files
 include "colors.kdl"
 include "startup.kdl"
