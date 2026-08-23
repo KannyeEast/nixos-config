@@ -9,9 +9,11 @@ set -Eeuo pipefail
 # ── script variables ────────
 # == flags ==
 VERBOSE=false
+REMOTE=false
 
 # == host ==
 HOSTNAME=""
+HOST_KEY=""
 SYSTEM=""
 EXISTING=false
 ROLES=""
@@ -44,6 +46,8 @@ SWAP=""
 HIBERNATE=false
 DOTFILES_METHOD=""
 DOTFILES=""
+SSH_OPTS=()
+TARGET=""
 
 # ── theme ────────
 # == palette ==
@@ -80,7 +84,7 @@ export GUM_CONFIRM_UNSELECTED_FOREGROUND="$MUTED"
 
 export GUM_SPIN_SPINNER_FOREGROUND="$CURSOR"
 
-# ── logging ────────
+# ── logging/helpers ────────
 logInfo() { gum log --level info "$*"; }
 logWarn() { gum log --level warn "$*"; }
 logError() { gum log --level error "$*"; }
@@ -88,12 +92,34 @@ logDebug() { gum log --level debug "$*"; }
 
 die() { logError "$1"; exit "${2:-1}"; }
 
+# == wrap command in gum styling ==
 run() {
   if [[ $VERBOSE == true ]]; then
     logDebug "\$ $*"
     "$@"
   else
     gum spin --title "$*" --show-error -- "$@"
+  fi
+}
+
+# == multiplexing ==
+sshInit() {
+  SSH_OPTS=(
+    -o ControlMaster=auto
+    -o ControlPath="$TEMP_DIR/ssh-%C"
+    -o ControlPersist=120
+    -o ConnectTimeout=10
+    -o UserKnownHostsFile="$TEMP_DIR/known_hosts"
+    -o StrictHostKeyChecking=accept-new
+  )
+}
+
+# == decide where to execute command ==
+probe() {
+  if [[ $REMOTE == true ]]; then
+    ssh "${SSH_OPTS[@]}" "$TARGET" "$@"
+  else
+    "$@"
   fi
 }
 
@@ -116,9 +142,10 @@ trap cleanup EXIT
 # ── flags ────────
 showFlags() {
   cat <<EOF
-Usage: sudo ./installer.sh [OPTIONS]
+Usage: ./installer.sh [OPTIONS]
 
 Options:
+  -r, --remote            Install the config through nixos-anywhere
   -v, --verbose           Show every command and its output
   -h, --help              This message
 EOF
@@ -127,6 +154,7 @@ EOF
 parseArgs() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      -r|--remote) REMOTE=true; shift ;;
       -v|--verbose) VERBOSE=true; shift ;;
       -h|--help) showFlags; exit 0 ;;
       *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
@@ -135,20 +163,25 @@ parseArgs() {
 }
 
 # ── shell packages ────────
+# Also turn all shell elements that run only once into nix run commands instead
 declare -A MODULE_PKGS=(
   [base]="gum git jq"
   [locales]="glibcLocales xkeyboard_config"
-  [secrets]="age mkpasswd openssh sops ssh-to-age"
+  [secrets]="mkpasswd openssh sops ssh-to-age"
   [disk]="disko"
 )
 
 # ── nix-shell ────────
 shell() {
   if [[ -z ${IN_NIX_SHELL:-} ]]; then
-    MODULES=("base" "secrets" "locales" "disk")
+    local modules mod pkgs 
+    
+    modules=("base" "secrets" "locales")
+    
+    [[ $REMOTE == false ]] && modules+=("disk")
 
     pkgs=""
-    for mod in "${MODULES[@]}"; do
+    for mod in "${modules[@]}"; do
       pkgs+=" ${MODULE_PKGS[$mod]}"
     done
 
@@ -364,7 +397,7 @@ listKeyboardVariants() {
 
 # == disks ==
 listDisks() {
-  lsblk -dno NAME,SIZE,MODEL -e 7,11 2>/dev/null | awk 'NF'
+  probe lsblk -dno NAME,SIZE,MODEL -e 7,11 | awk 'NF'
 }
 
 # == list directories ==
@@ -376,6 +409,24 @@ listDirs() {
 }
 
 # ── information gathering ────────
+# == ssh target ==
+gatherTarget() {
+  formHeader "Target"
+  TARGET=""
+
+  while :; do
+    formInput TARGET "SSH destination" "root@192.168.1.50"
+
+    # First connection authenticates and opens the socket
+    if ssh "${SSH_OPTS[@]}" "$TARGET" true; then
+      break
+    fi
+    logWarn "Cannot reach $TARGET"
+  done
+
+  logInfo "Connected to $(probe hostname) running $(probe uname -sr)"
+}
+
 # == host ==
 gatherIdentity() {
   formHeader "Identity"
@@ -585,7 +636,7 @@ gatherSwap() {
   HIBERNATE=false
 
   local ram swapDefault
-  ram=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1048576 ))
+  ram=$(( $(probe cat /proc/meminfo | awk '/MemTotal/{print $2}') / 1048576 ))
   logInfo "Detected ${ram}GiB of RAM"
 
   if formConfirm "Enable hibernation?" "n"; then
@@ -611,32 +662,29 @@ gatherWifi() {
 
   formConfirm "Add wifi network(s)?" "n" || return 0
 
-  local name ssid psk
+  local ssid psk
 
   while :; do
-    formInput name "Connection name" "" "home"
-
-    if jq -e --arg n "$name" 'has($n)' <<< "$WIFI" > /dev/null 2>&1; then
-      logWarn "'$name' is already configured"
-      continue
+    if [[ $REMOTE == true ]]; then
+      formInput ssid "SSID" ""
+    else
+      formFilter ssid "Select network" "$(listWifiNetworks)" "select SSID" \
+        || formInput ssid "SSID" ""
     fi
-
-    formFilter ssid "Select network" "$(listWifiNetworks)" "select SSID" \
-      || formInput ssid "SSID (network name)" "" "my-network"
 
     formPassword psk "WPA password (8-63 chars)" false
 
     WIFI=$(jq --argjson prev "$WIFI" \
-      --arg name "$name" --arg ssid "$ssid" --arg psk "$psk" \
+      --arg ssid "$ssid" --arg psk "$psk" \
       '$prev + {
-        ($name): {
-          connection: { id: $name, type: "wifi" },
+        ($ssid): {
+          connection: { id: $ssid, type: "wifi" },
           wifi: { ssid: $ssid },
           "wifi-security": { "key-mgmt": "wpa-psk", psk: $psk }
         }
       }' <<< "{}")
 
-    logInfo "Added '$name' ($ssid)"
+    logInfo "Added '$ssid'"
     formConfirm "Add another network?" "n" || break
   done
 
@@ -664,30 +712,35 @@ gatherDotfiles() {
 gatherSummary() {
   formHeader "Review Configuration"
 
-  local wifi_count wifi_str=""
-  wifi_count="$(jq -r 'keys | length' <<< "$WIFI" 2>/dev/null || echo 0)"
-  (( wifi_count > 0 )) && wifi_str="$wifi_count network(s)"
+  local wifi wifiStr="skip"
+  wifi="$(jq -r 'keys | length' <<< "$WIFI" 2>/dev/null || echo 0)"
+  (( wifi > 0 )) && wifiStr="$wifi network(s)"
 
-  gum style --border="rounded" --padding="1 2" --margin="1 0" \
-    <<EOF
-    Hostname       $HOSTNAME
-    SYSTEM         $SYSTEM
-    Role           $ROLES ${ADDONS[*]}
-    User           $USERNAME <$USEREMAIL>
-    GPU            ${GPU[*]:-skip}
-    HW modules     ${HW_MODULES[*]:-skip}
-    Timezone       $TIMEZONE
-    Locale         $LOCALE / $LOCALE_EXTRA
-    Keyboard       $KEYBOARD / ${KEYBOARD_VARIANT:-skip}
-    Disk           $DISK
-    Swap           $SWAP
-    Wi-Fi          ${wifi_str:-skip}
-    Dotfiles       ${DOTFILES:-skip}
-EOF
+  row() { printf '    %-14s %s\n' "$1" "$2"; }
+
+  {
+    [[ $REMOTE == true ]] && { row Target "$TARGET"; echo; }
+
+    row Hostname "$HOSTNAME"
+    row System "$SYSTEM"
+    row Role "$ROLES ${ADDONS[*]}"
+    row User "$USERNAME <$USEREMAIL>"
+    row GPU "${GPU[*]:-skip}"
+    row "HW modules" "${HW_MODULES[*]:-skip}"
+    row Timezone "$TIMEZONE"
+    row Locale "$LOCALE / $LOCALE_EXTRA"
+    row Keyboard "$KEYBOARD / ${KEYBOARD_VARIANT:-skip}"
+    row Disk "$DISK"
+    row Swap "$SWAP"
+    row Wi-Fi "$wifiStr"
+    row Dotfiles "${DOTFILES:-skip}"
+  } | gum style --border="rounded" --padding="1 2" --margin="1 0"
 }
 
 gather() {
   while :; do
+    [[ $REMOTE == true ]] && gatherTarget
+    
     gatherIdentity
 
     if [[ $EXISTING == true ]]; then
@@ -769,8 +822,8 @@ in
                 mountpoint = "/nix";
                 mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
               };
-              "/persistent" = {
-                mountpoint = "/persistent";
+              "/persist" = {
+                mountpoint = "/persist";
                 mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
               };
             };
@@ -783,8 +836,13 @@ in
 EOF
     git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/disko.nix"
   fi
+  
+  if [[ $REMOTE == true ]]; then
+    logInfo "Skipping disko"
+    return 0
+  fi
 
-  disko --mode destroy,format,mount "$disko"
+  sudo disko --mode destroy,format,mount "$disko"
 }
 
 # ── generate ssh keys ────────
@@ -794,6 +852,7 @@ generate() {
   # == host keys ==
   run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$TEMP_DIR/ssh_host_ed25519_key"
   HOST_AGE="$(ssh-to-age < "$TEMP_DIR/ssh_host_ed25519_key.pub")"
+  HOST_KEY="$(< "$TEMP_DIR/ssh_host_ed25519_key.pub")"
 
   logInfo "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
 
@@ -889,6 +948,7 @@ writeHostJson() {
 
   jq -n \
     --arg hostname "$HOSTNAME" \
+    --arg hostKey "$HOST_KEY" \
     --arg system "$SYSTEM" \
     --arg configPath "/home/${USERNAME}/nixos-config" \
     --argjson roles "$rolesJson" \
@@ -904,6 +964,7 @@ writeHostJson() {
     --arg variant "$KEYBOARD_VARIANT" \
     '{
       hostname: $hostname,
+      hostKey: $hostKey,
       system: $system,
       configPath: $configPath,
       roles: $roles,
@@ -932,11 +993,21 @@ writeHostJson() {
 
 # ── hardware.nix ────────
 writeHardwareNix() {
-  nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$FLAKE/hosts/$HOSTNAME/hardware.nix"
+  local file="$FLAKE/hosts/$HOSTNAME/hardware.nix"
 
+  if [[ $REMOTE == true ]]; then
+    cat > "$file" <<'EOF'
+    # Replaced during deploy by nixos-anywhere --generate-hardware-config.
+    throw "hardware.nix has not been generated for this host yet"
+EOF
+    logInfo "Generated placeholder hardware configuration"
+    logInfo "Check after installing if the correct configuration is present"
+  else
+    nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$file"
+    logInfo "Generated hardware configuration"
+  fi
+  
   git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/hardware.nix"
-
-  logInfo "Generated hardware configuration"
 }
 
 # ── write dotfiles ────────
@@ -1002,39 +1073,94 @@ write() {
 # ── install ────────
 installSystem() {
   formHeader "Installing";
-
   formConfirm "Install now?" "y" || die "Skipped install"
+  
+  if [[ $REMOTE == true ]]; then
+    installRemote
+  else
+    installLocal
+  fi
+}
 
+# == install via nixos-install ==
+installLocal() {
   # == move files to target ==
   run mkdir -p /mnt/tmp
   export TMPDIR=/mnt/tmp
   run systemctl set-environment TMPDIR=/mnt/tmp
   run systemctl restart nix-daemon
 
-  # == host keys ==
-  local ssh="/mnt/persistent/etc/ssh"
+  stageFiles /mnt
 
-  run install -d -m 755 $ssh
-  run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" "$ssh/ssh_host_ed25519_key.pub"
-  run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" "$ssh/ssh_host_ed25519_key"
-
-  # == install ==
   logWarn "First install can take a while"
-  nixos-install --root /mnt --flake "git+file://$FLAKE?submodules=1#$HOSTNAME" --no-root-passwd
-
-  # == user home ==
-  local home="/mnt/persistent/home/$USERNAME"
-
-  run install -d -m 755 "$home"
-  run cp -rT "$FLAKE" "$home/nixos-config"
-  run install -d -m 700 "$home/.ssh"
-  run install -m 644 "$TEMP_DIR/id_ed25519.pub" "$home/.ssh/id_ed25519.pub"
-  run install -m 600 "$TEMP_DIR/id_ed25519" "$home/.ssh/id_ed25519"
-  run chown -R 1000:100 "$home"
+  sudo nixos-install --root /mnt --flake "git+file://$FLAKE?submodules=1#$HOSTNAME" --no-root-passwd
 
   logInfo "Installed $HOSTNAME"
   formConfirm "Reboot now?" "y" || die "Reboot manually"
   reboot
+}
+
+# == Install via nixos-anywhere ==
+installRemote() {
+  local stage="$TEMP_DIR/extra"
+  local args=(
+    --flake "git+file://$FLAKE?submodules=1#$HOSTNAME"
+    --extra-files "$stage"
+  )
+
+  mkdir -p "$stage"
+  stageFiles "$stage"
+
+  # An existing host keeps its committed hardware.nix
+  if [[ $EXISTING != true ]]; then
+    args+=(--generate-hardware-config nixos-generate-config "$FLAKE/hosts/$HOSTNAME/hardware.nix")
+  fi
+
+  logWarn "First install can take a while"
+  nix run nixpkgs#nixos-anywhere -- "${args[@]}" "$TARGET"
+
+  reachInfo
+}
+
+# == Everything the machine needs on disk before first boot ==
+stageFiles() {
+  local root="$1"
+  local ssh="$root/persist/etc/ssh"
+  local home="$root/persist/home/$USERNAME"
+  
+  # == host keys ==
+  run install -d -m 755 "$ssh"
+  run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" "$ssh/ssh_host_ed25519_key.pub"
+  run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" "$ssh/ssh_host_ed25519_key"
+  
+  # == user home ==
+  run install -d -m 700 "$home/.ssh"
+  run install -m 644 "$TEMP_DIR/id_ed25519.pub" "$home/.ssh/id_ed25519.pub"
+  run install -m 600 "$TEMP_DIR/id_ed25519" "$home/.ssh/id_ed25519"
+  run cp -rT "$FLAKE" "$home/nixos-config"
+}
+
+# == test new ssh connection ==
+reachInfo() {
+  local addr="${TARGET#*@}" i
+
+  printf '%s %s\n' "$addr" "$HOST_KEY" > "$TEMP_DIR/known_hosts"
+
+  logInfo "Waiting for $HOSTNAME"
+  for (( i = 0; i < 60; i++ )); do
+    if ssh -o StrictHostKeyChecking=yes -o BatchMode=yes "${SSH_OPTS[@]}" "$USERNAME@$addr" true; then
+      logInfo "Verified host key and logged in as $USERNAME"
+      break
+    fi
+    sleep 5
+  done
+
+  {
+    printf '    %-10s %s\n' host "$HOSTNAME"
+    printf '    %-10s %s\n' ssh  "ssh $USERNAME@$addr"
+  } | gum style --border=rounded --padding="1 2" --margin="1 0"
+
+  logWarn "Commit hosts/$HOSTNAME, then rebuild the config to trust it permanently"
 }
 
 # ── main ────────
@@ -1056,6 +1182,8 @@ main() {
   # Temp directory for installer to use
   TEMP_DIR="$(mktemp -d)"
   chmod 700 "$TEMP_DIR"
+  
+  sshInit
 
   gather
   partition
