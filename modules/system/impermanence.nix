@@ -34,7 +34,7 @@
         environment.persistence."/persist" = {
           hideMounts = true;
           directories = [
-            "/home/${user.name}"
+            { directory = "/home/${user.name}"; user = user.name; group = "users"; mode = "0700"; }
             "/var/cache/fontconfig"
             "/var/lib/bluetooth"
             "/var/lib/NetworkManager"

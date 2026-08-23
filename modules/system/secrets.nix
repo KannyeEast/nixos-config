@@ -24,7 +24,7 @@
           defaultSopsFormat = "yaml";
           validateSopsFiles = false;
 
-          age.sshKeyPaths = [ "/persistent/etc/ssh/ssh_host_ed25519_key" ];
+          age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
           secrets = {
             userPrivateKey = {

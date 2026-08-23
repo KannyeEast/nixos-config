@@ -51,8 +51,8 @@ in
                   "space_cache=v2"
                 ];
               };
-              "/persistent" = {
-                mountpoint = "/persistent";
+              "/persist" = {
+                mountpoint = "/persist";
                 mountOptions = [
                   "compress=zstd"
                   "noatime"
