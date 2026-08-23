@@ -35,7 +35,7 @@ in
         ];
         text = ''
           step=1.25
-          floor=5 # percent of max, so the screen never goes fully dark
+          floor=1
 
           cur=$(brightnessctl --class=backlight get)
           max=$(brightnessctl --class=backlight max)
@@ -49,7 +49,7 @@ in
               n = (d == "down") ? c / s : c * s
 
               # Ratios stall on small numbers; guarantee one raw unit of travel.
-              if (d == "up"   && n - c < 1) n = c + 1
+              if (d == "up" && n - c < 1) n = c + 1
               if (d == "down" && c - n < 1) n = c - 1
 
               if (n < lo) n = lo
