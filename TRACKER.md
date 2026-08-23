@@ -6,6 +6,7 @@
   - Figure out how to set all extension settings
     - Extensions using managed or sync storage can be declared
     - Local storage doesnt seem feasible
+      - Check if userid exists in file and then append it or not (sponsorblock/dearrow)
   - Could maybe also move (partially) to dotfiles
   - Sync icon disappears when logged in to github; becomes normal folder icon
 - [X] Audio
@@ -14,7 +15,7 @@
 - [X] DE
   - Needs polish, scripts, etc. Will take some time to get to 100%
 - [ ] Shell
-  - Port [ricelin](https://github.com/Gakuseei/Ricelin) to niri and make tweaks
+  - Custom shell, inspired by [ricelin](https://github.com/Gakuseei/Ricelin)
 - [X] Directories
 - [X] SDDM
 - [X] Dotfiles
@@ -41,11 +42,21 @@
 - [ ] Main roles
   - [X] Desktop
   - [ ] Server
+    - [ ] Storage
+    - [ ] Deploy-rs
 - [ ] Add-ons
   - [ ] Dev
+    - ide
+    - editor
+    - vm
   - [ ] Media
+    - jellyfin
   - [ ] LLM
+    - Ollama
   - [ ] 3D
+    - Godot
+    - Blender
+  - [ ] Torrent
 
 ### System
 - [X] Boot
@@ -56,6 +67,7 @@
   - Implemented, but not really doing anything at the moment
 - [X] Locale
 - [X] Networking
+  - Append entries to secrets file automatically  
 - [X] Secrets
 - [X] SSH
 - [X] System
