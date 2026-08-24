@@ -1,0 +1,32 @@
+{
+  "hostname": "server",
+  "hostKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKmRNw4AIN8rtkAG8DIgL5stwAiQYAjGru1rNfJAAQGr root@server",
+  "system": "x86_64-linux",
+  "configPath": "/home/gldn/nixos-config",
+  "roles": [
+    "server",
+    "dev"
+  ],
+  "user": {
+    "name": "gldn",
+    "email": "gldn@server",
+    "sshKeys": [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@server"
+    ]
+  },
+  "hardware": {
+    "gpu": [],
+    "modules": [
+      "common-cpu-intel-cpu-only",
+      "common-pc-laptop-ssd",
+      "common-pc-laptop-hdd"
+    ]
+  },
+  "locale": {
+    "timeZone": "Europe/Berlin",
+    "localeDefault": "en_US.UTF-8",
+    "localeExtra": "en_US.UTF-8",
+    "xkbLayout": "us",
+    "xkbVariant": ""
+  }
+}
