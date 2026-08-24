@@ -1187,7 +1187,7 @@ main() {
   git -C "$FLAKE" submodule update --init --recursive
 
   # Temp directory for installer to use
-  TEMP_DIR="$(mktemp -d)"
+  TEMP_DIR="$(TMPDIR=/tmp mktemp -d)"
   chmod 700 "$TEMP_DIR"
   
   [[ $REMOTE == false ]] && sudo -v
