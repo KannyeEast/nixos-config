@@ -44,6 +44,7 @@ in
           internal.system.nvidia.enable = elem "nvidia" hardware.gpu;
 
           hardware.graphics.enable = hardware.gpu != [ ];
+          hardware.enableRedistributableFirmware = true;
           time.hardwareClockInLocalTime = system.dualBoot.enable;
         }
       ];

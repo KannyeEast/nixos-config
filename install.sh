@@ -173,7 +173,7 @@ declare -A MODULE_PKGS=(
 
 # ── nix-shell ────────
 shell() {
-  if [[ -z ${IN_NIX_SHELL:-} ]]; then
+  if [[ -z ${INSTALLER_SHELL:-} ]]; then
     local modules mod pkgs 
     
     modules=("base" "secrets" "locales")
@@ -185,6 +185,7 @@ shell() {
       pkgs+=" ${MODULE_PKGS[$mod]}"
     done
 
+    export INSTALLER_SHELL=1
     printf "Fetching dependencies ..."
     # shellcheck disable=SC2086
     exec nix-shell -p $pkgs --run "$(printf '%q ' bash "$0" "$@")"
@@ -1181,6 +1182,9 @@ main() {
   # Set path to flake.nix and cd into it
   FLAKE=$(dirname -- "$(readlink -f -- "$0")")
   cd "$FLAKE"
+  
+  # Initialize existing submodules
+  git -C "$FLAKE" submodule update --init --recursive
 
   # Temp directory for installer to use
   TEMP_DIR="$(mktemp -d)"

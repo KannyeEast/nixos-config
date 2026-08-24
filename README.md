@@ -31,7 +31,7 @@ installer creates your own either way.
 
 ### Local install
 
-1. Flash the NixOS ISO onto a bootable USB  
+1. Flash the NixOS ISO onto a bootable USB and boot into it 
 2. Run the following commands: 
 
 ```sh
@@ -49,12 +49,16 @@ cd nixos-config
 > nixos-anywhere requires a distro to be already installed on the remote target
 > and the ability to ssh into it
 
+1. Grab your remote target address:
+```sh
+ip -a 
+```
+
 ```sh
 # Clone the repo; pick whichever branch you want:
 git clone https://codeberg.org/KanyeSouth/nixos-config                    # dev (my personal config)
 git clone -b main https://codeberg.org/KanyeSouth/nixos-config            # main (config only)
 cd nixos-config
-
 
 # Run the installer and follow its instructions
 ./install.sh --remote
