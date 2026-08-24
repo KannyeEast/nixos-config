@@ -8,7 +8,8 @@ in
     {
       imports = [
         nixos.base
-
+        
+        nixos.storage
       ];
 
       config = {

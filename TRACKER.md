@@ -37,12 +37,11 @@
 - [X] Nvidia
 
 ### Roles
-- Modules need to check which main role is active and choose if they want to activate or not 
 - [X] Base
 - [ ] Main roles
   - [X] Desktop
   - [ ] Server
-    - [ ] Storage
+    - [X] Storage
     - [ ] Deploy-rs
 - [ ] Add-ons
   - [ ] Dev
@@ -62,9 +61,9 @@
 - [X] Boot
 - [X] Git
   - YubiKeys?
+  - Git mail per forge
 - [X] Home Manager
-- [ ] Impermanence
-  - Implemented, but not really doing anything at the moment
+- [X] Impermanence
 - [X] Locale
 - [X] Networking
   - Append entries to secrets file automatically  
@@ -76,7 +75,6 @@
 ### Config    
 - [ ] Installer
   - Add support for submodules in dotfiles
-  - Headless server install
 - [ ] Readme
   - Create [anatomy diagram](https://codeberg.org/EmergentMind/nix-config#structure-quick-reference)
   - Also just update with configuration changes

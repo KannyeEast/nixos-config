@@ -58,6 +58,7 @@
             "/var/lib/bluetooth"
             "/var/lib/NetworkManager"
             "/var/lib/nixos"
+            "/var/lib/tailscale"
             "/var/lib/systemd"
             "/var/log"
           ];
