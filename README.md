@@ -40,9 +40,6 @@ git clone https://codeberg.org/KanyeSouth/nixos-config                    # dev 
 git clone -b main https://codeberg.org/KanyeSouth/nixos-config            # main (config only)
 cd nixos-config
 
-# Give the installer read/write/execute permission
-chmod 700 ./install.sh
-
 # Run the installer and follow its instructions
 ./install.sh
 ```
@@ -58,8 +55,6 @@ git clone https://codeberg.org/KanyeSouth/nixos-config                    # dev 
 git clone -b main https://codeberg.org/KanyeSouth/nixos-config            # main (config only)
 cd nixos-config
 
-# Give the installer read/write/execute permission
-chmod 700 ./install.sh
 
 # Run the installer and follow its instructions
 ./install.sh --remote

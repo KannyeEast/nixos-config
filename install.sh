@@ -1003,7 +1003,7 @@ EOF
     logInfo "Generated placeholder hardware configuration"
     logInfo "Check after installing if the correct configuration is present"
   else
-    nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$file"
+    sudo nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$file"
     logInfo "Generated hardware configuration"
   fi
   
@@ -1085,7 +1085,7 @@ installSystem() {
 # == install via nixos-install ==
 installLocal() {
   # == move files to target ==
-  run mkdir -p /mnt/tmp
+  sudo mkdir -p /mnt/tmp
   export TMPDIR=/mnt/tmp
   run systemctl set-environment TMPDIR=/mnt/tmp
   run systemctl restart nix-daemon
