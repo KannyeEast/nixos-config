@@ -5,7 +5,7 @@ in
 {
   disko.devices.disk = mkBtrfsRaid {
     name = "tank";
-    destroy = true;
+    destroy = false;
     devices = [
       "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31AHZH"
       "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31HTJG"
@@ -24,7 +24,7 @@ in
   // {
     scratch = {
       type = "disk";
-      destroy = true;
+      destroy = false;
       device = "/dev/disk/by-id/ata-INTENSO_SSD_AA000000000000000565";
       content = {
         type = "btrfs";
