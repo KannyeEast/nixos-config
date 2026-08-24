@@ -29,7 +29,10 @@ installer creates your own either way.
 
 ## Install
 
-From the NixOS installer ISO:
+### Local install
+
+1. Flash the NixOS ISO onto a bootable USB  
+2. Run the following commands: 
 
 ```sh
 # Clone the repo; pick whichever branch you want:
@@ -37,13 +40,25 @@ git clone https://codeberg.org/KanyeSouth/nixos-config                    # dev 
 git clone -b main https://codeberg.org/KanyeSouth/nixos-config            # main (config only)
 cd nixos-config
 
-# Give the installer permission to partition the disk and install nixos
-chmod 700 ./install.sh
-
 # Run the installer and follow its instructions
-sudo ./install.sh
+./install.sh
 ```
 
+### Remote install
+> [!WARNING]
+> nixos-anywhere requires a distro to be already installed on the remote target
+> and the ability to ssh into it
+
+```sh
+# Clone the repo; pick whichever branch you want:
+git clone https://codeberg.org/KanyeSouth/nixos-config                    # dev (my personal config)
+git clone -b main https://codeberg.org/KanyeSouth/nixos-config            # main (config only)
+cd nixos-config
+
+
+# Run the installer and follow its instructions
+./install.sh --remote
+```
 
 The installer asks for hostname, roles, user, locale, hardware, disk and
 optional wifi, then partitions, generates SSH and age keys, writes the host

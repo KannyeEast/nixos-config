@@ -25,6 +25,7 @@
     impermanence = {
       url = "github:nix-community/impermanence";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
     };
 
     ### Home-manager
@@ -51,12 +52,6 @@
 
     ## Import modules recursively
     import-tree.url = "github:denful/import-tree";
-
-    ## Undo
-    undo = {
-      url = "github:edaywalid/undo";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
 
     #
     # Profiles
@@ -88,6 +83,12 @@
     ## Jetbrains
     nix-jetbrains-plugins = {
       url = "github:nix-community/nix-jetbrains-plugins";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    ## Undo
+    undo = {
+      url = "github:edaywalid/undo";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
