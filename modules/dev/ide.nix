@@ -17,10 +17,13 @@
           pkgs.jetbrains-toolbox
           # (buildIdeWithPlugins pkgs "clion" ([ ] ++ sharedPlugins))
           # (buildIdeWithPlugins pkgs "pycharm" ([ ] ++ sharedPlugins))
-          (buildIdeWithPlugins pkgs "rider" ([
-            "nix-idea"
-            "com.intellij.lang.qml"
-          ] ++ sharedPlugins))
+          (buildIdeWithPlugins pkgs "rider" (
+            [
+              "nix-idea"
+              "com.intellij.lang.qml"
+            ]
+            ++ sharedPlugins
+          ))
           (buildIdeWithPlugins pkgs "webstorm" ([ ] ++ sharedPlugins))
         ];
       };

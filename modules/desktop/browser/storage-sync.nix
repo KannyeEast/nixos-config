@@ -81,41 +81,41 @@ in
       config = {
         home.activation.zenExtensionStorage = config.lib.dag.entryAfter [ "writeBoundary" ] ''
           db="${profile}/storage-sync-v2.sqlite"
-        
+
           if [ ! -f "$db" ]; then
             echo "zen: no storage-sync-v2.sqlite"
           else
             apply() {
               local id="$1" declared="$2" cur merged escaped
-        
+
               cur=$(${pkgs.sqlite}/bin/sqlite3 "$db" \
                 "select data from storage_sync_data where ext_id = '$id';") || true
-        
+
               if [ -z "$cur" ]; then
                 echo "zen: no storage.sync row for $id, skipping"
                 return
               fi
-        
+
               merged=$(printf '%s' "$cur" \
                 | ${pkgs.jq}/bin/jq -c --argjson d "$declared" '. * $d')
-        
+
               escaped=''${merged//\'/\'\'}
-        
+
               ${pkgs.sqlite}/bin/sqlite3 "$db" \
                 "update storage_sync_data set data = '$escaped' where ext_id = '$id';"
             }
-        
+
             ${concatMapStringsSep "" (id: apply id settings.${id}) (builtins.attrNames settings)}
-        
+
             # --- Share one userID across SponsorBlock and DeArrow ---
             src=$(${pkgs.sqlite}/bin/sqlite3 "$db" \
               "select data from storage_sync_data where ext_id = 'sponsorBlocker@ajay.app';") || true
-        
+
             uid=""
             if [ -n "$src" ]; then
               uid=$(printf '%s' "$src" | ${pkgs.jq}/bin/jq -r '.userID // empty') || true
             fi
-        
+
             if [ -n "$uid" ]; then
               overlay=$(${pkgs.jq}/bin/jq -cn --arg u "$uid" '{userID: $u}')
               apply "sponsorBlocker@ajay.app" "$overlay"

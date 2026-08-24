@@ -1,8 +1,8 @@
 keys:
   - &users:
-    - &gldn_laptop age1f3fsclua66hvvm05m5gk4t7j2jra74wjvq75vwzu37n6qunl8g0sh4nuak
+    - &gldn_laptop age1sy0y0f4vmvf8065zptzq74fnk2xqmhygcuh3kprj4jk9j6rafexsrp55xf
   - &hosts:
-    - &laptop age1wm8gna9j3jca5p2amy2p5y0elx6s49npms3ufy6zpvqhng5ytvhqnqkydd
+    - &laptop age17kwvs8fdd848h7gscdjl9h3hp528rfjcgd6n3s88el52vfswkf7sqpcdue
 creation_rules:
   - path_regex: hosts/laptop/secrets\.json$
     key_groups:

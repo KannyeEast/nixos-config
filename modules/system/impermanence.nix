@@ -12,9 +12,9 @@
 
       config = {
         fileSystems."/persist".neededForBoot = true;
-        
+
         boot.initrd.systemd.initrdBin = [ pkgs.btrfs-progs ];
-        
+
         boot.initrd.systemd.services.rollback = {
           description = "Reset the root subvolume to a blank state";
           wantedBy = [ "initrd.target" ];
@@ -39,8 +39,8 @@
 
             umount /btrfs_tmp
           '';
-          };
-        
+        };
+
         systemd.tmpfiles.rules = [
           "Z /persist/home/${user.name} - ${user.name} users -"
         ];
@@ -48,7 +48,12 @@
         environment.persistence."/persist" = {
           hideMounts = true;
           directories = [
-            { directory = "/home/${user.name}"; user = user.name; group = "users"; mode = "0700"; }
+            {
+              directory = "/home/${user.name}";
+              user = user.name;
+              group = "users";
+              mode = "0700";
+            }
             "/var/cache/fontconfig"
             "/var/lib/bluetooth"
             "/var/lib/NetworkManager"

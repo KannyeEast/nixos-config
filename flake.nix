@@ -85,7 +85,7 @@
       url = "github:nix-community/nix-jetbrains-plugins";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    
+
     ## Undo
     undo = {
       url = "github:edaywalid/undo";

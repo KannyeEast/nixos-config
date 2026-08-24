@@ -1,5 +1,6 @@
 {
   "hostname": "laptop",
+  "hostKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHF7e6y27ESkc906EClcSPVd4cg/eDwcqZqgFbdzaIK root@laptop",
   "system": "x86_64-linux",
   "configPath": "/home/gldn/nixos-config",
   "roles": [
@@ -10,7 +11,7 @@
     "name": "gldn",
     "email": "125658372+KannyeEast@users.noreply.github.com",
     "sshKeys": [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA6NVFY2Spb2Yz0D8ZUBEjscxQrQFF6JXFAR9ROtAVU9 gldn@laptop"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Tn9tQVyJwyxfN8Dmpam4x+wfA0AT0dsKVuRajcTRl gldn@laptop"
     ]
   },
   "hardware": {

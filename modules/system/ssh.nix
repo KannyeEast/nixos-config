@@ -1,30 +1,45 @@
 { lib, ... }:
 let
-  inherit (lib) attrNames filterAttrs genAttrs listToAttrs mapAttrs nameValuePair concatMap optional;
+  inherit (lib)
+    attrNames
+    filterAttrs
+    genAttrs
+    listToAttrs
+    mapAttrs
+    nameValuePair
+    concatMap
+    optional
+    ;
 
   forges = {
     "github.com" = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
     "codeberg.org" = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIVIC02vnjFyL+I4RHfvIGNtOgJMe769VTF1VR4EB3ZB";
     "gitlab.com" = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf";
   };
-  
+
   hostsDir = ../../hosts;
-  
+
   hostNames = attrNames (
     filterAttrs (n: t: t == "directory" && builtins.pathExists (hostsDir + "/${n}/host.json")) (
       builtins.readDir hostsDir
     )
   );
-  
+
   hosts = listToAttrs (
-    concatMap (n:
-    let
-      key = (builtins.fromJSON (builtins.readFile (hostsDir + "/${n}/host.json"))).hostKey or "";
-    in
-      optional (key != "") (nameValuePair n {
-        hostNames = [ n "${n}.local" ];
-        publicKey = key;
-      })
+    concatMap (
+      n:
+      let
+        key = (builtins.fromJSON (builtins.readFile (hostsDir + "/${n}/host.json"))).hostKey or "";
+      in
+      optional (key != "") (
+        nameValuePair n {
+          hostNames = [
+            n
+            "${n}.local"
+          ];
+          publicKey = key;
+        }
+      )
     ) hostNames
   );
 in

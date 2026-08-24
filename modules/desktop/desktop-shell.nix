@@ -10,10 +10,10 @@
           pkgs.kdePackages.qtmultimedia
           pkgs.kdePackages.qtvirtualkeyboard
           pkgs.kdePackages.qt5compat
-          
+
           (pkgs.quickshell.withModules [ pkgs.qt6.qtmultimedia ])
         ];
-        
+
         nixpkgs.overlays = [ inputs.quickshell.overlays.default ];
       };
     };
