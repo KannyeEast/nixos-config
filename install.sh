@@ -733,8 +733,8 @@ gatherSummary() {
     row Keyboard "$KEYBOARD / ${KEYBOARD_VARIANT:-skip}"
     row Disk "$DISK"
     row Swap "$SWAP"
-    row Wi-Fi "$wifiStr"
-    row Dotfiles "${DOTFILES:-skip}"
+    [[ $ROLE == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
+    [[ $ROLE == "desktop" ]] && { row Dotfiles "${DOTFILES:-skip}"; }
   } | gum style --border="rounded" --padding="1 2" --margin="1 0"
 }
 
@@ -1172,8 +1172,8 @@ verifyRemote() {
   fi
 
   {
-    printf '    %-10s %s\n' host "$HOSTNAME"
-    printf '    %-10s %s\n' ssh "ssh $USERNAME@$addr"
+    printf '%-10s %s\n' host "$HOSTNAME"
+    printf '%-10s %s\n' ssh "ssh $USERNAME@$addr"
   } | gum style --border=rounded --padding="1 2" --margin="1 0"
 
   logWarn "Commit hosts/$HOSTNAME and rebuild, so this host key is trusted permanently"
