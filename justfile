@@ -181,7 +181,7 @@ sync:
   set -euo pipefail
   cd {{flake}}
 
-  git switch main 2>/dev/null || git switch -c main
+  git switch main 2>/dev/null || git switch -c main origin/main
 
   prev=$(git log -1 --format=%B --grep='^Sync from dev' \
       | sed -n 's/^Sync from dev (\([0-9a-f]\{7,40\}\))$/\1/p')
