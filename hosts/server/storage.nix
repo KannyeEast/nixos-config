@@ -28,6 +28,7 @@ in
       device = "/dev/disk/by-id/ata-INTENSO_SSD_AA000000000000000565";
       content = {
         type = "btrfs";
+        extraArgs = [ "-f" "-L" "scratch" ];
         subvolumes."scratch" = {
           mountpoint = "/srv/scratch";
           mountOptions = [ "noatime" "nofail" ];
