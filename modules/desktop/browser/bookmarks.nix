@@ -41,7 +41,7 @@ let
         }
         {
           name = "Football";
-          url = "https://streamed.pk/";
+          url = "https://strmd.link/";
           tags = [
             "shortcut"
             "streaming"

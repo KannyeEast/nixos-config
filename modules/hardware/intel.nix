@@ -26,7 +26,6 @@ in
           LIBVA_DRIVER_NAME = "iHD";
         };
 
-        hardware.enableRedistributableFirmware = true;
         boot.kernelParams = [ "i915.enable_guc=3" ];
       };
     };
