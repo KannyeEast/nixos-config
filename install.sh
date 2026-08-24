@@ -16,7 +16,7 @@ HOSTNAME=""
 HOST_KEY=""
 SYSTEM=""
 EXISTING=false
-ROLES=""
+ROLE=""
 ADDONS=()
 USERNAME=""
 USEREMAIL=""
@@ -473,7 +473,7 @@ loadHost() {
   fi
 
   SYSTEM="$(jq -r '.system // empty' "$file")"
-  ROLES="$(jq -r '.roles[0] // empty' "$file")"
+  ROLE="$(jq -r '.roles[0] // empty' "$file")"
   mapfile -t ADDONS < <(jq -r '.roles[1:][]?' "$file")
   USERNAME="$(jq -r '.user.name // empty' "$file")"
   USEREMAIL="$(jq -r '.user.email // empty' "$file")"
@@ -504,17 +504,17 @@ loadHost() {
 # == roles ==
 gatherRole() {
   formHeader "Role"
-  ROLES=""
+  ROLE=""
   ADDONS=()
 
   local -a roles=("desktop" "server")
   local -a desktopAddons=("${DESKTOP_ADDONS[@]}")
   local -a serverAddons=("${SERVER_ADDONS[@]}")
 
-  formChoose ROLES "Primary role" "${roles[@]}"
+  formChoose ROLE "Primary role" "${roles[@]}"
 
   # desktop -> desktopAddons, server -> serverAddons
-  local ref="${ROLES}Addons"
+  local ref="${ROLE}Addons"
   declare -p "$ref" &>/dev/null || return 0
 
   local -n addons="$ref"
@@ -724,7 +724,7 @@ gatherSummary() {
 
     row Hostname "$HOSTNAME"
     row System "$SYSTEM"
-    row Role "$ROLES ${ADDONS[*]}"
+    row Role "$ROLE ${ADDONS[*]}"
     row User "$USERNAME <$USEREMAIL>"
     row GPU "${GPU[*]:-skip}"
     row "HW modules" "${HW_MODULES[*]:-skip}"
@@ -753,10 +753,11 @@ gather() {
       gatherHardware
       gatherDisk
       gatherSwap
-      gatherDotfiles
+      
+      [[ $ROLE == "desktop" ]] && gatherDotfiles
     fi
 
-    gatherWifi
+    [[ $ROLE == "desktop" ]] && gatherWifi
     gatherSummary
 
     if formConfirm "Is this correct?" "y"; then
@@ -765,85 +766,6 @@ gather() {
 
     logWarn "Redoing..."
   done
-}
-
-# ── partition disk ────────
-partition() {
-  formHeader "Partitioning";
-
-  local disko="$FLAKE/hosts/$HOSTNAME/disko.nix"
-
-  if [[ $EXISTING == true ]]; then
-    logInfo "Reusing hosts/$HOSTNAME/disko.nix"
-  else
-    mkdir -p "$FLAKE/hosts/$HOSTNAME"
-    cat > "$disko" <<EOF
-let
-  device = "$DISK";
-in
-{
-  disko.devices.disk.main = {
-    inherit device;
-    type = "disk";
-    content = {
-      type = "gpt";
-      partitions = {
-        ESP = {
-          type = "EF00";
-          size = "512M";
-          content = {
-            type = "filesystem";
-            format = "vfat";
-            mountpoint = "/boot";
-            mountOptions = [
-              "defaults"
-              "umask=0077" 
-            ];
-          };
-        };
-        swap = {
-          priority = 2;
-          size = "${SWAP}G";
-          content = {
-            type = "swap";
-            discardPolicy = "both";
-            resumeDevice = $HIBERNATE;
-          };
-        };
-        root = {
-          size = "100%";
-          content = {
-            type = "btrfs";
-            subvolumes = {
-              "/root" = {
-                mountpoint = "/";
-                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-              };
-              "/nix" = {
-                mountpoint = "/nix";
-                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-              };
-              "/persist" = {
-                mountpoint = "/persist";
-                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
-              };
-            };
-          };
-        };
-      };
-    };
-  };
-}
-EOF
-    git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/disko.nix"
-  fi
-  
-  if [[ $REMOTE == true ]]; then
-    logInfo "Skipping disko"
-    return 0
-  fi
-
-  sudo disko --mode destroy,format,mount "$disko"
 }
 
 # ── generate ssh keys ────────
@@ -943,7 +865,7 @@ writeSecrets() {
 writeHostJson() {
   local rolesJson gpuJson modulesJson
 
-  rolesJson=$(printf '%s\n' "$ROLES" "${ADDONS[@]}" | jq -R . | jq -sc 'map(select(. != ""))')
+  rolesJson=$(printf '%s\n' "$ROLE" "${ADDONS[@]}" | jq -R . | jq -sc 'map(select(. != ""))')
   gpuJson=$(printf '%s\n' "${GPU[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
   modulesJson=$(printf '%s\n' "${HW_MODULES[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
 
@@ -1004,13 +926,79 @@ EOF
     logInfo "Generated placeholder hardware configuration"
     logInfo "Check after installing if the correct configuration is present"
   else
-    sudo nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$file"
+    sudo nixos-generate-config --show-hardware-config --no-filesystems > "$file"
     logInfo "Generated hardware configuration"
   fi
   
   git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/hardware.nix"
 }
 
+# ── disko.nix ────────
+writeDiskoNix() {
+  local disko="$FLAKE/hosts/$HOSTNAME/disko.nix"
+
+  cat > "$disko" <<EOF
+let
+  device = "$DISK";
+in
+{
+  disko.devices.disk.main = {
+    inherit device;
+    type = "disk";
+    content = {
+      type = "gpt";
+      partitions = {
+        ESP = {
+          type = "EF00";
+          size = "512M";
+          content = {
+            type = "filesystem";
+            format = "vfat";
+            mountpoint = "/boot";
+            mountOptions = [
+              "defaults"
+              "umask=0077" 
+            ];
+          };
+        };
+        swap = {
+          priority = 2;
+          size = "${SWAP}G";
+          content = {
+            type = "swap";
+            discardPolicy = "both";
+            resumeDevice = $HIBERNATE;
+          };
+        };
+        root = {
+          size = "100%";
+          content = {
+            type = "btrfs";
+            subvolumes = {
+              "/root" = {
+                mountpoint = "/";
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+              };
+              "/nix" = {
+                mountpoint = "/nix";
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+              };
+              "/persist" = {
+                mountpoint = "/persist";
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+}
+EOF
+  git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/disko.nix"
+  logInfo "Wrote disk layout"
+}
+  
 # ── write dotfiles ────────
 writeDotfiles() {
   local dest="$FLAKE/hosts/$HOSTNAME/home"
@@ -1040,14 +1028,17 @@ writeDotfiles() {
 # ── writing all host relevant files ────────
 write() {
   formHeader "Writing files";
-
+  
+  mkdir -p "$FLAKE/hosts/$HOSTNAME"
+  
   writeSopsYaml
   writeSecrets
   writeHostJson
 
-  # An existing host keeps its hardware.nix and dotfiles
+  # An existing host keeps its hardware.nix, disko.nix, and dotfiles
   if [[ $EXISTING != true ]]; then
     writeHardwareNix
+    writeDiskoNix
     writeDotfiles
   fi
 
@@ -1069,6 +1060,19 @@ write() {
       break
     done
   fi
+}
+
+# ── partition disk ────────
+partition() {
+  formHeader "Partitioning";
+  
+  if [[ $REMOTE == true ]]; then
+    logInfo "Skipping disko. nixos-anywhere partitions the disk"
+    return 0
+  fi
+    
+  logWarn "$DISK will be erased"
+  sudo disko --mode destroy,format,mount "$FLAKE/hosts/$HOSTNAME/disko.nix"
 }
 
 # ── install ────────
@@ -1119,8 +1123,8 @@ installRemote() {
 
   logWarn "First install can take a while"
   nix run nixpkgs#nixos-anywhere -- "${args[@]}" "$TARGET"
-
-  reachInfo
+  
+  verifyRemote
 }
 
 # == Everything the machine needs on disk before first boot ==
@@ -1144,27 +1148,36 @@ stageFiles() {
   run "${priv[@]}" cp -rT "$FLAKE" "$home/nixos-config"
 }
 
-# == test new ssh connection ==
-reachInfo() {
-  local addr="${TARGET#*@}" i
+# == verify the new system is reachable ==
+verifyRemote() {
+  local addr="${TARGET#*@}" ok=false i
 
+  # Pin the key we generated, so this proves identity as well as reachability
   printf '%s %s\n' "$addr" "$HOST_KEY" > "$TEMP_DIR/known_hosts"
 
-  logInfo "Waiting for $HOSTNAME"
+  logInfo "Waiting for $HOSTNAME to reboot"
   for (( i = 0; i < 60; i++ )); do
-    if ssh -o StrictHostKeyChecking=yes -o BatchMode=yes "${SSH_OPTS[@]}" "$USERNAME@$addr" true; then
-      logInfo "Verified host key and logged in as $USERNAME"
+    if ssh -o StrictHostKeyChecking=yes -o ControlPath=none -o BatchMode=yes \
+        "${SSH_OPTS[@]}" "$USERNAME@$addr" true 2>/dev/null; then
+      ok=true
       break
     fi
     sleep 5
   done
 
+  if [[ $ok == true ]]; then
+    logInfo "Host key verified, logged in as $USERNAME"
+  else
+    logWarn "$HOSTNAME did not come back. Check the machine's console"
+  fi
+
   {
     printf '    %-10s %s\n' host "$HOSTNAME"
-    printf '    %-10s %s\n' ssh  "ssh $USERNAME@$addr"
+    printf '    %-10s %s\n' ssh "ssh $USERNAME@$addr"
   } | gum style --border=rounded --padding="1 2" --margin="1 0"
 
-  logWarn "Commit hosts/$HOSTNAME, then rebuild the config to trust it permanently"
+  logWarn "Commit hosts/$HOSTNAME and rebuild, so this host key is trusted permanently"
+  logWarn "If your known_hosts has the old key for $addr: ssh-keygen -R $addr"
 }
 
 # ── main ────────
@@ -1194,10 +1207,9 @@ main() {
   sshInit
 
   gather
-  partition
   generate
   write
-
+  partition
   installSystem
 }
 
