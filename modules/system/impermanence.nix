@@ -30,6 +30,10 @@
           
           umount /btrfs_tmp
         '';
+        
+        systemd.tmpfiles.rules = [
+          "Z /persist/home/${user.name} - ${user.name} users -"
+        ];
 
         environment.persistence."/persist" = {
           hideMounts = true;

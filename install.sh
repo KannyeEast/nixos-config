@@ -1003,7 +1003,7 @@ EOF
     logInfo "Generated placeholder hardware configuration"
     logInfo "Check after installing if the correct configuration is present"
   else
-    nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$file"
+    sudo nixos-generate-config --show-hardware-config --no-filesystems --root /mnt > "$file"
     logInfo "Generated hardware configuration"
   fi
   
@@ -1085,10 +1085,10 @@ installSystem() {
 # == install via nixos-install ==
 installLocal() {
   # == move files to target ==
-  run mkdir -p /mnt/tmp
+  sudo mkdir -p /mnt/tmp
   export TMPDIR=/mnt/tmp
-  run systemctl set-environment TMPDIR=/mnt/tmp
-  run systemctl restart nix-daemon
+  sudo systemctl set-environment TMPDIR=/mnt/tmp
+  sudo systemctl restart nix-daemon
 
   stageFiles /mnt
 
@@ -1097,7 +1097,7 @@ installLocal() {
 
   logInfo "Installed $HOSTNAME"
   formConfirm "Reboot now?" "y" || die "Reboot manually"
-  reboot
+  sudo reboot
 }
 
 # == Install via nixos-anywhere ==
@@ -1128,16 +1128,19 @@ stageFiles() {
   local ssh="$root/persist/etc/ssh"
   local home="$root/persist/home/$USERNAME"
   
+  local -a priv=()
+  [[ $REMOTE == false ]] && priv=(sudo)
+  
   # == host keys ==
-  run install -d -m 755 "$ssh"
-  run install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" "$ssh/ssh_host_ed25519_key.pub"
-  run install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" "$ssh/ssh_host_ed25519_key"
+  run "${priv[@]}" install -d -m 755 "$ssh"
+  run "${priv[@]}" install -m 644 "$TEMP_DIR/ssh_host_ed25519_key.pub" "$ssh/ssh_host_ed25519_key.pub"
+  run "${priv[@]}" install -m 600 "$TEMP_DIR/ssh_host_ed25519_key" "$ssh/ssh_host_ed25519_key"
   
   # == user home ==
-  run install -d -m 700 "$home/.ssh"
-  run install -m 644 "$TEMP_DIR/id_ed25519.pub" "$home/.ssh/id_ed25519.pub"
-  run install -m 600 "$TEMP_DIR/id_ed25519" "$home/.ssh/id_ed25519"
-  run cp -rT "$FLAKE" "$home/nixos-config"
+  run "${priv[@]}" install -d -m 700 "$home/.ssh"
+  run "${priv[@]}" install -m 644 "$TEMP_DIR/id_ed25519.pub" "$home/.ssh/id_ed25519.pub"
+  run "${priv[@]}" install -m 600 "$TEMP_DIR/id_ed25519" "$home/.ssh/id_ed25519"
+  run "${priv[@]}" cp -rT "$FLAKE" "$home/nixos-config"
 }
 
 # == test new ssh connection ==
@@ -1183,6 +1186,7 @@ main() {
   TEMP_DIR="$(mktemp -d)"
   chmod 700 "$TEMP_DIR"
   
+  [[ $REMOTE == false ]] && sudo -v
   sshInit
 
   gather
