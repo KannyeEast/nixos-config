@@ -20,6 +20,14 @@ let
             "tool"
           ];
         }
+        {
+          name = "UUID Generator";
+          url = "https://www.uuidgenerator.net/";
+          tags = [
+            "shortcut"
+            "tool"
+          ];
+        }
       ];
     }
     {

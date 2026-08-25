@@ -103,6 +103,13 @@ in
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
         };
+        "Tailscale" = {
+          id = "53bcb3ca-773e-4b5b-9974-16862c8c18b9";
+          url = "https://console.tailscale.com";
+          position = 113;
+          workspace = spaces."Development".id;
+          folderParentId = pins."Server".id;
+        };
 
         # Forges
         "Codeberg" = {
