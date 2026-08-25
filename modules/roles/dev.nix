@@ -4,7 +4,7 @@ let
     homeManager
     nixos
     ;
-    
+
   inherit (lib)
     optionals
     ;

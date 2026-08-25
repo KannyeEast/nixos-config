@@ -15,7 +15,7 @@ let
     listToAttrs
     tail
     ;
-    
+
   members = tail devices;
 in
 # disko processes disks in attribute-name order and "#" sorts before
