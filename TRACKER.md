@@ -9,6 +9,7 @@
       - Check if userid exists in file and then append it or not (sponsorblock/dearrow)
   - Could maybe also move (partially) to dotfiles
   - Sync icon disappears when logged in to github; becomes normal folder icon
+  - Rework user chrome
 - [X] Audio
 - [ ] Bluetooth
   - Not tested
@@ -61,7 +62,6 @@
 - [X] Boot
 - [X] Git
   - YubiKeys?
-  - Git mail per forge
 - [X] Home Manager
 - [X] Impermanence
 - [X] Locale
