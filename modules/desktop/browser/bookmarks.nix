@@ -81,17 +81,16 @@ in
   # user-chrome.nix sizes the urlbar from how many tiles there are
   flake.lib.browserShortcuts = shortcuts;
 
-  flake.modules.homeManager.browserBookmarks =
-    {
-      config = {
-        programs.zen-browser.profiles.default = {
-          bookmarks.force = true;
-          bookmarks.settings = forBookmarks tree;
+  flake.modules.homeManager.browserBookmarks = {
+    config = {
+      programs.zen-browser.profiles.default = {
+        bookmarks.force = true;
+        bookmarks.settings = forBookmarks tree;
 
-          settings = {
-            "browser.newtabpage.pinned" = builtins.toJSON shortcuts;
-          };
+        settings = {
+          "browser.newtabpage.pinned" = builtins.toJSON shortcuts;
         };
       };
     };
+  };
 }

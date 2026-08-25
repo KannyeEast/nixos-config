@@ -3,16 +3,15 @@ let
   inherit (config.flake.modules) nixos;
 in
 {
-  flake.modules.nixos.server =
-    {
-      imports = [
-        nixos.base
+  flake.modules.nixos.server = {
+    imports = [
+      nixos.base
 
-        nixos.storage
-      ];
+      nixos.storage
+    ];
 
-      config = {
-        home-manager.sharedModules = [ ];
-      };
+    config = {
+      home-manager.sharedModules = [ ];
     };
+  };
 }

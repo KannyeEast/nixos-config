@@ -1,9 +1,8 @@
 { inputs, ... }:
 {
-  flake.modules.nixos.topology =
-    {
-      imports = [
-        inputs.nix-topology.nixosModules.default
-      ];
-    };
+  flake.modules.nixos.topology = {
+    imports = [
+      inputs.nix-topology.nixosModules.default
+    ];
+  };
 }

@@ -23,24 +23,23 @@ let
   }) (filterAttrs (_: h: (h.host.publicKey or "") != "") hosts);
 in
 {
-  flake.modules.nixos.ssh =
-    {
-      config = {
-        services.openssh = {
-          enable = true;
-          openFirewall = true;
+  flake.modules.nixos.ssh = {
+    config = {
+      services.openssh = {
+        enable = true;
+        openFirewall = true;
 
-          hostKeys = [
-            {
-              path = "/persist/etc/ssh/ssh_host_ed25519_key";
-              type = "ed25519";
-            }
-          ];
-        };
-
-        programs.ssh.knownHosts = mapAttrs (_: key: { publicKey = key; }) forges // knownHosts;
+        hostKeys = [
+          {
+            path = "/persist/etc/ssh/ssh_host_ed25519_key";
+            type = "ed25519";
+          }
+        ];
       };
+
+      programs.ssh.knownHosts = mapAttrs (_: key: { publicKey = key; }) forges // knownHosts;
     };
+  };
 
   flake.modules.homeManager.ssh =
     { config, ... }:
