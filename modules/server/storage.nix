@@ -1,6 +1,5 @@
 {
   flake.modules.nixos.storage =
-    { ... }:
     {
       config = {
         services.btrfs.autoScrub = {

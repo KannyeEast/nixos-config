@@ -82,7 +82,6 @@ in
   flake.lib.browserShortcuts = shortcuts;
 
   flake.modules.homeManager.browserBookmarks =
-    { ... }:
     {
       config = {
         programs.zen-browser.profiles.default = {

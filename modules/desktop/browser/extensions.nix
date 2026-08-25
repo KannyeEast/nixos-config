@@ -4,7 +4,6 @@ let
 in
 {
   flake.modules.homeManager.browserExtensions =
-    { ... }:
     let
       mkExtensionEntry =
         {

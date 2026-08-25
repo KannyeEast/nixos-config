@@ -11,7 +11,6 @@ let
 in
 {
   flake.modules.homeManager.desktopEnvironment =
-    { ... }:
     {
       config = {
         home.file.".config/niri/startup.kdl".text = ''

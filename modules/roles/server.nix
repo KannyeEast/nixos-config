@@ -4,7 +4,6 @@ let
 in
 {
   flake.modules.nixos.server =
-    { ... }:
     {
       imports = [
         nixos.base

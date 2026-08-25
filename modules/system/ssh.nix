@@ -24,7 +24,6 @@ let
 in
 {
   flake.modules.nixos.ssh =
-    { ... }:
     {
       config = {
         services.openssh = {

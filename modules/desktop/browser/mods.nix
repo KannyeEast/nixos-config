@@ -1,6 +1,5 @@
 {
   flake.modules.homeManager.browserMods =
-    { ... }:
     {
       config = {
         programs.zen-browser.profiles.default = {

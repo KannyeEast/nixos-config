@@ -4,7 +4,6 @@ let
 in
 {
   flake.modules.homeManager.browser =
-    { ... }:
     {
       imports = [
         inputs.zen-browser.homeModules.beta

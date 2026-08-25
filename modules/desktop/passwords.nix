@@ -1,6 +1,5 @@
 {
   flake.modules.homeManager.passwords =
-    { ... }:
     {
       config = {
         xdg.autostart.enable = true;
