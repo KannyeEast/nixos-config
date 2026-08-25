@@ -8,7 +8,7 @@
           interval = "monthly";
           fileSystems = [ "/srv/media" ];
         };
-        
+
         services.smartd = {
           enable = true;
           autodetect = true;

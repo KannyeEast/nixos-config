@@ -1,7 +1,6 @@
 { lib, ... }:
 let
   inherit (lib)
-    attrNames
     filterAttrs
     genAttrs
     mapAttrs
@@ -16,7 +15,10 @@ let
   hosts = import ../../lib/listHosts.nix lib;
 
   knownHosts = mapAttrs (n: h: {
-    hostNames = [ n "${n}.local" ];
+    hostNames = [
+      n
+      "${n}.local"
+    ];
     inherit (h.host) publicKey;
   }) (filterAttrs (_: h: (h.host.publicKey or "") != "") hosts);
 in

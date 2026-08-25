@@ -1,10 +1,27 @@
 { lib, ... }:
 let
-  inherit (lib) mkMerge mkIf flatten mapAttrsToList mapAttrs isAttrs toUpper stringAsChars nameValuePair listToAttrs concatStringsSep;
+  inherit (lib)
+    mkMerge
+    mkIf
+    flatten
+    mapAttrsToList
+    mapAttrs
+    isAttrs
+    toUpper
+    stringAsChars
+    nameValuePair
+    listToAttrs
+    concatStringsSep
+    ;
 in
 {
   flake.modules.nixos.networking =
-    { config, host, user, ... }:
+    {
+      config,
+      host,
+      user,
+      ...
+    }:
     let
 
       # JSON to nix the wifi section of the encrypted secrets.json or nothing if it doesnt exist
@@ -32,9 +49,7 @@ in
       # TO: "WIFI_CAFE_WIFI_SECURITY_PSK"
       pathToEnv =
         string:
-        toUpper (
-          stringAsChars (c: if builtins.match "[A-Za-z0-9]" c != null then c else "_") string
-        );
+        toUpper (stringAsChars (c: if builtins.match "[A-Za-z0-9]" c != null then c else "_") string);
 
     in
     {

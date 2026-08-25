@@ -7,7 +7,14 @@
   content ? { },
 }:
 let
-  inherit (builtins) head tail length genList elemAt listToAttrs;
+  inherit (builtins)
+    head
+    tail
+    length
+    genList
+    elemAt
+    listToAttrs
+    ;
   members = tail devices;
 in
 # disko processes disks in attribute-name order and "#" sorts before
@@ -38,7 +45,15 @@ listToAttrs (
       type = "btrfs";
       extraArgs =
         (content.extraArgs or [ ])
-        ++ [ "-f" "-L" label "-d" raid "-m" raid ]
+        ++ [
+          "-f"
+          "-L"
+          label
+          "-d"
+          raid
+          "-m"
+          raid
+        ]
         ++ members;
     };
   };

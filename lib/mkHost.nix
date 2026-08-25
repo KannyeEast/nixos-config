@@ -1,5 +1,10 @@
 hostDir:
-{ lib, inputs, config, ... }:
+{
+  lib,
+  inputs,
+  config,
+  ...
+}:
 let
   inherit (config.flake.modules) nixos;
 
@@ -10,7 +15,15 @@ in
     inherit (data.host) system;
     specialArgs = {
       inherit inputs;
-      inherit (data) flake host user hardware locale network; };
+      inherit (data)
+        flake
+        host
+        user
+        hardware
+        locale
+        network
+        ;
+    };
     modules = [
       inputs.disko.nixosModules.disko
       (hostDir + "/hardware.nix")

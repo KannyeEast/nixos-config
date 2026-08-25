@@ -10,7 +10,7 @@ let
     removeSuffix
     removePrefix
     ;
-    
+
   inherit (lib.filesystem)
     listFilesRecursive
     ;

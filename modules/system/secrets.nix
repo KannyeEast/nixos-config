@@ -1,7 +1,12 @@
 { inputs, ... }:
 {
   flake.modules.nixos.secrets =
-    { pkgs, host, user, ... }:
+    {
+      pkgs,
+      host,
+      user,
+      ...
+    }:
     {
       imports = [
         inputs.sops-nix.nixosModules.sops

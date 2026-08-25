@@ -4,7 +4,12 @@ let
 in
 {
   flake.modules.nixos.system =
-    { config, flake, locale, ... }:
+    {
+      config,
+      flake,
+      locale,
+      ...
+    }:
     let
       inherit (config.internal) system;
 

@@ -4,7 +4,12 @@ let
 in
 {
   flake.modules.homeManager.dotfiles =
-    { config, host, flake, ... }:
+    {
+      config,
+      host,
+      flake,
+      ...
+    }:
     let
       inherit (config.lib.file) mkOutOfStoreSymlink;
 
