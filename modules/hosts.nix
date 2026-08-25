@@ -1,12 +1,11 @@
 { lib, ... }:
 let
-  dir = ../hosts;
-  names = lib.attrNames (
-    lib.filterAttrs (n: t: t == "directory" && builtins.pathExists (dir + "/${n}/host.json")) (
-      builtins.readDir dir
-    )
-  );
+  inherit (lib)
+    mapAttrsToList
+    ;
 in
 {
-  imports = map (n: import ../lib/mkHost.nix (dir + "/${n}")) names;
+  imports = mapAttrsToList (n: _: import ../lib/mkHost.nix (../hosts + "/${n}")) (
+    import ../lib/listHosts.nix lib
+  );
 }

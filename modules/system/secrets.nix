@@ -1,10 +1,12 @@
 { inputs, ... }:
 {
   flake.modules.nixos.secrets =
-    { pkgs, host, ... }:
-    let
-      inherit (host) hostname user;
-    in
+    {
+      pkgs,
+      host,
+      user,
+      ...
+    }:
     {
       imports = [
         inputs.sops-nix.nixosModules.sops
@@ -19,7 +21,7 @@
         environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i /home/${user.name}/.ssh/id_ed25519";
 
         sops = {
-          defaultSopsFile = ../../hosts/${hostname}/secrets.json;
+          defaultSopsFile = ../../hosts/${host.name}/secrets.json;
 
           defaultSopsFormat = "yaml";
           validateSopsFiles = false;

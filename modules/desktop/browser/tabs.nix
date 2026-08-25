@@ -1,14 +1,14 @@
 { lib, ... }:
 let
-  inherit (lib) genAttrs;
+  inherit (lib)
+    genAttrs
+    ;
 in
 {
   flake.modules.homeManager.browserTabs =
     { host, ... }:
     let
-      inherit (host) hostname;
-
-      paletteFile = ../../../hosts/${hostname}/home/.config/system/zen.json;
+      paletteFile = ../../../hosts/${host.name}/home/.config/system/zen.json;
       palette =
         if builtins.pathExists paletteFile then
           builtins.fromJSON (builtins.readFile paletteFile)
@@ -234,13 +234,21 @@ in
       config = {
         programs.zen-browser.profiles.default = {
           pinsForce = true;
-          inherit pins;
+          inherit
+            pins
+            ;
 
           spacesForce = true;
-          inherit spaces;
+          inherit
+            spaces
+            ;
 
-          inherit liveFolders;
-          inherit joinedTabs;
+          inherit
+            liveFolders
+            ;
+          inherit
+            joinedTabs
+            ;
 
           spaceRouting.defaultExternalRoute = "most-recent-space";
         };

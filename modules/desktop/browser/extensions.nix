@@ -1,10 +1,11 @@
 { lib, ... }:
 let
-  inherit (lib) mapAttrs;
+  inherit (lib)
+    mapAttrs
+    ;
 in
 {
   flake.modules.homeManager.browserExtensions =
-    { ... }:
     let
       mkExtensionEntry =
         {

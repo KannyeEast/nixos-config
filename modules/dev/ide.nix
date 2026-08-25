@@ -3,7 +3,9 @@
   flake.modules.nixos.ide =
     { pkgs, ... }:
     let
-      inherit (inputs.nix-jetbrains-plugins.lib) buildIdeWithPlugins;
+      inherit (inputs.nix-jetbrains-plugins.lib)
+        buildIdeWithPlugins
+        ;
 
       sharedPlugins = [
         "com.chrisrm.idea.MaterialThemeUI"

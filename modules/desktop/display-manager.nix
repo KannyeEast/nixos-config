@@ -1,11 +1,15 @@
 { lib, ... }:
+let
+  inherit (lib)
+    optionalAttrs
+    optionalString
+    ;
+in
 {
   flake.modules.nixos.displayManager =
     { pkgs, host, ... }:
     let
-      inherit (host) hostname;
-
-      hostConfigDir = ../../hosts/${hostname}/home/.config/system;
+      hostConfigDir = ../../hosts/${host.name}/home/.config/system;
       sddmDir = hostConfigDir + "/sddm";
 
       hasSddmTheme = builtins.pathExists (sddmDir + "/theme.json");
@@ -27,7 +31,7 @@
           chmod -R u+w "$dest"
           cp ${sddmDir + "/theme.conf"} "$dest"/theme.conf
         ''
-        + lib.optionalString (sddm ? hint) ''
+        + optionalString (sddm ? hint) ''
           substituteInPlace "$dest"/Main.qml --replace-fail \
             'Component.onCompleted: {' \
             'Text {
@@ -55,7 +59,7 @@
           package = pkgs.kdePackages.sddm;
           extraPackages = [ pkgs.kdePackages.qt5compat ];
         }
-        // lib.optionalAttrs hasSddmTheme {
+        // optionalAttrs hasSddmTheme {
           theme = "${sddmTheme}/share/sddm/themes/${sddm.theme}";
         };
       };

@@ -1,9 +1,10 @@
-{ ... }:
 {
   flake.modules.homeManager.directories =
     { config, ... }:
     let
-      inherit (config) home;
+      inherit (config)
+        home
+        ;
     in
     {
       xdg.userDirs = {

@@ -1,17 +1,22 @@
 { lib, ... }:
 let
-  inherit (lib) concatMapStringsSep;
+  inherit (lib)
+    concatStringsSep
+    filter
+    mapAttrsToList
+    ;
 in
 {
   flake.modules.homeManager.git =
-    { config, host, ... }:
+    { config, user, ... }:
     let
-      inherit (host) user;
+      hosts = import ../../lib/listHosts.nix lib;
+      knownUsers = filter (k: k != "") (mapAttrsToList (_: h: h.user.publicKey or "") hosts);
     in
     {
       config = {
         home.file.".ssh/allowed_signers".text =
-          concatMapStringsSep "\n" (key: "${user.email} ${key}") user.sshKeys + "\n";
+          concatStringsSep "\n" (map (k: "${user.email} ${k}") knownUsers) + "\n";
 
         programs.delta.enable = true;
         programs.delta.enableGitIntegration = true;

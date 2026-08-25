@@ -1,33 +1,29 @@
-{ ... }:
 {
   flake.modules.nixos.locale =
-    { host, ... }:
-    let
-      inherit (host) locale;
-    in
+    { locale, ... }:
     {
       config = {
         time.timeZone = locale.timeZone;
 
-        i18n.defaultLocale = locale.localeDefault;
+        i18n.defaultLocale = locale.default;
         i18n.extraLocaleSettings = {
-          LC_CTYPE = locale.localeExtra;
-          LC_ADDRESS = locale.localeExtra;
-          LC_MEASUREMENT = locale.localeExtra;
-          LC_MESSAGES = locale.localeExtra;
-          LC_MONETARY = locale.localeExtra;
-          LC_NAME = locale.localeExtra;
-          LC_NUMERIC = locale.localeExtra;
-          LC_PAPER = locale.localeExtra;
-          LC_TELEPHONE = locale.localeExtra;
-          LC_TIME = locale.localeExtra;
-          LC_COLLATE = locale.localeExtra;
+          LC_CTYPE = locale.extra;
+          LC_ADDRESS = locale.extra;
+          LC_MEASUREMENT = locale.extra;
+          LC_MESSAGES = locale.extra;
+          LC_MONETARY = locale.extra;
+          LC_NAME = locale.extra;
+          LC_NUMERIC = locale.extra;
+          LC_PAPER = locale.extra;
+          LC_TELEPHONE = locale.extra;
+          LC_TIME = locale.extra;
+          LC_COLLATE = locale.extra;
         };
 
         console.useXkbConfig = true;
         services.xserver = {
-          xkb.layout = locale.xkbLayout;
-          xkb.variant = locale.xkbVariant;
+          xkb.layout = locale.xkb.layout;
+          xkb.variant = locale.xkb.variant;
         };
       };
     };

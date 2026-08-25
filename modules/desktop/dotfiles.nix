@@ -1,16 +1,28 @@
 { lib, ... }:
+let
+  inherit (lib)
+    nameValuePair
+    optionalAttrs
+    ;
+in
 {
   flake.modules.homeManager.dotfiles =
-    { config, host, ... }:
+    {
+      config,
+      host,
+      flake,
+      ...
+    }:
     let
-      inherit (host) hostname configPath;
-      inherit (config.lib.file) mkOutOfStoreSymlink;
+      inherit (config.lib.file)
+        mkOutOfStoreSymlink
+        ;
 
       # hosts/<host>/home mirrors $HOME itself:
       # home/.zshrc              -> ~/.zshrc
       # home/.config/niri/...    -> ~/.config/niri/...
       # home/some/custom/dir/... -> ~/some/custom/dir/...
-      dotfilesDir = ../../hosts/${hostname}/home;
+      dotfilesDir = ../../hosts/${host.name}/home;
 
       # https://gist.github.com/mawkler/195def384fd3f73aeb9a965c82781483
       mkSymlinks =
@@ -38,15 +50,15 @@
 
           mkSymLink =
             nixPath:
-            lib.nameValuePair nixPath {
+            nameValuePair nixPath {
               source = mkOutOfStoreSymlink "${realPath}/${nixPath}";
             };
         in
         builtins.listToAttrs (map mkSymLink (readDirRecursive "" storePath));
     in
     {
-      home.file = lib.optionalAttrs (builtins.pathExists dotfilesDir) (
-        mkSymlinks dotfilesDir "${configPath}/hosts/${hostname}/home"
+      home.file = optionalAttrs (builtins.pathExists dotfilesDir) (
+        mkSymlinks dotfilesDir "${flake}/hosts/${host.name}/home"
       );
     };
 }

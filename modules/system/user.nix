@@ -1,22 +1,17 @@
 { lib, ... }:
+let
+  inherit (lib)
+    filter
+    mapAttrsToList
+    ;
+in
 {
   flake.modules.nixos.user =
-    { config, host, ... }:
+    { config, user, ... }:
     let
-      inherit (host) user;
-      inherit (config) sops;
+      hosts = import ../../lib/listHosts.nix lib;
 
-      hostsDir = ../../hosts;
-
-      hostNames = lib.attrNames (
-        lib.filterAttrs (n: t: t == "directory" && builtins.pathExists (hostsDir + "/${n}/host.json")) (
-          builtins.readDir hostsDir
-        )
-      );
-
-      allKeys = lib.concatMap (
-        n: (builtins.fromJSON (builtins.readFile (hostsDir + "/${n}/host.json"))).user.sshKeys or [ ]
-      ) hostNames;
+      knownUsers = filter (k: k != "") (mapAttrsToList (_: h: h.user.publicKey or "") hosts);
     in
     {
       config = {
@@ -34,8 +29,8 @@
             "networkmanager" # network configuration
           ];
 
-          hashedPasswordFile = sops.secrets.userPassword.path;
-          openssh.authorizedKeys.keys = allKeys;
+          hashedPasswordFile = config.sops.secrets.userPassword.path;
+          openssh.authorizedKeys.keys = knownUsers;
         };
 
         security.sudo.extraConfig = "Defaults lecture=never";

@@ -1,10 +1,7 @@
 { inputs, ... }:
 {
   flake.modules.nixos.tuiShell =
-    { pkgs, host, ... }:
-    let
-      inherit (host) user;
-    in
+    { pkgs, user, ... }:
     {
       config = {
         environment.sessionVariables = {

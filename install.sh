@@ -472,18 +472,18 @@ loadHost() {
     return 1
   fi
 
-  SYSTEM="$(jq -r '.system // empty' "$file")"
-  ROLE="$(jq -r '.roles[0] // empty' "$file")"
-  mapfile -t ADDONS < <(jq -r '.roles[1:][]?' "$file")
+  SYSTEM="$(jq -r '.host.system // empty' "$file")"
+  ROLE="$(jq -r '.host.roles[0] // empty' "$file")"
+  mapfile -t ADDONS < <(jq -r '.host.roles[1:][]?' "$file")
   USERNAME="$(jq -r '.user.name // empty' "$file")"
   USEREMAIL="$(jq -r '.user.email // empty' "$file")"
   mapfile -t GPU < <(jq -r '.hardware.gpu[]?' "$file")
   mapfile -t HW_MODULES < <(jq -r '.hardware.modules[]?' "$file")
   TIMEZONE="$(jq -r '.locale.timeZone // empty' "$file")"
-  LOCALE="$(jq -r '.locale.localeDefault // empty' "$file")"
-  LOCALE_EXTRA="$(jq -r '.locale.localeExtra // empty' "$file")"
-  KEYBOARD="$(jq -r '.locale.xkbLayout // empty' "$file")"
-  KEYBOARD_VARIANT="$(jq -r '.locale.xkbVariant // empty' "$file")"
+  LOCALE="$(jq -r '.locale.default // empty' "$file")"
+  LOCALE_EXTRA="$(jq -r '.locale.extra // empty' "$file")"
+  KEYBOARD="$(jq -r '.locale.xkb.layout // empty' "$file")"
+  KEYBOARD_VARIANT="$(jq -r '.locale.xkb.variant // empty' "$file")"
 
   if [[ -z $USERNAME ]]; then
     logError "hosts/$HOSTNAME/host.json has no user.name"
@@ -733,8 +733,8 @@ gatherSummary() {
     row Keyboard "$KEYBOARD / ${KEYBOARD_VARIANT:-skip}"
     row Disk "$DISK"
     row Swap "$SWAP"
-    row Wi-Fi "$wifiStr"
-    row Dotfiles "${DOTFILES:-skip}"
+    [[ $ROLE == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
+    [[ $ROLE == "desktop" ]] && { row Dotfiles "${DOTFILES:-skip}"; }
   } | gum style --border="rounded" --padding="1 2" --margin="1 0"
 }
 
@@ -870,11 +870,11 @@ writeHostJson() {
   modulesJson=$(printf '%s\n' "${HW_MODULES[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
 
   jq -n \
-    --arg hostname "$HOSTNAME" \
-    --arg hostKey "$HOST_KEY" \
+    --arg flake "/home/${USERNAME}/nixos-config" \
+    --arg hostName "$HOSTNAME" \
     --arg system "$SYSTEM" \
-    --arg configPath "/home/${USERNAME}/nixos-config" \
     --argjson roles "$rolesJson" \
+    --arg hostKey "$HOST_KEY" \
     --arg userName "$USERNAME" \
     --arg userEmail "$USEREMAIL" \
     --arg userKey "$USER_KEY" \
@@ -886,27 +886,31 @@ writeHostJson() {
     --arg layout "$KEYBOARD" \
     --arg variant "$KEYBOARD_VARIANT" \
     '{
-      hostname: $hostname,
-      hostKey: $hostKey,
-      system: $system,
-      configPath: $configPath,
-      roles: $roles,
-      user: {
-        name: $userName,
-        email: $userEmail,
-        sshKeys: [ $userKey ]
+      flake: $flake,
+      host: { 
+        name: $hostName, 
+        system: $system, 
+        roles: $roles, 
+        publicKey: $hostKey
       },
-      hardware: {
-        gpu: $gpu,
+      user: { 
+        name: $userName, 
+        email: $userEmail, 
+        publicKey: $userKey
+      },
+      hardware: { 
+        gpu: $gpu, 
         modules: $modules
       },
-      locale: {
-        timeZone: $tz,
-        localeDefault: $locale,
-        localeExtra: $extra,
-        xkbLayout: $layout,
-        xkbVariant: $variant
-      }
+      locale:{ 
+        timeZone: $tz, 
+        default: $localeDefault, 
+        extra: $localeExtra, 
+        xkb = { 
+          layout: $layout, 
+          variant: $variant
+        }
+      },
     }' > "$FLAKE/hosts/$HOSTNAME/host.json"
 
   git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/host.json"
@@ -1172,8 +1176,8 @@ verifyRemote() {
   fi
 
   {
-    printf '    %-10s %s\n' host "$HOSTNAME"
-    printf '    %-10s %s\n' ssh "ssh $USERNAME@$addr"
+    printf '%-10s %s\n' host "$HOSTNAME"
+    printf '%-10s %s\n' ssh "ssh $USERNAME@$addr"
   } | gum style --border=rounded --padding="1 2" --margin="1 0"
 
   logWarn "Commit hosts/$HOSTNAME and rebuild, so this host key is trusted permanently"

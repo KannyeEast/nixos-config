@@ -1,10 +1,7 @@
 { inputs, ... }:
 {
   flake.modules.nixos.impermanence =
-    { pkgs, host, ... }:
-    let
-      inherit (host) user;
-    in
+    { pkgs, user, ... }:
     {
       imports = [
         inputs.impermanence.nixosModules.impermanence
@@ -58,6 +55,7 @@
             "/var/lib/bluetooth"
             "/var/lib/NetworkManager"
             "/var/lib/nixos"
+            "/var/lib/tailscale"
             "/var/lib/systemd"
             "/var/log"
           ];
