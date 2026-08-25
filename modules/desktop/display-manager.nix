@@ -1,6 +1,9 @@
 { lib, ... }:
 let
-  inherit (lib) optionalString optionalAttrs;
+  inherit (lib)
+    optionalAttrs
+    optionalString
+    ;
 in
 {
   flake.modules.nixos.displayManager =

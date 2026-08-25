@@ -1,6 +1,9 @@
 { lib, ... }:
 let
-  inherit (lib) nameValuePair optionalAttrs;
+  inherit (lib)
+    nameValuePair
+    optionalAttrs
+    ;
 in
 {
   flake.modules.homeManager.dotfiles =
@@ -11,7 +14,9 @@ in
       ...
     }:
     let
-      inherit (config.lib.file) mkOutOfStoreSymlink;
+      inherit (config.lib.file)
+        mkOutOfStoreSymlink
+        ;
 
       # hosts/<host>/home mirrors $HOME itself:
       # home/.zshrc              -> ~/.zshrc

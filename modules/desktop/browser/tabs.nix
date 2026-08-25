@@ -1,6 +1,8 @@
 { lib, ... }:
 let
-  inherit (lib) genAttrs;
+  inherit (lib)
+    genAttrs
+    ;
 in
 {
   flake.modules.homeManager.browserTabs =
@@ -232,13 +234,21 @@ in
       config = {
         programs.zen-browser.profiles.default = {
           pinsForce = true;
-          inherit pins;
+          inherit
+            pins
+            ;
 
           spacesForce = true;
-          inherit spaces;
+          inherit
+            spaces
+            ;
 
-          inherit liveFolders;
-          inherit joinedTabs;
+          inherit
+            liveFolders
+            ;
+          inherit
+            joinedTabs
+            ;
 
           spaceRouting.defaultExternalRoute = "most-recent-space";
         };

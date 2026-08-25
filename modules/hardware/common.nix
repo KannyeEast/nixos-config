@@ -5,14 +5,22 @@
   ...
 }:
 let
-  inherit (config.flake.modules) nixos;
-  inherit (lib) mkMerge mkIf elem;
+  inherit (config.flake.modules)
+    nixos
+    ;
+  inherit (lib)
+    elem
+    mkIf
+    mkMerge
+    ;
 in
 {
   flake.modules.nixos.hardware =
     { config, hardware, ... }:
     let
-      inherit (config.internal) system;
+      inherit (config.internal)
+        system
+        ;
     in
     {
       imports = [

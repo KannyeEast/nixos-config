@@ -6,15 +6,21 @@ hostDir:
   ...
 }:
 let
-  inherit (config.flake.modules) nixos;
+  inherit (config.flake.modules)
+    nixos
+    ;
 
   data = builtins.fromJSON (builtins.readFile (hostDir + "/host.json"));
 in
 {
   flake.nixosConfigurations.${data.host.name} = inputs.nixpkgs.lib.nixosSystem {
-    inherit (data.host) system;
+    inherit (data.host)
+      system
+      ;
     specialArgs = {
-      inherit inputs;
+      inherit
+        inputs
+        ;
       inherit (data)
         flake
         host

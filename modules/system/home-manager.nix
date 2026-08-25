@@ -12,7 +12,9 @@
       ...
     }:
     let
-      inherit (config.internal) system;
+      inherit (config.internal)
+        system
+        ;
     in
     {
       imports = [

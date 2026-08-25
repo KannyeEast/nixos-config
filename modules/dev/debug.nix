@@ -1,12 +1,17 @@
 { lib, ... }:
 let
-  inherit (lib) mkEnableOption mkIf;
+  inherit (lib)
+    mkEnableOption
+    mkIf
+    ;
 in
 {
   flake.modules.nixos.debug =
     { config, ... }:
     let
-      inherit (config.internal.system) debug;
+      inherit (config.internal.system)
+        debug
+        ;
     in
     {
       options = {

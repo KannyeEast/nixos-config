@@ -1,7 +1,13 @@
 { config, lib, ... }:
 let
-  inherit (config.flake.modules) nixos;
-  inherit (lib) optionals;
+  inherit (config.flake.modules)
+    homeManager
+    nixos
+    ;
+    
+  inherit (lib)
+    optionals
+    ;
 in
 {
   flake.modules.nixos.dev =

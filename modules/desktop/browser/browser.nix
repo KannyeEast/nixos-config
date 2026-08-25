@@ -1,6 +1,8 @@
 { inputs, config, ... }:
 let
-  inherit (config.flake.modules) homeManager;
+  inherit (config.flake.modules)
+    homeManager
+    ;
 in
 {
   flake.modules.homeManager.browser = {

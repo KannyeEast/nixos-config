@@ -1,12 +1,17 @@
 { lib, ... }:
 let
-  inherit (lib) mkEnableOption mkIf;
+  inherit (lib)
+    mkEnableOption
+    mkIf
+    ;
 in
 {
   flake.modules.nixos.nvidia =
     { config, ... }:
     let
-      inherit (config.internal.system) nvidia;
+      inherit (config.internal.system)
+        nvidia
+        ;
     in
     {
       options = {

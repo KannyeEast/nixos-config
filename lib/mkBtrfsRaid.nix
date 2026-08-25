@@ -8,13 +8,14 @@
 }:
 let
   inherit (builtins)
-    head
-    tail
-    length
-    genList
     elemAt
+    genList
+    head
+    length
     listToAttrs
+    tail
     ;
+    
   members = tail devices;
 in
 # disko processes disks in attribute-name order and "#" sorts before
@@ -28,7 +29,9 @@ listToAttrs (
     value = {
       type = "disk";
       device = elemAt members i;
-      inherit destroy;
+      inherit
+        destroy
+        ;
       content = {
         type = "gpt";
         partitions = { };
@@ -40,7 +43,9 @@ listToAttrs (
   ${name} = {
     type = "disk";
     device = head devices;
-    inherit destroy;
+    inherit
+      destroy
+      ;
     content = content // {
       type = "btrfs";
       extraArgs =

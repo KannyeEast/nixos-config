@@ -1,6 +1,10 @@
 { lib, ... }:
 let
-  inherit (lib) concatMap filter optionalAttrs;
+  inherit (lib)
+    concatMap
+    filter
+    optionalAttrs
+    ;
 
   # Anything tagged "shortcut" also becomes a new-tab tile
   # get icons: curl -sL <website url> | grep -oE '<link[^>]+(icon|manifest)[^>]*>'
@@ -67,7 +71,9 @@ let
   shortcuts = map (
     b:
     {
-      inherit (b) url;
+      inherit (b)
+        url
+        ;
       label = b.name;
     }
     // optionalAttrs (b ? icon) {

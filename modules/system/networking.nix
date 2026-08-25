@@ -1,17 +1,17 @@
 { lib, ... }:
 let
   inherit (lib)
-    mkMerge
-    mkIf
-    flatten
-    mapAttrsToList
-    mapAttrs
-    isAttrs
-    toUpper
-    stringAsChars
-    nameValuePair
-    listToAttrs
     concatStringsSep
+    flatten
+    isAttrs
+    listToAttrs
+    mapAttrs
+    mapAttrsToList
+    mkIf
+    mkMerge
+    nameValuePair
+    stringAsChars
+    toUpper
     ;
 in
 {

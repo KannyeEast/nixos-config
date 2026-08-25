@@ -1,14 +1,14 @@
 { lib, ... }:
 let
   inherit (lib)
-    mkEnableOption
-    mkMerge
-    mkIf
-    optionalAttrs
     escapeShellArg
     makeBinPath
-    removeSuffix
+    mkEnableOption
+    mkIf
+    mkMerge
+    optionalAttrs
     removePrefix
+    removeSuffix
     ;
 
   inherit (lib.filesystem)
@@ -24,7 +24,9 @@ in
       ...
     }:
     let
-      inherit (config.internal) system;
+      inherit (config.internal)
+        system
+        ;
 
       hostConfigDir = ../../hosts/${host.name}/home/.config/system;
       refindDir = hostConfigDir + "/refind";

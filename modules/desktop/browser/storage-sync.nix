@@ -1,6 +1,9 @@
 { lib, ... }:
 let
-  inherit (lib) concatMapStringsSep escapeShellArg;
+  inherit (lib)
+    concatMapStringsSep
+    escapeShellArg
+    ;
 in
 {
   # Extensions settings for extensions using storage.sync

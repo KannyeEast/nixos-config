@@ -1,6 +1,10 @@
 { lib, ... }:
 let
-  inherit (lib) mapAttrsToList filter concatStringsSep;
+  inherit (lib)
+    concatStringsSep
+    filter
+    mapAttrsToList
+    ;
 in
 {
   flake.modules.homeManager.git =

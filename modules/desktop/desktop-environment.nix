@@ -1,6 +1,9 @@
 { lib, ... }:
 let
-  inherit (lib) mkForce concatStringsSep;
+  inherit (lib)
+    concatStringsSep
+    mkForce
+    ;
 
   components = [
     "mako"

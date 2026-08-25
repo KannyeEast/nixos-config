@@ -1,6 +1,9 @@
 { config, ... }:
 let
-  inherit (config.flake.modules) nixos;
+  inherit (config.flake.modules)
+    homeManager
+    nixos
+    ;
 in
 {
   flake.modules.nixos.server = {

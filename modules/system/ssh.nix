@@ -19,7 +19,9 @@ let
       n
       "${n}.local"
     ];
-    inherit (h.host) publicKey;
+    inherit (h.host)
+      publicKey
+      ;
   }) (filterAttrs (_: h: (h.host.publicKey or "") != "") hosts);
 in
 {

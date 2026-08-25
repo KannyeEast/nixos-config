@@ -1,12 +1,17 @@
 { lib, ... }:
 let
-  inherit (lib) mkEnableOption mkIf;
+  inherit (lib)
+    mkEnableOption
+    mkIf
+    ;
 in
 {
   flake.modules.nixos.intel =
     { config, pkgs, ... }:
     let
-      inherit (config.internal.system) intel;
+      inherit (config.internal.system)
+        intel
+        ;
     in
     {
       options = {

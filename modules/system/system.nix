@@ -1,6 +1,9 @@
 { lib, ... }:
 let
-  inherit (lib) mkOption types;
+  inherit (lib)
+    mkOption
+    types
+    ;
 in
 {
   flake.modules.nixos.system =
@@ -11,7 +14,9 @@ in
       ...
     }:
     let
-      inherit (config.internal) system;
+      inherit (config.internal)
+        system
+        ;
 
       ref = "git+file://${flake}?submodules=1";
     in

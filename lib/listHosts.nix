@@ -1,6 +1,10 @@
 lib:
 let
-  inherit (lib) mapAttrs filterAttrs;
+  inherit (lib)
+    filterAttrs
+    mapAttrs
+    ;
+    
   dir = ../hosts;
 in
 mapAttrs (n: _: builtins.fromJSON (builtins.readFile (dir + "/${n}/host.json"))) (
