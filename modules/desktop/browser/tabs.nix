@@ -6,9 +6,7 @@ in
   flake.modules.homeManager.browserTabs =
     { host, ... }:
     let
-      inherit (host) hostname;
-
-      paletteFile = ../../../hosts/${hostname}/home/.config/system/zen.json;
+      paletteFile = ../../../hosts/${host.name}/home/.config/system/zen.json;
       palette =
         if builtins.pathExists paletteFile then
           builtins.fromJSON (builtins.readFile paletteFile)

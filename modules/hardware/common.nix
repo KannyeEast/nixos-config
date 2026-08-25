@@ -10,10 +10,9 @@ let
 in
 {
   flake.modules.nixos.hardware =
-    { config, host, ... }:
+    { config, hardware, ... }:
     let
       inherit (config.internal) system;
-      inherit (host) hardware;
     in
     {
       imports = [

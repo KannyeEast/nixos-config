@@ -7,6 +7,12 @@ let
     optionalAttrs
     escapeShellArg
     makeBinPath
+    removeSuffix
+    removePrefix
+    ;
+    
+  inherit (lib.filesystem)
+    listFilesRecursive
     ;
 in
 {
@@ -18,17 +24,16 @@ in
       ...
     }:
     let
-      inherit (host) hostname;
       inherit (config.internal) system;
 
-      hostConfigDir = ../../hosts/${hostname}/home/.config/system;
+      hostConfigDir = ../../hosts/${host.name}/home/.config/system;
       refindDir = hostConfigDir + "/refind";
       grubDir = hostConfigDir + "/grub";
       plymouthDir = hostConfigDir + "/plymouth";
 
       plymouthName =
         if builtins.pathExists (plymouthDir + "/theme") then
-          lib.removeSuffix "\n" (builtins.readFile (plymouthDir + "/theme"))
+          removeSuffix "\n" (builtins.readFile (plymouthDir + "/theme"))
         else
           "";
 
@@ -54,9 +59,9 @@ in
         src: dest:
         builtins.listToAttrs (
           map (path: {
-            name = "${dest}/${lib.removePrefix "${toString src}/" (toString path)}";
+            name = "${dest}/${removePrefix "${toString src}/" (toString path)}";
             value = path;
-          }) (lib.filesystem.listFilesRecursive src)
+          }) (listFilesRecursive src)
         );
 
       # Shared shell preamble for both install & uninstall rEFInd

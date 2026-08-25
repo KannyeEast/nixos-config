@@ -1,4 +1,3 @@
-{ ... }:
 {
   # Extensions that read browser.storage.managed, so their settings can be
   # declared as policy.

@@ -1,18 +1,18 @@
 {
-  "hostname": "server",
-  "hostKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKmRNw4AIN8rtkAG8DIgL5stwAiQYAjGru1rNfJAAQGr root@server",
-  "system": "x86_64-linux",
-  "configPath": "/home/gldn/nixos-config",
-  "roles": [
-    "server",
-    "dev"
-  ],
+  "flake": "/home/gldn/nixos-config",
+  "host": {
+    "name": "server",
+    "system": "x86_64-linux",
+    "roles": [
+      "server",
+      "dev"
+    ],
+    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKmRNw4AIN8rtkAG8DIgL5stwAiQYAjGru1rNfJAAQGr root@server"
+  },
   "user": {
     "name": "gldn",
-    "email": "gldn@server",
-    "sshKeys": [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@server"
-    ]
+    "email": "johngit@vexelvault.com",
+    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@server"
   },
   "hardware": {
     "gpu": [],
@@ -24,9 +24,12 @@
   },
   "locale": {
     "timeZone": "Europe/Berlin",
-    "localeDefault": "en_US.UTF-8",
-    "localeExtra": "en_US.UTF-8",
-    "xkbLayout": "us",
-    "xkbVariant": ""
-  }
+    "default": "en_US.UTF-8",
+    "extra": "en_US.UTF-8",
+    "xkb": {
+      "layout": "us",
+      "variant": ""
+    }
+  },
+  "network": {}
 }

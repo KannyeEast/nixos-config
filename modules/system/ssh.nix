@@ -4,11 +4,7 @@ let
     attrNames
     filterAttrs
     genAttrs
-    listToAttrs
     mapAttrs
-    nameValuePair
-    concatMap
-    optional
     ;
 
   forges = {
@@ -17,31 +13,12 @@ let
     "gitlab.com" = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf";
   };
 
-  hostsDir = ../../hosts;
+  hosts = import ../../lib/listHosts.nix lib;
 
-  hostNames = attrNames (
-    filterAttrs (n: t: t == "directory" && builtins.pathExists (hostsDir + "/${n}/host.json")) (
-      builtins.readDir hostsDir
-    )
-  );
-
-  hosts = listToAttrs (
-    concatMap (
-      n:
-      let
-        key = (builtins.fromJSON (builtins.readFile (hostsDir + "/${n}/host.json"))).hostKey or "";
-      in
-      optional (key != "") (
-        nameValuePair n {
-          hostNames = [
-            n
-            "${n}.local"
-          ];
-          publicKey = key;
-        }
-      )
-    ) hostNames
-  );
+  knownHosts = mapAttrs (n: h: {
+    hostNames = [ n "${n}.local" ];
+    inherit (h.host) publicKey;
+  }) (filterAttrs (_: h: (h.host.publicKey or "") != "") hosts);
 in
 {
   flake.modules.nixos.ssh =
@@ -60,7 +37,7 @@ in
           ];
         };
 
-        programs.ssh.knownHosts = mapAttrs (_: key: { publicKey = key; }) forges // hosts;
+        programs.ssh.knownHosts = mapAttrs (_: key: { publicKey = key; }) forges // knownHosts;
       };
     };
 

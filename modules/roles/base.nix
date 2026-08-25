@@ -16,9 +16,9 @@ in
         nixos.networking
         nixos.ssh
         nixos.system
-        nixos.tailscale
         nixos.user
         nixos.secrets
+        # nixos.wireguard
       ];
 
       config = {

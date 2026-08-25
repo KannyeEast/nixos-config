@@ -4,12 +4,11 @@ let
 in
 {
   flake.modules.nixos.system =
-    { config, host, ... }:
+    { config, flake, locale, ... }:
     let
-      inherit (host) configPath locale;
       inherit (config.internal) system;
 
-      ref = "git+file://${configPath}?submodules=1";
+      ref = "git+file://${flake}?submodules=1";
     in
     {
       options = {
