@@ -15,7 +15,7 @@ alias s := switch
 alias b := boot
 alias c := check
 alias es := edit-secrets
-alias sop := edit-secrets
+alias sops := edit-secrets
 
 # ── overview ────────
 # This list
