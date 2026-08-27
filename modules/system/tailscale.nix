@@ -3,14 +3,19 @@
     { config, ... }:
     {
       config = {
+        sops.secrets.tailscale-authkey = { };
+        
         environment.persistence."/persist".directories = [
           { directory = "/var/lib/tailscale"; mode = "0700"; }
         ];
         
-        services.tailscale.enable = true;
-        services.resolved.enable = true;
+        services.tailscale = {
+          enable = true;
+          authKeyFile = config.sops.secrets.tailscale-authkey.path;
+          openFirewall = true;
+        };
 
-        networking.firewall.allowedUDPPorts = [ config.services.tailscale.port ];
+        networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [ 80 443 ];
       };
     };
 }

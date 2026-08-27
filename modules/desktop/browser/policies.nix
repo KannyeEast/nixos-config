@@ -26,6 +26,7 @@
             "https://github.com"
             "https://gitlab.com"
             "https://codeberg.org"
+            "https://cloudflare.com"
             "https://tailscale.com"
           ];
           Behavior = "reject-tracker-and-partition-foreign";

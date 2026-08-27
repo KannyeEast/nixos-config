@@ -1,8 +1,18 @@
+{ lib, ... }:
 {
   flake.modules.nixos.proxy =
-    { config, network, ... }:
+    { config, pkgs, user, network, ... }:
     {
       config = {
+        sops.secrets.cloudflare-token = { };
+
+        sops.templates."caddy.env" = {
+          content = ''
+            CLOUDFLARE_API_TOKEN=${config.sops.placeholder.cloudflare-token}
+          '';
+          restartUnits = [ "caddy.service" ];
+        };
+      
         environment.persistence."/persist".directories = [
           {
             directory = "/var/lib/caddy";
@@ -12,21 +22,24 @@
           }
         ];
         
-        services.caddy.enable = true;
-
-        # lets caddy pull *.ts.net certs straight from tailscaled
-        services.tailscale.permitCertUid = "caddy";
-        systemd.services.caddy.after = [ "tailscaled.service" ];
-
-        # only reachable over the tailnet, not from the LAN
-        networking.firewall.interfaces.${config.services.tailscale.interfaceName}
-          .allowedTCPPorts = [ 443 ];
-
-        services.caddy.virtualHosts.${network.domain}.extraConfig = ''
-          tls {
-            get_certificate tailscale
-          }
-        '';
+        services.caddy = {
+          enable = true;
+          email = user.email;
+          environmentFile = config.sops.templates."caddy.env".path;
+          
+          package = pkgs.caddy.withPlugins {
+            plugins = [ "github.com/caddy-dns/cloudflare@v0.2.1" ];
+            hash = lib.fakeHash;
+          };
+          
+          virtualHosts."*.${network.domain}".extraConfig = ''
+            tls {
+              dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+              resolvers 1.1.1.1
+            }
+            abort
+          '';
+        };
       }; 
     };
 }
