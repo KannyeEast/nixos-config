@@ -28,12 +28,10 @@
 
           age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
-          secrets = {
-            userPrivateKey = {
-              path = "/home/${user.name}/.ssh/id_ed25519";
-              owner = user.name;
-              mode = "0600";
-            };
+          secrets.user-privatekey = {
+            path = "/home/${user.name}/.ssh/id_ed25519";
+            owner = user.name;
+            mode = "0600";
           };
         };
       };

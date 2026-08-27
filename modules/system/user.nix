@@ -15,7 +15,7 @@ in
     in
     {
       config = {
-        sops.secrets."userPassword".neededForUsers = true;
+        sops.secrets."user-password".neededForUsers = true;
         
         environment.persistence."/persist".directories = [
           {
@@ -38,7 +38,7 @@ in
             "networkmanager" # network configuration
           ];
 
-          hashedPasswordFile = config.sops.secrets.userPassword.path;
+          hashedPasswordFile = config.sops.secrets.user-password.path;
           openssh.authorizedKeys.keys = knownUsers;
         };
 

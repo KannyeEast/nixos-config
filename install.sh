@@ -850,7 +850,7 @@ writeSecrets() {
     --arg pw "$hash" \
     --rawfile key "$TEMP_DIR/id_ed25519" \
     --argjson wifi "$WIFI" \
-    '{ userPassword: $pw, userPrivateKey: $key }
+    '{ user-password: $pw, user-privatekey: $key }
       + (if $wifi == {} then {} else { wifi: $wifi } end)' \
     > "$FLAKE/hosts/$HOSTNAME/secrets.json"
 
