@@ -2,15 +2,19 @@
   flake.modules.nixos.bluetooth =
     { pkgs, ... }:
     {
-      hardware.bluetooth = {
-        enable = true;
-        powerOnBoot = true;
-        settings.General.FastConnectable = true;
-        settings.Policy.AutoEnable = true;
-      };
+      config = {
+        environment.persistence."/persist".directories = [ "/var/lib/bluetooth" ];
+      
+        hardware.bluetooth = {
+          enable = true;
+          powerOnBoot = true;
+          settings.General.FastConnectable = true;
+          settings.Policy.AutoEnable = true;
+        };
 
-      environment.systemPackages = [
-        pkgs.bluez-tools
-      ];
+        environment.systemPackages = [
+          pkgs.bluez-tools
+        ];
+      };
     };
 }

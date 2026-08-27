@@ -16,6 +16,15 @@ in
     {
       config = {
         sops.secrets."userPassword".neededForUsers = true;
+        
+        environment.persistence."/persist".directories = [
+          {
+            directory = "/home/${user.name}";
+            user = user.name;
+            group = "users";
+            mode = "0700";
+          }
+        ];
 
         users.mutableUsers = false;
 

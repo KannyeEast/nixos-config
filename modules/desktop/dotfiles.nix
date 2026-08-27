@@ -57,8 +57,10 @@ in
         builtins.listToAttrs (map mkSymLink (readDirRecursive "" storePath));
     in
     {
-      home.file = optionalAttrs (builtins.pathExists dotfilesDir) (
-        mkSymlinks dotfilesDir "${flake}/hosts/${host.name}/home"
-      );
+      config = {
+        home.file = optionalAttrs (builtins.pathExists dotfilesDir) (
+          mkSymlinks dotfilesDir "${flake}/hosts/${host.name}/home"
+        );
+      };
     };
 }

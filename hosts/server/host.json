@@ -31,5 +31,7 @@
       "variant": ""
     }
   },
-  "network": {}
+  "network": {
+    "domain": "server.tail777efa.ts.net"
+  }
 }

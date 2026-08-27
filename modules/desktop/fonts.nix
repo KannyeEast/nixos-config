@@ -3,6 +3,8 @@
     { pkgs, ... }:
     {
       config = {
+        environment.persistence."/persist".directories = [ "/var/cache/fontconfig" ];
+      
         fonts = {
           fontDir.enable = true;
           enableDefaultPackages = true;
