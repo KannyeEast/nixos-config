@@ -26,6 +26,7 @@
             "https://github.com"
             "https://gitlab.com"
             "https://codeberg.org"
+            "https://tailscale.com"
           ];
           Behavior = "reject-tracker-and-partition-foreign";
           BehaviorPrivateBrowsing = "reject-tracker-and-partition-foreign";

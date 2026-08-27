@@ -1,10 +1,3 @@
-{ lib, ... }:
-let
-  inherit (lib)
-    optionalString
-    hasSuffix
-    ;
-in
 {
   flake.modules.nixos.proxy =
     { config, network, ... }:
@@ -29,11 +22,10 @@ in
         networking.firewall.interfaces.${config.services.tailscale.interfaceName}
           .allowedTCPPorts = [ 443 ];
 
-        # tailscale issues real certs; anything else falls back to caddy's own CA
-        services.caddy.virtualHosts.${network.domain}.extraConfig =
-          optionalString (!hasSuffix ".ts.net" network.domain) ''
-            tls internal
-          '';
-      };
+        services.caddy.virtualHosts.${network.domain}.extraConfig = ''
+          tls {
+            get_certificate tailscale
+          }
+        '';
     };
 }
