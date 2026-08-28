@@ -5,12 +5,9 @@
       config = {
         sops.secrets.cloudflare-token = { };
 
-        sops.templates."caddy.env" = {
-          content = ''
-            CLOUDFLARE_API_TOKEN=${config.sops.placeholder.cloudflare-token}
-          '';
-          restartUnits = [ "caddy.service" ];
-        };
+        sops.templates."cloudflare.env".content = ''
+          CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-token}
+        '';
       
         environment.persistence."/persist".directories = [
           {
@@ -19,23 +16,28 @@
             group = "caddy";
             mode = "0700";
           }
+          "/var/lib/acme"
         ];
+        
+        security.acme = {
+          acceptTerms = true;
+          defaults.email = user.email;
+          certs.${network.domain} = {
+            domain = network.domain;
+            extraDomainNames = [ "*.${network.domain}" ];
+            dnsProvider = "cloudflare";
+            dnsResolver = "1.1.1.1:53";
+            environmentFile = config.sops.templates."cloudflare.env".path;
+            group = config.services.caddy.group;
+            reloadServices = [ "caddy.service" ];
+          };
+        };
         
         services.caddy = {
           enable = true;
-          email = user.email;
-          environmentFile = config.sops.templates."caddy.env".path;
-          
-          package = pkgs.caddy.withPlugins {
-            plugins = [ "github.com/caddy-dns/cloudflare@v0.2.1" ];
-            hash = "sha256-F7d4HwM4oCkQrFMr4SFSC0r52ONxY+PW6z5BJawW8Ok";
-          };
-          
+          globalConfig = "auto_https disable_certs";
           virtualHosts."*.${network.domain}".extraConfig = ''
-            tls {
-              dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-              resolvers 1.1.1.1
-            }
+            tls /var/lib/acme/${network.domain}/fullchain.pem /var/lib/acme/${network.domain}/key.pem
             abort
           '';
         };
