@@ -9,6 +9,7 @@
           { directory = "/var/lib/tailscale"; mode = "0700"; }
         ];
         
+        services.resolved.enable = true;
         services.tailscale = {
           enable = true;
           authKeyFile = config.sops.secrets.tailscale-authkey.path;

@@ -1,4 +1,3 @@
-{ lib, ... }:
 {
   flake.modules.nixos.proxy =
     { config, pkgs, user, network, ... }:
