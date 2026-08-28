@@ -17,7 +17,7 @@
   "hardware": {
     "gpu": [],
     "modules": [
-      "common-cpu-intel-cpu-only",
+      "common-cpu-amd",
       "common-pc-laptop-ssd",
       "common-pc-laptop-hdd"
     ]
