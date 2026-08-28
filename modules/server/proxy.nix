@@ -1,6 +1,11 @@
 {
   flake.modules.nixos.proxy =
-    { config, pkgs, user, network, ... }:
+    {
+      config,
+      user,
+      network,
+      ...
+    }:
     {
       config = {
         sops.secrets.cloudflare-token = { };
@@ -8,7 +13,7 @@
         sops.templates."cloudflare.env".content = ''
           CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-token}
         '';
-      
+
         environment.persistence."/persist".directories = [
           {
             directory = "/var/lib/caddy";
@@ -18,7 +23,7 @@
           }
           "/var/lib/acme"
         ];
-        
+
         security.acme = {
           acceptTerms = true;
           defaults.email = user.email;
@@ -32,7 +37,7 @@
             reloadServices = [ "caddy.service" ];
           };
         };
-        
+
         services.caddy = {
           enable = true;
           globalConfig = "auto_https disable_certs";
@@ -41,6 +46,6 @@
             abort
           '';
         };
-      }; 
+      };
     };
 }

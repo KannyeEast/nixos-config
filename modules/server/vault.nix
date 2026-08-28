@@ -1,6 +1,11 @@
 {
   flake.modules.nixos.vault =
-    { config, lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
       svc = config.internal.services;
       cfg = svc.vault;

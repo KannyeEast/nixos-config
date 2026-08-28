@@ -16,7 +16,7 @@ in
     {
       config = {
         sops.secrets."user-password".neededForUsers = true;
-        
+
         environment.persistence."/persist".directories = [
           {
             directory = "/home/${user.name}";
@@ -41,7 +41,7 @@ in
           hashedPasswordFile = config.sops.secrets.user-password.path;
           openssh.authorizedKeys.keys = knownUsers;
         };
-        
+
         users.users.root.openssh.authorizedKeys.keys = knownUsers;
 
         security.sudo.extraConfig = "Defaults lecture=never";

@@ -4,7 +4,7 @@
     {
       config = {
         environment.persistence."/persist".directories = [ "/var/lib/bluetooth" ];
-      
+
         hardware.bluetooth = {
           enable = true;
           powerOnBoot = true;
