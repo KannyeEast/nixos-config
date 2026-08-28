@@ -39,10 +39,10 @@ in
           ];
 
           hashedPasswordFile = config.sops.secrets.user-password.path;
-          openssh.authorizedKeys.keys = knownUsers;
+          openssh.authorizedKeys.keys = knownUsers ++ (user.extraKeys or [ ]);
         };
 
-        users.users.root.openssh.authorizedKeys.keys = knownUsers;
+        users.users.root.openssh.authorizedKeys.keys = knownUsers ++ (user.extraKeys or [ ]);
 
         security.sudo.extraConfig = "Defaults lecture=never";
 

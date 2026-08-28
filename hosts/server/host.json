@@ -12,7 +12,10 @@
   "user": {
     "name": "gldn",
     "email": "johngit@vexelvault.com",
-    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@server"
+    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@server",
+    "extraKeys": [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMX+dMqj751lL/srdcHX9HXGxb4uNUpMRzDri+zUfNzk gldn@win11"
+    ]
   },
   "hardware": {
     "gpu": [],
