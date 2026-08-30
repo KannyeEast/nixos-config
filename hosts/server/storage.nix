@@ -53,6 +53,26 @@ in
           };
         };
       };
+      vault = {
+        type = "disk";
+        destroy = true;
+        device = "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A";
+        content = {
+          type = "btrfs";
+          extraArgs = [ 
+            "-f"
+            "-L"
+            "vault"
+          ];
+          subvolumes."vault" = {
+            mountpoint = "/srv/vault";
+            mountOptions = [
+              "noatime"
+              "nofail"
+            ];
+          };
+        };
+      };
     };
 
   # any surviving member answers to the label, unlike the head device

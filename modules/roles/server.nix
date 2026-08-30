@@ -9,6 +9,7 @@ in
     imports = [
       nixos.base
 
+      nixos.backup
       nixos.proxy
       nixos.storage
     ];
