@@ -26,6 +26,9 @@
         "server": [ 
           "vault", 
           "notes"
+        ],
+        "phone": [
+          "vault"
         ]
       }
     },
@@ -45,6 +48,9 @@
     "phone": {
       "id": "FEHJ4VH-KTUCWO7-FLWTHY4-KNLHYMZ-ABVK3EP-RRD54NG-6PSKTPB-SWIWSQW",
       "to": {
+        "laptop": [
+          "vault"
+        ],
         "server": [
           "vault"
         ]
