@@ -1,23 +1,24 @@
 { lib, ... }:
 let
   inherit (lib)
-    attrNames 
-    attrValues 
-    concatMap 
-    elem 
-    filter 
-    genAttrs 
-    mkIf 
-    unique;
+    attrNames
+    attrValues
+    concatMap
+    elem
+    filter
+    genAttrs
+    mkIf
+    unique
+    ;
 in
 {
   flake.modules.nixos.syncthing =
-    { 
-      config, 
-      host, 
-      user, 
-      network, 
-      syncthing, 
+    {
+      config,
+      host,
+      user,
+      network,
+      syncthing,
       ...
     }:
     let
@@ -30,7 +31,7 @@ in
       incoming = concatMap (peerName: syncthing.${peerName}.to.${host.name} or [ ]) allHosts;
       folders = unique (outgoing ++ incoming);
 
-       # every host that shares a given folder with this one, in either direction
+      # every host that shares a given folder with this one, in either direction
       membersOf =
         folder:
         filter (
