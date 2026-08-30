@@ -12,7 +12,6 @@ in
       nixos.backup
       nixos.proxy
       nixos.storage
-      nixos.syncthing
     ];
 
     config = {

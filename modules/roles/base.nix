@@ -15,11 +15,12 @@ in
       nixos.impermanence
       nixos.locale
       nixos.networking
+      nixos.secrets
       nixos.ssh
+      nixos.syncthing
       nixos.system
       nixos.tailscale
       nixos.user
-      nixos.secrets
     ];
 
     config = {
