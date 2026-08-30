@@ -13,7 +13,7 @@ let
   data = builtins.fromJSON (builtins.readFile (hostDir + "/host.json"));
   fleet =
     if builtins.pathExists ../hosts/fleet.json then
-      builtins.fromJSON (builtins.readFile (../hosts "/fleet.json"))
+      builtins.fromJSON (builtins.readFile (../hosts/fleet.json))
     else
       { }
     ;

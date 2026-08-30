@@ -79,6 +79,26 @@ in
         };
 
         # ── development ────────
+        # Forges
+        "Codeberg" = {
+          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
+          url = "https://codeberg.org/";
+          position = 101;
+          workspace = spaces."Development".id;
+        };
+        "GitHub" = {
+          id = "fcc811cc-1389-4b0f-8384-949da46ad442";
+          url = "https://github.com/";
+          position = 102;
+          workspace = spaces."Development".id;
+        };
+        "GitLab" = {
+          id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
+          url = "https://gitlab.com/";
+          position = 103;
+          workspace = spaces."Development".id;
+        };
+        
         # Infrastructure
         "Server" = {
           id = "e0f080f0-6cab-41d5-b416-cc07d318b969";
@@ -91,14 +111,14 @@ in
         };
         "FRITZ!Box" = {
           id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
-          url = "http://192.168.178.1/";
+          url = "http://192.168.178.1";
           position = 111;
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
         };
         "Cloudflare" = {
           id = "9fb4ee37-0150-4532-ad02-f981f102f16a";
-          url = "https://dash.cloudflare.com/";
+          url = "https://dash.cloudflare.com";
           position = 112;
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
@@ -110,25 +130,12 @@ in
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
         };
-
-        # Forges
-        "Codeberg" = {
-          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
-          url = "https://codeberg.org/";
-          position = 151;
+        "Backups" = {
+          id = "f66e7351-d49d-4274-9cbb-3f5f68bb9f2d";
+          url = "https://healthchecks.io";
+          position = 114;
           workspace = spaces."Development".id;
-        };
-        "GitHub" = {
-          id = "fcc811cc-1389-4b0f-8384-949da46ad442";
-          url = "https://github.com/";
-          position = 152;
-          workspace = spaces."Development".id;
-        };
-        "GitLab" = {
-          id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
-          url = "https://gitlab.com/";
-          position = 153;
-          workspace = spaces."Development".id;
+          folderParentId = pins."Server".id;
         };
 
         # ── entertainment ────────
