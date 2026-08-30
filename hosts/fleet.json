@@ -20,7 +20,7 @@
   
   "syncthing": {
     "laptop": {
-      "id": "OPQRSTU-VWXYZAB-...",
+      "id": "RAEFF4F-GRHIWTL-7NSUWQS-37GEN4H-HUTUDMJ-UHRBVU5-KFB562C-NSYTWA6",
       "to": {
         "server": [ 
           "vault", 
@@ -29,7 +29,7 @@
       }
     },
     "server": {
-      "id": "ABCDEFG-HIJKLMN-...",
+      "id": "C4S4H3K-EGEALRV-VZ5ACFL-C2EPOLI-ODQWD4I-N5WC26S-QLTSX7R-EQ2Y4A5",
       "to": {
         "laptop": [
           "vault",
