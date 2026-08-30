@@ -46,6 +46,11 @@
             abort
           '';
         };
+        
+        networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [
+          80
+          443
+        ];
       };
     };
 }

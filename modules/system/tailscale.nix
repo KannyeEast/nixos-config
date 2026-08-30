@@ -31,11 +31,6 @@ in
             enable = true;
             openFirewall = true;
           };
-  
-          networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [
-            80
-            443
-          ];
         }
       ];
     };
