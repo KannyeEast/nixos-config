@@ -77,6 +77,9 @@ in
 
             devices = genAttrs peers (peerName: {
               id = syncthing.${peerName}.id;
+              addresses = [
+               syncthing.${peerName}.address
+              ];
             });
 
             folders = genAttrs folders (folder: {
@@ -91,8 +94,12 @@ in
         };
 
         networking.firewall.interfaces.${config.services.tailscale.interfaceName} = {
-          allowedTCPPorts = [ 22000 ];
-          allowedUDPPorts = [ 22000 ];
+          allowedTCPPorts = [ 
+            22000 
+          ];
+          allowedUDPPorts = [ 
+            22000 
+          ];
         };
 
         services.caddy.virtualHosts = mkIf config.services.caddy.enable {
