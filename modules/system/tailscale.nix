@@ -1,27 +1,42 @@
+{ lib, ... }:
+let
+  inherit (lib) 
+    mkIf
+    mkMerge
+    ;
+in
 {
   flake.modules.nixos.tailscale =
     { config, ... }:
+    let
+      secrets = builtins.fromJSON (builtins.readFile config.sops.defaultSopsFile);
+      hasAuthKey = secrets ? "tailscale-authkey";
+    in
     {
-      config = {
-        sops.secrets.tailscale-authkey = { };
-
-        environment.persistence."/persist".directories = [
-          {
-            directory = "/var/lib/tailscale";
-            mode = "0700";
-          }
-        ];
-
-        services.tailscale = {
-          enable = true;
-          authKeyFile = config.sops.secrets.tailscale-authkey.path;
-          openFirewall = true;
-        };
-
-        networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [
-          80
-          443
-        ];
-      };
+      config = mkMerge [
+        (mkIf hasAuthKey { 
+          sops.secrets.tailscale-authkey = { };
+          service.tailscale.authKeyFile = config.sops.secrets.tailscale-authkey.path;
+        })
+        
+        {
+          environment.persistence."/persist".directories = [
+            {
+              directory = "/var/lib/tailscale";
+              mode = "0700";
+            }
+          ];
+  
+          services.tailscale = {
+            enable = true;
+            openFirewall = true;
+          };
+  
+          networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [
+            80
+            443
+          ];
+        }
+      ];
     };
 }
