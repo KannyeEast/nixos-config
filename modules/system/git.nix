@@ -6,14 +6,13 @@ let
     mapAttrsToList
     unique
     ;
-    
-    hosts = import ../../lib/listHosts.nix lib;
+
+  hosts = import ../../lib/listHosts.nix lib;
 in
 {
   flake.modules.homeManager.git =
     {
       config,
-      host,
       user,
       ssh,
       ...
@@ -21,7 +20,7 @@ in
     let
       keys = unique (
         filter (key: key != "") (
-          mapAttrsToList  (_: host: host.user.publicKey or "") hosts
+          mapAttrsToList (_: host: host.user.publicKey or "") hosts
           ++ mapAttrsToList (_: value: value.key or "") ssh
         )
       );
