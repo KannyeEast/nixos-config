@@ -8,6 +8,7 @@ let
     filter
     genAttrs
     mkIf
+    optionalAttrs 
     unique
     ;
 in
@@ -75,12 +76,12 @@ in
               urAccepted = -1;
             };
 
-            devices = genAttrs peers (peerName: {
-              id = syncthing.${peerName}.id;
-              addresses = [
-               syncthing.${peerName}.address
-              ];
-            });
+            devices = genAttrs peers (peerName:
+              { id = syncthing.${peerName}.id; }
+              // optionalAttrs (syncthing.${peerName} ? address) {
+                addresses = [ syncthing.${peerName}.address ];
+              }
+            );
 
             folders = genAttrs folders (folder: {
               path = "${root}/${folder}";
