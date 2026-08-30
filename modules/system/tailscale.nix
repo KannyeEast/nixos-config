@@ -16,7 +16,7 @@ in
       config = mkMerge [
         (mkIf hasAuthKey { 
           sops.secrets.tailscale-authkey = { };
-          service.tailscale.authKeyFile = config.sops.secrets.tailscale-authkey.path;
+          services.tailscale.authKeyFile = config.sops.secrets.tailscale-authkey.path;
         })
         
         {
