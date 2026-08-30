@@ -10,6 +10,7 @@
       locale,
       network,
       ssh,
+      syncthing,
       ...
     }:
     let
@@ -37,6 +38,7 @@
               locale
               network
               ssh
+              syncthing
               ;
           };
           users.${user.name} = {

@@ -16,5 +16,26 @@
         "server"
       ]
     }
+  },
+  
+  "syncthing": {
+    "laptop": {
+      "id": "OPQRSTU-VWXYZAB-...",
+      "to": {
+        "server": [ 
+          "vault", 
+          "notes"
+        ]
+      }
+    },
+    "server": {
+      "id": "ABCDEFG-HIJKLMN-...",
+      "to": {
+        "laptop": [
+          "vault",
+          "notes"
+        ]
+      }
+    }
   }
 }
