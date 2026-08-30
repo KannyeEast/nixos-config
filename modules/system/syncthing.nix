@@ -63,11 +63,13 @@ in
           dataDir = root;
 
           openDefaultPorts = false;
-          guiAddress = "127.0.0.1:8384";
           overrideDevices = true;
           overrideFolders = true;
 
           settings = {
+            gui.insecureSkipHostcheck = true;
+            gui.address = "127.0.0.1:8384";
+            
             options = {
               globalAnnounceEnabled = false;
               localAnnounceEnabled = false;
