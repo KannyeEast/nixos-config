@@ -9,6 +9,7 @@
       hardware,
       locale,
       network,
+      ssh,
       ...
     }:
     let
@@ -35,6 +36,7 @@
               hardware
               locale
               network
+              ssh
               ;
           };
           users.${user.name} = {

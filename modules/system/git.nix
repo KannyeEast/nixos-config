@@ -4,19 +4,32 @@ let
     concatStringsSep
     filter
     mapAttrsToList
+    unique
     ;
+    
+    hosts = import ../../lib/listHosts.nix lib;
 in
 {
   flake.modules.homeManager.git =
-    { config, user, ... }:
+    {
+      config,
+      host,
+      user,
+      ssh,
+      ...
+    }:
     let
-      hosts = import ../../lib/listHosts.nix lib;
-      knownUsers = filter (k: k != "") (mapAttrsToList (_: h: h.user.publicKey or "") hosts);
+      keys = unique (
+        filter (key: key != "") (
+          mapAttrsToList  (_: host: host.user.publicKey or "") hosts
+          ++ mapAttrsToList (_: value: value.key or "") ssh
+        )
+      );
     in
     {
       config = {
         home.file.".ssh/allowed_signers".text =
-          concatStringsSep "\n" (map (k: "${user.email} ${k}") knownUsers) + "\n";
+          concatStringsSep "\n" (map (key: "${user.email} ${key}") keys) + "\n";
 
         programs.delta.enable = true;
         programs.delta.enableGitIntegration = true;
