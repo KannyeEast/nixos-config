@@ -48,7 +48,7 @@ in
           {
             directory = "/var/lib/syncthing";
             user = user.name;
-            group = user.name;
+            group = config.users.users.${user.name}.group;
             mode = "0700";
           }
         ];
@@ -56,7 +56,7 @@ in
         services.syncthing = {
           enable = true;
           user = user.name;
-          group = user.name;
+          group = config.users.users.${user.name}.group;
           configDir = "/var/lib/syncthing";
           dataDir = root;
 
