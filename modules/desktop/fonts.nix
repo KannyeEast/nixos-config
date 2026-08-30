@@ -3,7 +3,9 @@
     { pkgs, ... }:
     {
       config = {
-        environment.persistence."/persist".directories = [ "/var/cache/fontconfig" ];
+        internal.system.impermanence.directories = [
+          "/var/cache/fontconfig"
+        ];
 
         fonts = {
           fontDir.enable = true;

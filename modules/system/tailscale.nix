@@ -20,7 +20,7 @@ in
         })
         
         {
-          environment.persistence."/persist".directories = [
+          internal.system.impermanence.directories = [
             {
               directory = "/var/lib/tailscale";
               mode = "0700";

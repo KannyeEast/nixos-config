@@ -14,7 +14,7 @@
           CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-token}
         '';
 
-        environment.persistence."/persist".directories = [
+        internal.system.impermanence.directories = [
           {
             directory = "/var/lib/caddy";
             user = "caddy";

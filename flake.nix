@@ -3,7 +3,7 @@
 
   inputs = {
     #
-    # Nix architecture
+    # Config architecture
     #
 
     ## Unstable packages
@@ -28,7 +28,7 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    ### Home-manager
+    ## Home-manager
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";

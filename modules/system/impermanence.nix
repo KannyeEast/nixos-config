@@ -1,13 +1,53 @@
-{ inputs, ... }:
+{ inputs, lib, ... }:
+let
+  inherit (lib)
+    mkOption
+    types
+    ;
+in
 {
   flake.modules.nixos.impermanence =
-    { pkgs, user, ... }:
+    { config, pkgs, user, ... }:
+    let
+      inherit (config.internal)
+        system
+        ;
+    in
     {
       imports = [
         inputs.impermanence.nixosModules.impermanence
       ];
+      
+      options = {
+        internal.system.impermanence = {
+          directories = mkOption {
+            type = types.listOf (types.either types.str (types.attrsOf types.anything));
+            default = [ ];
+            internal = true;
+            description = "Directories that should persist";
+          };
+          files = mkOption {
+            type = types.listOf types.str;
+            default = [ ];
+            internal = true;
+            description = "Files that should persist";
+            };
+        };
+      };
 
       config = {
+        internal.system.impermanence = {
+          directories = [
+            "/var/lib/NetworkManager"
+            "/var/lib/nixos"
+            "/var/lib/systemd"
+            "/var/log"
+          ];
+          files = [
+            "/etc/machine-id"
+          ];
+        };
+      
         fileSystems."/persist".neededForBoot = true;
 
         boot.initrd.systemd.initrdBin = [ pkgs.btrfs-progs ];
@@ -44,15 +84,8 @@
 
         environment.persistence."/persist" = {
           hideMounts = true;
-          directories = [
-            "/var/lib/NetworkManager"
-            "/var/lib/nixos"
-            "/var/lib/systemd"
-            "/var/log"
-          ];
-          files = [
-            "/etc/machine-id"
-          ];
+          directories = system.impermanence.directories;
+          files = system.impermanence.files;
         };
       };
     };

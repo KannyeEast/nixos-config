@@ -3,7 +3,9 @@
     { pkgs, ... }:
     {
       config = {
-        environment.persistence."/persist".directories = [ "/var/lib/bluetooth" ];
+        internal.system.impermanence.directories = [
+          "/var/lib/bluetooth"
+        ];
 
         hardware.bluetooth = {
           enable = true;

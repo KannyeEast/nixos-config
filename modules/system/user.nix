@@ -17,7 +17,7 @@ in
       config = {
         sops.secrets."user-password".neededForUsers = true;
 
-        environment.persistence."/persist".directories = [
+        internal.system.impermanence.directories = [
           {
             directory = "/home/${user.name}";
             user = user.name;
