@@ -11,6 +11,12 @@ let
     ;
 
   data = builtins.fromJSON (builtins.readFile (hostDir + "/host.json"));
+  fleet =
+    if builtins.pathExists ../hosts/fleet.json then
+      builtins.fromJSON (builtins.readFile (../hosts "/fleet.json"))
+    else
+      { }
+    ;
 in
 {
   flake.nixosConfigurations.${data.host.name} = inputs.nixpkgs.lib.nixosSystem {
@@ -27,8 +33,11 @@ in
         user
         hardware
         locale
-        network
         ;
+      
+      network = data.network or { };
+      ssh = fleet.ssh or { };
+      syncthing = fleet.syncthing or { };
     };
     modules = [
       inputs.disko.nixosModules.disko

@@ -1,0 +1,20 @@
+{
+  "ssh": {
+    "laptop": {
+      "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Tn9tQVyJwyxfN8Dmpam4x+wfA0AT0dsKVuRajcTRl gldn@laptop",
+      "to": [
+        "server"
+      ]
+    },
+    "server": {
+      "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@server"
+    },
+    "win11": {
+      "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMX+dMqj751lL/srdcHX9HXGxb4uNUpMRzDri+zUfNzk gldn@win11",
+      "to": [
+        "laptop",
+        "server"
+      ]
+    }
+  }
+}

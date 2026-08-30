@@ -1,20 +1,33 @@
 { lib, ... }:
 let
   inherit (lib)
+    elem
     filter
+    filterAttrs
     mapAttrsToList
     ;
+    
+  hosts = import ../../lib/listHosts.nix lib;
 in
 {
   flake.modules.nixos.user =
-    { config, user, ... }:
-    let
-      hosts = import ../../lib/listHosts.nix lib;
-
-      knownUsers = filter (k: k != "") (mapAttrsToList (_: h: h.user.publicKey or "") hosts);
+    { config, host, user, ssh, ... }:
+    let  
+      inbound = filterAttrs (_: value: elem host.name (value.to or [ ])) ssh; 
+      
+      keys = filter (key: key != "") (
+        mapAttrsToList (name: value: value.key or (hosts.${name}.user.publicKey or "")) inbound
+      );
     in
     {
       config = {
+        assertions = [
+        {
+          assertion = keys != [ ];
+          message = "no ssh keys authorised for ${host.name}. Check fleet.json ssh.*.to";
+        }
+        ];
+      
         sops.secrets."user-password".neededForUsers = true;
 
         internal.system.impermanence.directories = [
@@ -39,10 +52,8 @@ in
           ];
 
           hashedPasswordFile = config.sops.secrets.user-password.path;
-          openssh.authorizedKeys.keys = knownUsers ++ (user.extraKeys or [ ]);
+          openssh.authorizedKeys.keys = keys;
         };
-
-        users.users.root.openssh.authorizedKeys.keys = [ user.publicKey ] ++ (user.extraKeys or [ ]);
 
         security.sudo.extraConfig = "Defaults lecture=never";
 
