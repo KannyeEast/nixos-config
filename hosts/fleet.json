@@ -21,7 +21,7 @@
   "syncthing": {
     "laptop": {
       "id": "RAEFF4F-GRHIWTL-7NSUWQS-37GEN4H-HUTUDMJ-UHRBVU5-KFB562C-NSYTWA6",
-      "address": "100.80.64.3:22000",
+      "address": "tcp://100.80.64.3:22000",
       "to": {
         "server": [ 
           "vault", 
@@ -31,7 +31,7 @@
     },
     "server": {
       "id": "C4S4H3K-EGEALRV-VZ5ACFL-C2EPOLI-ODQWD4I-N5WC26S-QLTSX7R-EQ2Y4A5",
-      "address": "100.76.224.84:22000",
+      "address": "tcp://100.76.224.84:22000",
       "to": {
         "laptop": [
           "vault",
