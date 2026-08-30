@@ -42,7 +42,7 @@ in
           openssh.authorizedKeys.keys = knownUsers ++ (user.extraKeys or [ ]);
         };
 
-        users.users.root.openssh.authorizedKeys.keys = user.publicKey ++ (user.extraKeys or [ ]);
+        users.users.root.openssh.authorizedKeys.keys = [ user.publicKey ] ++ (user.extraKeys or [ ]);
 
         security.sudo.extraConfig = "Defaults lecture=never";
 
