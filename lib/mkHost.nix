@@ -15,8 +15,7 @@ let
     if builtins.pathExists ../hosts/fleet.json then
       builtins.fromJSON (builtins.readFile (../hosts/fleet.json))
     else
-      { }
-    ;
+      { };
 in
 {
   flake.nixosConfigurations.${data.host.name} = inputs.nixpkgs.lib.nixosSystem {
@@ -34,7 +33,7 @@ in
         hardware
         locale
         ;
-      
+
       network = data.network or { };
       ssh = fleet.ssh or { };
       syncthing = fleet.syncthing or { };

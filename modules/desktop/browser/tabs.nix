@@ -98,7 +98,7 @@ in
           position = 103;
           workspace = spaces."Development".id;
         };
-        
+
         # Infrastructure
         "Server" = {
           id = "e0f080f0-6cab-41d5-b416-cc07d318b969";

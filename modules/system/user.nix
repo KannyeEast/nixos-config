@@ -6,15 +6,21 @@ let
     filterAttrs
     mapAttrsToList
     ;
-    
+
   hosts = import ../../lib/listHosts.nix lib;
 in
 {
   flake.modules.nixos.user =
-    { config, host, user, ssh, ... }:
-    let  
-      inbound = filterAttrs (_: value: elem host.name (value.to or [ ])) ssh; 
-      
+    {
+      config,
+      host,
+      user,
+      ssh,
+      ...
+    }:
+    let
+      inbound = filterAttrs (_: value: elem host.name (value.to or [ ])) ssh;
+
       keys = filter (key: key != "") (
         mapAttrsToList (name: value: value.key or (hosts.${name}.user.publicKey or "")) inbound
       );
@@ -22,12 +28,12 @@ in
     {
       config = {
         assertions = [
-        {
-          assertion = keys != [ ];
-          message = "no ssh keys authorised for ${host.name}. Check fleet.json ssh.*.to";
-        }
+          {
+            assertion = keys != [ ];
+            message = "no ssh keys authorised for ${host.name}. Check fleet.json ssh.*.to";
+          }
         ];
-      
+
         sops.secrets."user-password".neededForUsers = true;
 
         internal.system.impermanence.directories = [
