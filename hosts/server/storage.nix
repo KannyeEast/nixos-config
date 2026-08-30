@@ -55,7 +55,7 @@ in
       };
       vault = {
         type = "disk";
-        destroy = true;
+        destroy = false;
         device = "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A";
         content = {
           type = "btrfs";
