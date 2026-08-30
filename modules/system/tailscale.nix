@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-  inherit (lib) 
+  inherit (lib)
     mkIf
     mkMerge
     ;
@@ -14,11 +14,11 @@ in
     in
     {
       config = mkMerge [
-        (mkIf hasAuthKey { 
+        (mkIf hasAuthKey {
           sops.secrets.tailscale-authkey = { };
           services.tailscale.authKeyFile = config.sops.secrets.tailscale-authkey.path;
         })
-        
+
         {
           internal.system.impermanence.directories = [
             {
@@ -26,7 +26,7 @@ in
               mode = "0700";
             }
           ];
-  
+
           services.tailscale = {
             enable = true;
             openFirewall = true;

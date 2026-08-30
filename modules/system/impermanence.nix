@@ -7,7 +7,12 @@ let
 in
 {
   flake.modules.nixos.impermanence =
-    { config, pkgs, user, ... }:
+    {
+      config,
+      pkgs,
+      user,
+      ...
+    }:
     let
       inherit (config.internal)
         system
@@ -17,7 +22,7 @@ in
       imports = [
         inputs.impermanence.nixosModules.impermanence
       ];
-      
+
       options = {
         internal.system.impermanence = {
           directories = mkOption {
@@ -31,7 +36,7 @@ in
             default = [ ];
             internal = true;
             description = "Files that should persist";
-            };
+          };
         };
       };
 
@@ -47,7 +52,7 @@ in
             "/etc/machine-id"
           ];
         };
-      
+
         fileSystems."/persist".neededForBoot = true;
 
         boot.initrd.systemd.initrdBin = [ pkgs.btrfs-progs ];
