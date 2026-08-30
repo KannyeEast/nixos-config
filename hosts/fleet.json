@@ -36,6 +36,18 @@
         "laptop": [
           "vault",
           "notes"
+        ],
+        "phone": [
+          "vault"
+        ]
+      }
+    },
+    "phone": {
+      "id": "FEHJ4VH-KTUCW07-FLWTHY4-KNLHYMZ-ABVK3EP-RRD54NG-6PSKTPB-SWIWSQW",
+      "address": "tcp://100.116.172.39:22000",
+      "to": {
+        "server": [
+          "vault"
         ]
       }
     }
