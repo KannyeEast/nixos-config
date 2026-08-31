@@ -26,10 +26,6 @@ in
       );
 
       extensions = {
-        "vpn@proton.ch" = {
-          id = "proton-vpn-firefox-extension";
-          pinned = true;
-        };
         "uBlock0@raymondhill.net" = {
           id = "ublock-origin";
           pinned = true;
