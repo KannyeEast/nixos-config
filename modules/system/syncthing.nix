@@ -104,9 +104,10 @@ in
             22000 
           ];
         };
-
-        services.caddy.virtualHosts = mkIf config.services.caddy.enable {
-          "sync.${network.domain}".extraConfig = "reverse_proxy 127.0.0.1:8384";
+        
+        
+        internal.server.proxy.services = mkIf config.services.caddy.enable {
+          syncthing.port = 8384;
         };
       };
     };
