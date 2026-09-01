@@ -8,7 +8,7 @@ in
   flake.modules.nixos.server = {
     imports = [
       nixos.base
-      
+
       nixos.auth
       nixos.backup
       nixos.proxy

@@ -8,8 +8,7 @@ let
     filter
     genAttrs
     mkIf
-    mkMerge
-    optionalAttrs 
+    optionalAttrs
     unique
     ;
 in
@@ -19,7 +18,6 @@ in
       config,
       host,
       user,
-      network,
       syncthing,
       ...
     }:
@@ -71,7 +69,7 @@ in
             # Caddy proxies with a different host header
             gui.insecureSkipHostcheck = true;
             gui.address = "127.0.0.1:8384";
-            
+
             options = {
               globalAnnounceEnabled = false;
               localAnnounceEnabled = false;
@@ -80,8 +78,11 @@ in
               urAccepted = -1;
             };
 
-            devices = genAttrs peers (peerName:
-              { id = syncthing.${peerName}.id; }
+            devices = genAttrs peers (
+              peerName:
+              {
+                id = syncthing.${peerName}.id;
+              }
               // optionalAttrs (syncthing.${peerName} ? address) {
                 addresses = [ syncthing.${peerName}.address ];
               }
@@ -99,11 +100,11 @@ in
         };
 
         networking.firewall.interfaces.${config.services.tailscale.interfaceName} = {
-          allowedTCPPorts = [ 
-            22000 
+          allowedTCPPorts = [
+            22000
           ];
-          allowedUDPPorts = [ 
-            22000 
+          allowedUDPPorts = [
+            22000
           ];
         };
       };

@@ -19,39 +19,48 @@ in
     {
       options = {
         internal.server.proxy.services = mkOption {
-          type = types.attrsOf (types.submodule ({ name, ... }: {
-            options = {
-              port = mkOption {  
-                type = types.port;
-              };
-              address = mkOption {  
-                type = types.str;
-                default = "127.0.0.1";
-              };
-              subdomain = mkOption {  
-                type = types.str;
-                default = name;
-              };
-              policy = mkOption {  
-                type = types.enum [ "bypass" "one_factor" "two_factor" "deny" ];
-                default = "one_factor";
-              };
-              groups = mkOption {
-                type = types.listOf types.str;
-                default = [ "admin" ];
-              };
-              extraConfig = mkOption {  
-                type = types.lines;
-                default = "";
-              };
-            };
-          }));
+          type = types.attrsOf (
+            types.submodule (
+              { name, ... }: {
+                options = {
+                  port = mkOption {
+                    type = types.port;
+                  };
+                  address = mkOption {
+                    type = types.str;
+                    default = "127.0.0.1";
+                  };
+                  subdomain = mkOption {
+                    type = types.str;
+                    default = name;
+                  };
+                  policy = mkOption {
+                    type = types.enum [
+                      "bypass"
+                      "one_factor"
+                      "two_factor"
+                      "deny"
+                    ];
+                    default = "one_factor";
+                  };
+                  groups = mkOption {
+                    type = types.listOf types.str;
+                    default = [ "admin" ];
+                  };
+                  extraConfig = mkOption {
+                    type = types.lines;
+                    default = "";
+                  };
+                };
+              }
+            )
+          );
           default = { };
           internal = true;
           description = "Reverse proxy configuration and how it should be authorized and forwarded";
         };
       };
-      
+
       config = {
         sops.secrets.cloudflare-token = { };
 
@@ -93,7 +102,7 @@ in
             '';
           }
           // mapAttrs' (
-            name: service:
+            _name: service:
             nameValuePair "${service.subdomain}.${network.domain}" {
               extraConfig = ''
                 ${optionalString (service.policy != "bypass") ''
