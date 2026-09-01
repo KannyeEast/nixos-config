@@ -1,8 +1,6 @@
 {
-  flake.modules.nixos.syncthingProxy =
-    { ... }:
-    {
-      config.internal.server.proxy.services.syncthing = {
+  flake.modules.nixos.syncthingProxy = {
+      internal.server.proxy.services.syncthing = {
         port = 8384;
       };
     };
