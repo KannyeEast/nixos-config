@@ -34,7 +34,7 @@ in
               };
               policy = mkOption {  
                 type = types.enum [ "bypass" "one_factor" "two_factor" "deny" ];
-                default = "two_factor";
+                default = "one_factor";
               };
               groups = mkOption {
                 type = types.listOf types.str;
