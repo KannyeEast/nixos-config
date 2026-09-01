@@ -8,6 +8,7 @@ let
     filter
     genAttrs
     mkIf
+    mkMerge
     optionalAttrs 
     unique
     ;
@@ -42,7 +43,7 @@ in
         ) allHosts;
 
       peers = unique (concatMap membersOf folders);
-      root = "/persist/home/${user.name}";
+      root = "/home/${user.name}";
     in
     {
       config = mkIf (folders != [ ]) {
@@ -67,6 +68,7 @@ in
           overrideFolders = true;
 
           settings = {
+            # Caddy proxies with a different host header
             gui.insecureSkipHostcheck = true;
             gui.address = "127.0.0.1:8384";
             
@@ -103,11 +105,6 @@ in
           allowedUDPPorts = [ 
             22000 
           ];
-        };
-        
-        
-        internal.server.proxy.services = mkIf config.services.caddy.enable {
-          syncthing.port = 8384;
         };
       };
     };
