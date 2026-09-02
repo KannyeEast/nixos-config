@@ -3,6 +3,9 @@
     { config, ... }:
     {
       config = {
+        # Free port 53 for blocky to use
+        services.resolved.settings.Resolve.DNSStubListener = false;
+        
         services.blocky = {
           enable = true;
           settings = {

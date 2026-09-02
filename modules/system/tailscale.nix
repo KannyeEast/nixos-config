@@ -26,6 +26,8 @@ in
               mode = "0700";
             }
           ];
+          
+          services.resolved.enable = true;
 
           services.tailscale = {
             enable = true;
