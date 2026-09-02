@@ -34,7 +34,7 @@ in
         locale
         ;
 
-      network = data.network or { };
+      network = data.network or "";
       ssh = fleet.ssh or { };
       syncthing = fleet.syncthing or { };
     };
