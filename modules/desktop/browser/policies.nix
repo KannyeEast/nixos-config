@@ -37,7 +37,7 @@ in
             "https://tailscale.com"
             "https://healthchecks.io"
           ]
-          ++ optionals (network.domain != "") [
+          ++ optionals ((network.domain or "") != "") [
             "https://${network.domain}"
           ];
           Behavior = "reject-tracker-and-partition-foreign";

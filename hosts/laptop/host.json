@@ -34,5 +34,8 @@
       "layout": "us",
       "variant": ""
     }
+  },
+  "network": {
+    "domain": "vexelvault.com"
   }
 }
