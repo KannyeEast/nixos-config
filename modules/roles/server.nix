@@ -11,6 +11,7 @@ in
 
       nixos.auth
       nixos.backup
+      nixos.dns
       nixos.proxy
       nixos.storage
       nixos.syncthingProxy
