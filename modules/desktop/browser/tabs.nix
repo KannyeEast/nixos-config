@@ -79,26 +79,6 @@ in
         };
 
         # ── development ────────
-        # Forges
-        "Codeberg" = {
-          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
-          url = "https://codeberg.org/";
-          position = 105;
-          workspace = spaces."Development".id;
-        };
-        "GitHub" = {
-          id = "fcc811cc-1389-4b0f-8384-949da46ad442";
-          url = "https://github.com/";
-          position = 106;
-          workspace = spaces."Development".id;
-        };
-        "GitLab" = {
-          id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
-          url = "https://gitlab.com/";
-          position = 107;
-          workspace = spaces."Development".id;
-        };
-
         # Infrastructure
         "Server" = {
           id = "e0f080f0-6cab-41d5-b416-cc07d318b969";
@@ -138,6 +118,26 @@ in
           folderParentId = pins."Server".id;
         };
 
+        # Forges
+        "Codeberg" = {
+          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
+          url = "https://codeberg.org/";
+          position = 151;
+          workspace = spaces."Development".id;
+        };
+        "GitHub" = {
+          id = "fcc811cc-1389-4b0f-8384-949da46ad442";
+          url = "https://github.com/";
+          position = 152;
+          workspace = spaces."Development".id;
+        };
+        "GitLab" = {
+          id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
+          url = "https://gitlab.com/";
+          position = 153;
+          workspace = spaces."Development".id;
+        };
+        
         # ── entertainment ────────
         "F1 Stream" = {
           id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";
