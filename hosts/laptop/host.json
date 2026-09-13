@@ -4,7 +4,8 @@
     "system": "x86_64-linux",
     "class": "desktop",
     "addons": [
-      "dev"
+      "dev",
+      "virt"
     ],
     "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHF7e6y27ESkc906EClcSPVd4cg/eDwcqZqgFbdzaIK root@laptop"
   },
