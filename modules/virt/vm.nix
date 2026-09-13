@@ -56,7 +56,7 @@ in
   
             # manual start of vm only
             onBoot = "ignore";
-            onShutdown = "suspend";
+            onShutdown = "shutdown";
   
             qemu = {
               package = pkgs.qemu_kvm;
@@ -64,6 +64,7 @@ in
   
               # enable tpm emulation; required by win11
               swtpm.enable = true;
+              vhostUserPackages = [ pkgs.virtiofsd ];
             };
           };
           
