@@ -2,12 +2,17 @@
 let
   inherit (lib)
     genAttrs
+    optionalAttrs
+    optionalString
     ;
 in
 {
   flake.modules.homeManager.desktop =
-    { host, ... }:
+    { host, cluster, ... }:
     let
+      domain = cluster.domain or "";
+      escapeRegex = builtins.replaceStrings [ "." ] [ "\\." ];
+
       paletteFile = ../../../hosts/${host.name}/home/.config/system/zen.json;
       palette =
         if builtins.pathExists paletteFile then
@@ -110,13 +115,17 @@ in
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
         };
-        "Backups" = {
-          id = "f66e7351-d49d-4274-9cbb-3f5f68bb9f2d";
-          url = "https://healthchecks.io";
-          position = 114;
+      }
+      // optionalAttrs (domain != "") {
+        "Website" = {
+          id = "07324e6b-5fd0-4c7e-8872-0e8bbc66660b";
+          url = "https://dns.${domain}";
+          position = 115;
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
         };
+      }
+      // {
 
         # Forges
         "Codeberg" = {
@@ -217,7 +226,9 @@ in
             "docs" = regexMatch "rust-lang|crates\\.io|docs\\.rs|developer\\.mozilla|devdocs|kernel\\.org|man7";
             "help" = regexMatch "stackoverflow|stackexchange|serverfault|superuser";
             "tools" = regexMatch "regex101|starship\\.rs|quickshell|just\\.systems";
-            "infra" = regexMatch "dash\\.cloudflare|192\\.168\\.|tailscale";
+            "infra" = regexMatch (
+              "dash\\.cloudflare|192\\.168\\.|tailscale" + optionalString (domain != "") "|${escapeRegex domain}"
+            );
           };
         };
 

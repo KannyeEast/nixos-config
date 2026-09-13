@@ -3,7 +3,6 @@
     { pkgs, ... }:
     let
       nixIcon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
-      colorIcon = "https://rgb.to/favicon.ico";
     in
     {
       config = {
@@ -112,26 +111,6 @@
               ];
               icon = nixIcon;
               definedAliases = [ "@ng" ];
-            };
-
-            "Hex" = {
-              urls = [
-                {
-                  template = "https://rgb.to/hex/{searchTerms}";
-                }
-              ];
-              icon = colorIcon;
-              definedAliases = [ "@hex" ];
-            };
-
-            "Rgb" = {
-              urls = [
-                {
-                  template = "https://rgb.to/{searchTerms}";
-                }
-              ];
-              icon = colorIcon;
-              definedAliases = [ "@rgb" ];
             };
 
             "bing".metaData.hidden = true;
