@@ -14,7 +14,9 @@ in
       btrfs = filterAttrs (_: fileSystem: fileSystem.fsType == "btrfs") config.fileSystems;
 
       # scrub works on a whole filesystem, so two subvolumes of the same device would scrub it twice
-      scrubbable = attrValues (mapAttrs' (mount: fileSystem: nameValuePair fileSystem.device mount) btrfs);
+      scrubbable = attrValues (
+        mapAttrs' (mount: fileSystem: nameValuePair fileSystem.device mount) btrfs
+      );
     in
     {
       config = {

@@ -56,7 +56,7 @@ in
           settings = {
             auto-optimise-store = true;
 
-            # default buffer overflows fast with large configs; 
+            # default buffer overflows fast with large configs;
             download-buffer-size = 500000000;
 
             experimental-features = [
@@ -75,7 +75,7 @@ in
             ];
           };
 
-          # automatically optimise nix store 
+          # automatically optimise nix store
           optimise = {
             automatic = true;
             dates = [ "04:00" ];

@@ -15,14 +15,14 @@ in
     }:
     let
       domain = cluster.domain or (throw "gateway: cluster.json defines no domain");
-          
+
       policyOf = {
         "open" = "bypass";
         "1fa" = "one_factor";
         "2fa" = "two_factor";
         "blocked" = "deny";
       };
-      
+
       # same principle as proxy.nix; only services that arent defined as publicly available will be authenticated
       guarded = filterAttrs (
         _: service: service.route != null && !service.route.hasAuth && service.route.access != "open"
@@ -57,7 +57,7 @@ in
           }
         ];
 
-        # this is a one-time script to initialize users.yml with the hosts admin-hash; 
+        # this is a one-time script to initialize users.yml with the hosts admin-hash;
         # afterwards its managed by authelia and changes to the admin-hash wont apply
         systemd.services.authelia-main-seed = {
           description = "Seed the Authelia user database";

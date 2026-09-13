@@ -22,10 +22,10 @@ in
   flake.modules.nixos.server =
     { config, pkgs, ... }:
     let
-      # same principle as networking.nix; read and store plain key values 
+      # same principle as networking.nix; read and store plain key values
       targets = (builtins.fromJSON (builtins.readFile config.sops.defaultSopsFile)).backup or { };
 
-      # sops-nix can also leave values unencrypted with this suffix; useful when values need to be read at eval 
+      # sops-nix can also leave values unencrypted with this suffix; useful when values need to be read at eval
       rmSuffix = mapAttrs' (name: value: nameValuePair (removeSuffix "_unencrypted" name) value);
 
       # check if key has env associated with it
@@ -43,13 +43,13 @@ in
               "${key}='${config.sops.placeholder."backup/${name}/env/${key}"}'"
           ) env
         );
-        
-        # grab all populated entries for the services.backup option
-        backups = filter (service: service.backup.paths != [ ]) (attrValues config.internal.services);
 
-        # map it all into 1 list
-        paths = unique (concatMap (service: service.backup.paths) backups); 
-        exclude = unique (concatMap (service: service.backup.exclude) backups);
+      # grab all populated entries for the services.backup option
+      backups = filter (service: service.backup.paths != [ ]) (attrValues config.internal.services);
+
+      # map it all into 1 list
+      paths = unique (concatMap (service: service.backup.paths) backups);
+      exclude = unique (concatMap (service: service.backup.exclude) backups);
     in
     {
       config = {
@@ -60,7 +60,7 @@ in
             message = "backup: targets configured but no service declares backup.paths";
           }
         ];
-      
+
         sops.secrets = concatMapAttrs (
           name: data:
           {
@@ -106,7 +106,7 @@ in
               RandomizedDelaySec = "20m";
               Persistent = true;
             };
-            
+
             # backupCleanupCommand = ''
             #   ${pkgs.coreutils}/bin/cat > ${dir}/restic-${name}.prom.tmp <<EOF
             #   # HELP restic_last_success_timestamp_seconds When this target last completed.

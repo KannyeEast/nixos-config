@@ -29,7 +29,7 @@ in
         console.useXkbConfig = true;
         services.xserver.xkb = {
           inherit (locale.xkb)
-            layout 
+            layout
             variant
             ;
         };

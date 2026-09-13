@@ -20,10 +20,10 @@ in
     let
       hosts = import ../../lib/validHosts.nix;
       home = config.home.homeDirectory;
-      
+
       # drop the trailing comment of ssh keys; allowed_signers wants principal keytype base64
       strip = key: concatStringsSep " " (take 2 (splitString " " key));
-      
+
       # every user key of each host, plus each member in the cluster
       keys = unique (
         map strip (

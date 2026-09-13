@@ -35,7 +35,7 @@
             home = {
               username = user.name;
               homeDirectory = config.users.users.${user.name}.home;
-              
+
               stateVersion = system.version;
             };
           };

@@ -9,48 +9,48 @@
             mode = "0700";
           }
         ];
-        
+
         # free port 53 for the dns to use
         services.resolved.settings.Resolve.DNSStubListener = false;
-        
+
         services.adguardhome = {
           enable = true;
-          
+
           host = "127.0.0.1";
           port = 3000;
-          
+
           # nix own the adguardhome.yaml; no changes allowed through the webui
           mutableSettings = false;
-          
+
           settings = {
             # empty users disable adguards authenticator
             users = [ ];
-            
+
             dns = {
               bind_hosts = [ "0.0.0.0" ];
               port = 53;
-              
+
               upstream_dns = [
                 "https://security.cloudflare-dns.com/dns-query"
                 "https://dns.quad9.net/dns-query"
                 "[/ts.net/]100.100.100.100"
               ];
-              
+
               bootstrap_dns = [ "1.1.1.1" ];
-              
+
               cache_size = 33554432; # 32 megabytes
               cache_ttl_min = 300;
               cache_ttl_max = 1800;
               cache_optimistic = true;
             };
-            
+
             filtering = {
               protection_enabled = true;
               filtering_enabled = true;
             };
-            
+
             filters_update_interval = 24;
-            filters = [ 
+            filters = [
               {
                 enabled = true;
                 id = 1;
@@ -78,12 +78,12 @@
             ];
           };
         };
-        
+
         networking.firewall.interfaces.${config.services.tailscale.interfaceName} = {
           allowedTCPPorts = [ 53 ];
-          allowedUDPPorts = [ 53 ];          
+          allowedUDPPorts = [ 53 ];
         };
-        
+
         internal.services.dns = {
           route.port = 3000;
           notify = [ "adguardhome.service" ];

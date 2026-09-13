@@ -40,10 +40,7 @@ in
             let
               path = "${prefix}/${name}";
             in
-            if isAttrs value then
-              flattenPaths path value
-            else
-              [ path ]
+            if isAttrs value then flattenPaths path value else [ path ]
           ) attrs
         );
 
@@ -54,7 +51,9 @@ in
       # TO: "WIFI_CAFE_WIFI_SECURITY_PSK"
       pathToEnv =
         string:
-        toUpper (stringAsChars (char: if builtins.match "[A-Za-z0-9]" char != null then char else "_") string);
+        toUpper (
+          stringAsChars (char: if builtins.match "[A-Za-z0-9]" char != null then char else "_") string
+        );
     in
     {
       # https://networkmanager.dev/docs/api/latest/nm-settings-keyfile.html
@@ -65,10 +64,8 @@ in
         }
 
         (mkIf (wifiSecrets != { }) {
-          # one secret per top leaf 
-          sops.secrets = listToAttrs (
-            map (path: nameValuePair path { }) wifiPaths
-          );
+          # one secret per top leaf
+          sops.secrets = listToAttrs (map (path: nameValuePair path { }) wifiPaths);
 
           # creates a single .env file networkmanager read at profile-apply time
           # WIFI_CAFE_WIFI_SECURITY_PSK = "${sops.placeholder."wifi/cafe/wifi-security/psk"}"

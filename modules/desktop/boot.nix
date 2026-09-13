@@ -32,7 +32,7 @@ in
       grubDir = hostConfigDir + "/grub";
       plymouthDir = hostConfigDir + "/plymouth";
 
-      # the active theme is named by file and not named in nix 
+      # the active theme is named by file and not named in nix
       plymouthName =
         if builtins.pathExists (plymouthDir + "/theme") then
           removeSuffix "\n" (builtins.readFile (plymouthDir + "/theme"))
@@ -44,7 +44,7 @@ in
       hasPlymouth = builtins.pathExists (plymouthDir + "/${plymouthName}");
       hasGrubTheme = builtins.pathExists (grubDir + "/theme.txt");
 
-      # Implements [a63681]; removes duplicate tools  
+      # Implements [a63681]; removes duplicate tools
       # https://sourceforge.net/u/l0sermcl0ser/refind/ci/a63681fca1e5135e619dc3127c29810d87e5e487/
       refindOverride = pkgs.refind.overrideAttrs (old: {
         postPatch = (old.postPatch or "") + ''
@@ -93,7 +93,7 @@ in
       config = mkMerge [
         {
           internal.system.dualBoot.enable = hasRefind;
-          
+
           boot = {
             loader.timeout = 5;
             consoleLogLevel = 0;
@@ -105,7 +105,7 @@ in
               "rd.udev.log_level=3"
               "systemd.show_status=auto"
             ];
-            
+
             loader.grub = {
               enable = true;
               device = "nodev";
@@ -144,7 +144,7 @@ in
             refindOverride
             pkgs.efibootmgr
           ];
-          
+
           boot.loader.grub = {
             extraFiles = getFiles refindDir "EFI/refind" // {
               "EFI/refind/refind_x64.efi" = "${refindOverride}/share/refind/refind_x64.efi";

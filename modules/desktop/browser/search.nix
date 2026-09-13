@@ -123,7 +123,7 @@
               icon = colorIcon;
               definedAliases = [ "@hex" ];
             };
-            
+
             "Rgb" = {
               urls = [
                 {

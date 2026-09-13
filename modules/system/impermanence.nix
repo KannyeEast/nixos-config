@@ -17,10 +17,10 @@ in
       inherit (config.internal)
         system
         ;
-      
+
       home = config.users.users.${user.name}.home;
       persist = system.impermanence.root;
-      
+
       # grab what disko is naming the disk
       rootDevice = config.fileSystems."/".device;
     in
@@ -66,7 +66,7 @@ in
         fileSystems.${persist}.neededForBoot = true;
 
         boot.initrd.systemd.enable = true;
-        boot.initrd.systemd.initrdBin = [ 
+        boot.initrd.systemd.initrdBin = [
           pkgs.btrfs-progs
           pkgs.coreutils
           pkgs.findutils
@@ -81,7 +81,7 @@ in
           script = ''
             mkdir -p /btrfs_tmp
             mount -o subvol=/ ${rootDevice} /btrfs_tmp
-            
+
             # keep root for 30 days before fully deleting them
             if [[ -e /btrfs_tmp/root ]]; then
               mkdir -p /btrfs_tmp/old_roots
@@ -96,7 +96,7 @@ in
               done
               btrfs subvolume delete "$1"
             }
-            
+
             for i in $(find /btrfs_tmp/old_roots/ -mindepth 1 -maxdepth 1 -mtime +30); do
               delete_subvolume_recursively "$i"
             done

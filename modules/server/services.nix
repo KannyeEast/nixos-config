@@ -2,29 +2,29 @@
 let
   inherit (lib)
     literalExpression
-    mapAttrsToList 
+    mapAttrsToList
     mkOption
     types
     ;
 in
 {
   flake.modules.nixos.server =
-    { config, ...}:
+    { config, ... }:
     {
       options = {
         internal.services = mkOption {
           default = { };
-    
+
           description = ''
             What a service offers the rest of this host. Declared by the `server` class,
             because a descriptor describes serving and only a server serves.
-    
+
             A producer sets its slice unconditionally and never asks who is listening.
             A module that also runs on a desktop must emit this under
             `optionalAttrs (host.class == "server")` — `mkIf` will not do, because the
             option does not exist there at all.
           '';
-    
+
           example = literalExpression ''
             {
               jellyfin = {
@@ -36,7 +36,7 @@ in
               };
             }
           '';
-    
+
           type = types.attrsOf (
             types.submodule (
               { name, ... }:
@@ -60,12 +60,21 @@ in
                             default = name;
                           };
                           expose = mkOption {
-                            type = types.enum [ "private" "tunnel" "relay" ];
+                            type = types.enum [
+                              "private"
+                              "tunnel"
+                              "relay"
+                            ];
                             default = "private";
                             description = "How this service should be exposed";
                           };
                           access = mkOption {
-                            type = types.enum [ "open" "1fa" "2fa" "blocked" ];
+                            type = types.enum [
+                              "open"
+                              "1fa"
+                              "2fa"
+                              "blocked"
+                            ];
                             default = "1fa";
                             description = "Mapped to the auth provider's vocabulary by auth.nix.";
                           };
@@ -78,7 +87,7 @@ in
                             type = types.listOf types.str;
                             default = [ "admin" ];
                           };
-    
+
                           extraConfig = mkOption {
                             type = types.lines;
                             default = "";
@@ -87,7 +96,7 @@ in
                       }
                     );
                   };
-    
+
                   metrics = mkOption {
                     default = null;
                     description = "Read by the observer";
@@ -109,7 +118,7 @@ in
                       }
                     );
                   };
-  
+
                   volumes = mkOption {
                     type = types.listOf types.str;
                     default = [ ];
@@ -118,7 +127,7 @@ in
                       Per service rather than per host, so the error names the service.
                     '';
                   };
-    
+
                   backup = {
                     paths = mkOption {
                       type = types.listOf types.str;
@@ -131,20 +140,20 @@ in
                       description = "Subpaths excluded from included paths; cache, thumbnails, etc.";
                     };
                   };
-    
+
                   notify = mkOption {
                     type = types.listOf types.str;
                     default = [ ];
                     description = "Units that should send a notification on failure";
                   };
-    
+
                 };
               }
             )
           );
         };
       };
-      
+
       config = {
         assertions = mapAttrsToList (name: service: {
           assertion =

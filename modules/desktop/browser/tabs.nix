@@ -137,7 +137,7 @@ in
           position = 153;
           workspace = spaces."Development".id;
         };
-        
+
         # ── entertainment ────────
         "F1 Stream" = {
           id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";

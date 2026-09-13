@@ -4,17 +4,18 @@
 let
   dir = ../hosts;
   entries = builtins.readDir dir;
-  
-  # checks if directory found under <dir>/ is valid host entry; a host is valid when a host.json file is found 
+
+  # checks if directory found under <dir>/ is valid host entry; a host is valid when a host.json file is found
   isHost = name: entries.${name} == "directory" && builtins.pathExists (dir + "/${name}/host.json");
-  
-  required = [ 
+
+  required = [
     "system"
     "class"
   ];
-  
+
   # reads the found host.json file and checks its contents against the required attributes
-  read = name:
+  read =
+    name:
     let
       data = builtins.fromJSON (builtins.readFile (dir + "/${name}/host.json"));
       missing = builtins.filter (key: !((data.host or { }) ? ${key})) required;
@@ -22,7 +23,9 @@ let
     if missing == [ ] then
       data
     else
-      throw "hosts/${name}/host.json: missing ${builtins.concatStringsSep ", " (map (key: "host.${key}") missing)}";
+      throw "hosts/${name}/host.json: missing ${
+        builtins.concatStringsSep ", " (map (key: "host.${key}") missing)
+      }";
 in
 builtins.listToAttrs (
   map (name: {

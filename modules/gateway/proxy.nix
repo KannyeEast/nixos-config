@@ -17,9 +17,9 @@ in
     }:
     let
       domain = cluster.domain or (throw "gateway: cluster.json defines no domain");
-      
+
       routed = filterAttrs (_: service: service.route != null) config.internal.services;
-      
+
       # some services offer their own authentication; can also be left open deliberately for public access
       guarded = service: !service.route.hasAuth && service.route.access != "open";
 
@@ -60,10 +60,10 @@ in
 
         services.caddy = {
           enable = true;
-          
+
           # certifications come from acme, and not from caddy
           globalConfig = "auto_https disable_certs";
-          
+
           virtualHosts = {
             "*.${domain}".extraConfig = ''
               ${tls}

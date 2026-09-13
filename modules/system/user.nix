@@ -20,8 +20,8 @@ in
     }:
     let
       home = "/home/${user.name}";
-      
-      # members naming this host in their ssh.to; cluster decides who can reach who  
+
+      # members naming this host in their ssh.to; cluster decides who can reach who
       inbound = filterAttrs (_: member: elem host.name (member.ssh.to or [ ])) (cluster.members or { });
 
       # the members own key or the user key from host.json if the member doesnt provide one
@@ -35,8 +35,8 @@ in
       config = {
         # a server requires an outside connection
         assertions = optional (host.class == "server") {
-            assertion = keys != [ ];
-            message = "${host.name}: no ssh keys authorised. Check members.*.ssh.to in cluster.json";
+          assertion = keys != [ ];
+          message = "${host.name}: no ssh keys authorised. Check members.*.ssh.to in cluster.json";
         };
 
         # decrypt user password early to be available at login; password will be in the nix/store so it needs to be hashed
@@ -56,7 +56,7 @@ in
           isNormalUser = true;
           uid = 1000;
           inherit home;
-          
+
           extraGroups = [
             "wheel" # sudo/root privileges
             "networkmanager" # network configuration

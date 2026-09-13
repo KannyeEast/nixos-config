@@ -66,7 +66,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
-    
+
     # Server
     ## Infrastructure and network diagrams
     nix-topology = {
@@ -74,7 +74,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-parts.follows = "flake-parts";
     };
-    
+
     #
     # Addons
     #
@@ -97,10 +97,8 @@
     inputs:
     let
       hostData = import ./lib/validHosts.nix;
-      
-      systems = inputs.nixpkgs.lib.unique (
-        map (data: data.host.system) (builtins.attrValues hostData)
-      );
+
+      systems = inputs.nixpkgs.lib.unique (map (data: data.host.system) (builtins.attrValues hostData));
     in
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
@@ -108,22 +106,23 @@
         (inputs.import-tree ./modules)
       ]
       ++ map (import ./lib/mkHost.nix) (builtins.attrNames hostData);
-      
+
       # perSystem outputs (devShell, formatter) exist for every architecture there is a host of
       # derived from hosts/<host>/host.json -> host.system
       inherit systems;
-      
-      perSystem = { pkgs, ... }:
-      {
-        formatter = pkgs.nixfmt;
-        
-        devShells.default = pkgs.mkShell {
-          packages = [
-            pkgs.deadnix
-            pkgs.just
-            pkgs.nixfmt
-          ];
+
+      perSystem =
+        { pkgs, ... }:
+        {
+          formatter = pkgs.nixfmt;
+
+          devShells.default = pkgs.mkShell {
+            packages = [
+              pkgs.deadnix
+              pkgs.just
+              pkgs.nixfmt
+            ];
+          };
         };
-      };
     };
 }
