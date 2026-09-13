@@ -5,7 +5,7 @@ let
     ;
 in
 {
-  flake.modules.homeManager.browserTabs =
+  flake.modules.homeManager.desktop =
     { host, ... }:
     let
       paletteFile = ../../../hosts/${host.name}/home/.config/system/zen.json;

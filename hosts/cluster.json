@@ -1,0 +1,79 @@
+{
+  "domain": "vexelvault.com",
+  
+  "volumes": {
+    "media": {
+      "host": "node1",
+      "path": "/server/media"
+    },
+    "vault": {
+      "host": "node1", 
+      "path": "/server/vault"
+    }
+  },
+  
+  "members": {
+    "node1": {
+      "addons": [
+        "gateway"
+      ], 
+      "ssh": {
+        "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@node1"
+      }, 
+      "syncthing": {
+        "id": "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD", 
+        "address": "tcp://100.76.224.84:22000", 
+        "to": {
+          "laptop": [
+            "vault"
+          ], 
+          "phone": [
+            "vault"
+          ]
+        }
+      }
+    }, 
+    "laptop": {
+      "ssh": {
+        "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Tn9tQVyJwyxfN8Dmpam4x+wfA0AT0dsKVuRajcTRl gldn@laptop", 
+        "to": [
+          "node1"
+        ]
+      }, 
+      "syncthing": {
+        "id": "LUONFTT-XQX3M4I-KYRMFEO-M3JKM46-TO5MIJR-4HBPLYS-VGKILLG-3THF2Q4", 
+        "address": "tcp://100.80.64.3:22000", 
+        "to": {
+          "node1": [
+            "vault"
+          ], 
+          "phone": [
+            "vault"
+          ]
+        }
+      }
+    }, 
+    "win11": {
+      "ssh": {
+        "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMX+dMqj751lL/srdcHX9HXGxb4uNUpMRzDri+zUfNzk gldn@win11", 
+        "to": [
+          "laptop", 
+          "node1"
+        ]
+      }
+    }, 
+    "phone": {
+      "syncthing": {
+        "id": "FEHJ4VH-KTUCWO7-FLWTHY4-KNLHYMZ-ABVK3EP-RRD54NG-6PSKTPB-SWIWSQW", 
+        "to": {
+          "laptop": [
+            "vault"
+          ], 
+          "node1": [
+            "vault"
+          ]
+        }
+      }
+    }
+  }
+}

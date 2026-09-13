@@ -1,74 +1,72 @@
 { lib, ... }:
 let
   inherit (lib)
+    attrValues
+    concatMap
     concatMapAttrs
     concatStringsSep
+    filter
     filterAttrs
     hasPrefix
     hasSuffix
     mapAttrs
     mapAttrs'
     mapAttrsToList
-    mkOption
     nameValuePair
     optionalAttrs
     removeSuffix
-    types
+    unique
     ;
 in
 {
-  flake.modules.nixos.backup =
+  flake.modules.nixos.server =
     { config, pkgs, ... }:
     let
-      inherit (config.internal)
-        server
-        ;
-
+      # same principle as networking.nix; read and store plain key values 
       targets = (builtins.fromJSON (builtins.readFile config.sops.defaultSopsFile)).backup or { };
 
+      # sops-nix can also leave values unencrypted with this suffix; useful when values need to be read at eval 
       rmSuffix = mapAttrs' (name: value: nameValuePair (removeSuffix "_unencrypted" name) value);
 
+      # check if key has env associated with it
       envOf = data: data.env or { };
-      secretEnv = filterAttrs (k: _: !hasSuffix "_unencrypted" k);
+      secretEnv = filterAttrs (key: _: !hasSuffix "_unencrypted" key);
 
       mkEnv =
         name: env:
         concatStringsSep "\n" (
           mapAttrsToList (
-            k: value:
-            if hasSuffix "_unencrypted" k then
-              "${removeSuffix "_unencrypted" k}='${value}'"
+            key: value:
+            if hasSuffix "_unencrypted" key then
+              "${removeSuffix "_unencrypted" key}='${value}'"
             else
-              "${k}='${config.sops.placeholder."backup/${name}/env/${k}"}'"
+              "${key}='${config.sops.placeholder."backup/${name}/env/${key}"}'"
           ) env
         );
+        
+        # grab all populated entries for the services.backup option
+        backups = filter (service: service.backup.paths != [ ]) (attrValues config.internal.services);
+
+        # map it all into 1 list
+        paths = unique (concatMap (service: service.backup.paths) backups); 
+        exclude = unique (concatMap (service: service.backup.exclude) backups);
     in
     {
-      options = {
-        internal.server.backup = {
-          paths = mkOption {
-            type = types.listOf types.str;
-            default = [ ];
-            internal = true;
-            description = "Paths included in every backup target";
-          };
-          exclude = mkOption {
-            type = types.listOf types.str;
-            default = [ ];
-            internal = true;
-            description = "Paths excluded from every backup target";
-          };
-        };
-      };
-
       config = {
+        # a server requires an outside connection
+        assertions = [
+          {
+            assertion = targets == { } || paths != [ ];
+            message = "backup: targets configured but no service declares backup.paths";
+          }
+        ];
+      
         sops.secrets = concatMapAttrs (
           name: data:
           {
             "backup/${name}/password" = { };
           }
-          // optionalAttrs (data ? healthcheck) { "backup/${name}/healthcheck" = { }; }
-          // concatMapAttrs (k: _: { "backup/${name}/env/${k}" = { }; }) (secretEnv (envOf data))
+          // concatMapAttrs (key: _: { "backup/${name}/env/${key}" = { }; }) (secretEnv (envOf data))
         ) targets;
 
         sops.templates = mapAttrs' (
@@ -78,16 +76,6 @@ in
         internal.system.impermanence.directories = [
           "/root/.cache/restic"
         ];
-
-        internal.server.backup = {
-          paths = [
-            "/persist"
-          ];
-          exclude = [
-            "/persist/home/*/.cache"
-            "/persist/var/cache"
-          ];
-        };
 
         environment.systemPackages = [
           pkgs.restic
@@ -104,8 +92,8 @@ in
             repository = target.repository;
             passwordFile = config.sops.secrets."backup/${name}/password".path;
 
-            paths = server.backup.paths;
-            exclude = server.backup.exclude;
+            inherit paths;
+            inherit exclude;
             pruneOpts = [
               "--keep-daily 7"
               "--keep-weekly 5"
@@ -118,18 +106,21 @@ in
               RandomizedDelaySec = "20m";
               Persistent = true;
             };
+            
+            # backupCleanupCommand = ''
+            #   ${pkgs.coreutils}/bin/cat > ${dir}/restic-${name}.prom.tmp <<EOF
+            #   # HELP restic_last_success_timestamp_seconds When this target last completed.
+            #   # TYPE restic_last_success_timestamp_seconds gauge
+            #   restic_last_success_timestamp_seconds{target="${name}"} $(${pkgs.coreutils}/bin/date +%s)
+            #   EOF
+            #   ${pkgs.coreutils}/bin/mv ${dir}/restic-${name}.prom.tmp ${dir}/restic-${name}.prom
+            # '';
           }
           // optionalAttrs (hasPrefix "/" target.repository) {
             checkOpts = [ "--read-data-subset=5%" ];
           }
           // optionalAttrs (envOf data != { }) {
             environmentFile = config.sops.templates."restic-${name}.env".path;
-          }
-          // optionalAttrs (data ? healthcheck) {
-            backupCleanupCommand = ''
-              ${pkgs.curl}/bin/curl -fsS -m 10 --retry 3 \
-              "$(cat ${config.sops.secrets."backup/${name}/healthcheck".path})"
-            '';
           }
         ) targets;
 

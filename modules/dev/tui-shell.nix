@@ -1,6 +1,6 @@
 { inputs, ... }:
 {
-  flake.modules.nixos.tuiShell =
+  flake.modules.nixos.dev =
     { pkgs, user, ... }:
     {
       config = {

@@ -6,8 +6,8 @@ let
     ;
 in
 {
-  flake.modules.nixos.debug =
-    { config, ... }:
+  flake.modules.nixos.dev =
+    { config, host, ... }:
     let
       inherit (config.internal.system)
         debug
@@ -20,7 +20,7 @@ in
         };
       };
 
-      config = mkIf debug.enable {
+      config = mkIf (host.class == "desktop" && debug.enable) {
         # nixos-rebuild build-vm-with-bootloader --flake .#default
         # nixos-rebuild build-vm --flake .#default
         # Test user for debugging

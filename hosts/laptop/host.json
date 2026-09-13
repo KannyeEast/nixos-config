@@ -1,10 +1,9 @@
 {
   "flake": "/home/gldn/nixos-config",
   "host": {
-    "name": "laptop",
     "system": "x86_64-linux",
-    "roles": [
-      "desktop",
+    "class": "desktop",
+    "addons": [
       "dev"
     ],
     "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHF7e6y27ESkc906EClcSPVd4cg/eDwcqZqgFbdzaIK root@laptop"
@@ -34,8 +33,5 @@
       "layout": "us",
       "variant": ""
     }
-  },
-  "network": {
-    "domain": "vexelvault.com"
   }
 }

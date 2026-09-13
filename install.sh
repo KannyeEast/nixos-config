@@ -16,7 +16,7 @@ HOSTNAME=""
 HOST_KEY=""
 SYSTEM=""
 EXISTING=false
-ROLE=""
+CLASS=""
 ADDONS=()
 USERNAME=""
 USEREMAIL=""
@@ -473,8 +473,8 @@ loadHost() {
   fi
 
   SYSTEM="$(jq -r '.host.system // empty' "$file")"
-  ROLE="$(jq -r '.host.roles[0] // empty' "$file")"
-  mapfile -t ADDONS < <(jq -r '.host.roles[1:][]?' "$file")
+  CLASS="$(jq -r '.host.class // empty' "$file")"
+  mapfile -t ADDONS < <(jq -r '.host.addons[]?' "$file")
   USERNAME="$(jq -r '.user.name // empty' "$file")"
   USEREMAIL="$(jq -r '.user.email // empty' "$file")"
   mapfile -t GPU < <(jq -r '.hardware.gpu[]?' "$file")
@@ -503,18 +503,18 @@ loadHost() {
 
 # == roles ==
 gatherRole() {
-  formHeader "Role"
-  ROLE=""
+  formHeader "Role(s)"
+  CLASS=""
   ADDONS=()
 
   local -a roles=("desktop" "server")
   local -a desktopAddons=("${DESKTOP_ADDONS[@]}")
   local -a serverAddons=("${SERVER_ADDONS[@]}")
 
-  formChoose ROLE "Primary role" "${roles[@]}"
+  formChoose CLASS "Primary purpose" "${roles[@]}"
 
   # desktop -> desktopAddons, server -> serverAddons
-  local ref="${ROLE}Addons"
+  local ref="${CLASS}Addons"
   declare -p "$ref" &>/dev/null || return 0
 
   local -n addons="$ref"
@@ -724,7 +724,8 @@ gatherSummary() {
 
     row Hostname "$HOSTNAME"
     row System "$SYSTEM"
-    row Role "$ROLE ${ADDONS[*]}"
+    row Class "$CLASS"
+    row Addons "${ADDONS[*]}"
     row User "$USERNAME <$USEREMAIL>"
     row GPU "${GPU[*]:-skip}"
     row "HW modules" "${HW_MODULES[*]:-skip}"
@@ -733,8 +734,8 @@ gatherSummary() {
     row Keyboard "$KEYBOARD / ${KEYBOARD_VARIANT:-skip}"
     row Disk "$DISK"
     row Swap "$SWAP"
-    [[ $ROLE == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
-    [[ $ROLE == "desktop" ]] && { row Dotfiles "${DOTFILES:-skip}"; }
+    [[ $CLASS == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
+    [[ $CLASS == "desktop" ]] && { row Dotfiles "${DOTFILES:-skip}"; }
   } | gum style --border="rounded" --padding="1 2" --margin="1 0"
 }
 
@@ -754,10 +755,10 @@ gather() {
       gatherDisk
       gatherSwap
       
-      [[ $ROLE == "desktop" ]] && gatherDotfiles
+      [[ $CLASS == "desktop" ]] && gatherDotfiles
     fi
 
-    [[ $ROLE == "desktop" ]] && gatherWifi
+    [[ $CLASS == "desktop" ]] && gatherWifi
     gatherSummary
 
     if formConfirm "Is this correct?" "y"; then
@@ -865,7 +866,7 @@ writeSecrets() {
 writeHostJson() {
   local rolesJson gpuJson modulesJson
 
-  rolesJson=$(printf '%s\n' "$ROLE" "${ADDONS[@]}" | jq -R . | jq -sc 'map(select(. != ""))')
+  addonsJson=$(printf '%s\n' "${ADDONS[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
   gpuJson=$(printf '%s\n' "${GPU[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
   modulesJson=$(printf '%s\n' "${HW_MODULES[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
 
@@ -873,7 +874,8 @@ writeHostJson() {
     --arg flake "/home/${USERNAME}/nixos-config" \
     --arg hostName "$HOSTNAME" \
     --arg system "$SYSTEM" \
-    --argjson roles "$rolesJson" \
+    --arg class "$CLASS" \
+    --argjson addons "$addonsJson" \
     --arg hostKey "$HOST_KEY" \
     --arg userName "$USERNAME" \
     --arg userEmail "$USEREMAIL" \
@@ -890,7 +892,8 @@ writeHostJson() {
       host: { 
         name: $hostName, 
         system: $system, 
-        roles: $roles, 
+        class: $class,
+        addons: $addons,
         publicKey: $hostKey
       },
       user: { 
@@ -904,13 +907,13 @@ writeHostJson() {
       },
       locale:{ 
         timeZone: $tz, 
-        default: $localeDefault, 
-        extra: $localeExtra, 
-        xkb = { 
+        default: $locale, 
+        extra: $extra, 
+        xkb: { 
           layout: $layout, 
           variant: $variant
         }
-      },
+      }
     }' > "$FLAKE/hosts/$HOSTNAME/host.json"
 
   git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/host.json"

@@ -16,6 +16,8 @@ alias b := boot
 alias c := check
 alias es := edit-secrets
 alias sops := edit-secrets
+alias aw := add-wifi
+alias promote := add-wifi
 
 # ── overview ────────
 # This list
@@ -78,6 +80,24 @@ inputs:
 edit-secrets:
   @sops --decrypt hosts/{{host}}/secrets.json > /dev/null
   sops hosts/{{host}}/secrets.json
+  
+# Promote a NetworkManager connection to this hosts encrypted secrets
+[group("secrets")]
+add-wifi CONN HOSTNAME=host:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  
+  file="hosts/{{HOSTNAME}}/secrets.json"
+  ssid=$(nmcli -g 802-11-wireless.ssid connection show "{{CONN}}")
+  psk=$(nmcli -s -g 802-11-wireless-security.psk connection show "{{CONN}}")
+  
+  [ -n "$psk" ] || { echo "no psk on {{CONN}}"; exit 1; }
+
+  sops set "$file" '["wifi"]["{{CONN}}"]["wifi"]["ssid"]' "\"$ssid\""
+  sops set "$file" '["wifi"]["{{CONN}}"]["wifi-security"]["key-mgmt"]' '"wpa-psk"'
+  sops set "$file" '["wifi"]["{{CONN}}"]["wifi-security"]["psk"]' "\"$psk\""
+
+  echo "{{CONN}} added to $file"
 
 # ── maintenance ────────
 # Garbage-collect old generations
@@ -183,8 +203,8 @@ sync:
 
   git switch main 2>/dev/null || git switch -c main origin/main
 
-  prev=$(git log -1 --format=%B --grep='^Sync from dev' \
-      | sed -n 's/^Sync from dev (\([0-9a-f]\{7,40\}\))$/\1/p')
+  prev=$(git log -1 --format=%B --grep='^sync: (' \
+      | sed -n 's/^sync: (\([0-9a-f]\{7,40\}\))$/\1/p')
 
   # Wipe everything from the working tree
   git rm -rq --ignore-unmatch .

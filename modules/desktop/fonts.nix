@@ -1,5 +1,5 @@
 {
-  flake.modules.nixos.fonts =
+  flake.modules.nixos.desktop =
     { pkgs, ... }:
     {
       config = {

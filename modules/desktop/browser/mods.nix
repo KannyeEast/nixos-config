@@ -1,5 +1,5 @@
 {
-  flake.modules.homeManager.browserMods = {
+  flake.modules.homeManager.desktop = {
     config = {
       programs.zen-browser.profiles.default = {
         mods = [

@@ -13,43 +13,48 @@ let
     ;
 in
 {
-  flake.modules.nixos.syncthing =
+  flake.modules.nixos.system =
     {
       config,
       host,
       user,
-      syncthing,
+      cluster,
       ...
     }:
     let
-      allHosts = attrNames syncthing;
-      self = syncthing.${host.name} or { };
+      home = config.users.users.${user.name}.home;
+      group = config.users.users.${user.name}.group;
+      
+      members = cluster.members or { };
+      all = attrNames members;
+      
+      self = members.${host.name}.syncthing or { };
       sharedWith = self.to or { };
 
-      # folders this host declares, plus folders other hosts declare toward it
+      # folders this host offers, plus folders others offer to it
       outgoing = concatMap (folderList: folderList) (attrValues sharedWith);
-      incoming = concatMap (peerName: syncthing.${peerName}.to.${host.name} or [ ]) allHosts;
+      incoming = concatMap (peer: members.${peer}.syncthing.to.${host.name} or [ ]) all;
       folders = unique (outgoing ++ incoming);
 
       # every host that shares a given folder with this one, in either direction
-      membersOf =
+      sharedBy =
         folder:
         filter (
-          peerName:
-          elem folder (sharedWith.${peerName} or [ ])
-          || elem folder (syncthing.${peerName}.to.${host.name} or [ ])
-        ) allHosts;
+          peer:
+          elem folder (sharedWith.${peer} or [ ])
+          || elem folder (members.${peer}.syncthing.to.${host.name} or [ ])
+        ) all;
 
-      peers = unique (concatMap membersOf folders);
-      root = "/home/${user.name}";
+      peers = unique (concatMap sharedBy folders);
     in
     {
-      config = mkIf (folders != [ ]) {
+      config = mkIf (folders != [ ]) (
+        {
         internal.system.impermanence.directories = [
           {
             directory = "/var/lib/syncthing";
             user = user.name;
-            group = config.users.users.${user.name}.group;
+            inherit group;
             mode = "0700";
           }
         ];
@@ -57,19 +62,20 @@ in
         services.syncthing = {
           enable = true;
           user = user.name;
-          group = config.users.users.${user.name}.group;
+          inherit group;
           configDir = "/var/lib/syncthing";
-          dataDir = root;
+          dataDir = home;
 
           openDefaultPorts = false;
           overrideDevices = true;
           overrideFolders = true;
 
           settings = {
-            # Caddy proxies with a different host header
+            # caddy proxies with a different host header
             gui.insecureSkipHostcheck = true;
             gui.address = "127.0.0.1:8384";
 
+            # locked behind tailnet; discoverability and relays are turned off
             options = {
               globalAnnounceEnabled = false;
               localAnnounceEnabled = false;
@@ -79,18 +85,16 @@ in
             };
 
             devices = genAttrs peers (
-              peerName:
-              {
-                id = syncthing.${peerName}.id;
-              }
-              // optionalAttrs (syncthing.${peerName} ? address) {
-                addresses = [ syncthing.${peerName}.address ];
+              peer:
+              { id = members.${peer}.syncthing.id; }
+              // optionalAttrs (members.${peer}.syncthing ? address) {
+                addresses = [ members.${peer}.syncthing.address ];
               }
             );
 
             folders = genAttrs folders (folder: {
-              path = "${root}/${folder}";
-              devices = membersOf folder;
+              path = "${home}/${folder}";
+              devices = sharedBy folder;
               versioning = {
                 type = "simple";
                 params.keep = "10";
@@ -100,13 +104,17 @@ in
         };
 
         networking.firewall.interfaces.${config.services.tailscale.interfaceName} = {
-          allowedTCPPorts = [
-            22000
-          ];
-          allowedUDPPorts = [
-            22000
-          ];
+          allowedTCPPorts = [ 22000 ];
+          allowedUDPPorts = [ 22000 ];
         };
-      };
+        
+        }
+        // optionalAttrs (host.class == "server") {
+          internal.services.sync = {
+            route.port = 8384;
+            notify = [ "syncthing.service" ];
+          };
+        }
+      );
     };
 }

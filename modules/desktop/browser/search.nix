@@ -1,5 +1,5 @@
 {
-  flake.modules.homeManager.browserSearch =
+  flake.modules.homeManager.desktop =
     { pkgs, ... }:
     let
       nixIcon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";

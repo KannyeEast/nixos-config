@@ -6,7 +6,7 @@ let
     ;
 in
 {
-  flake.modules.homeManager.dotfiles =
+  flake.modules.homeManager.desktop =
     {
       config,
       host,

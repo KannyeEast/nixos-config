@@ -1,5 +1,5 @@
 {
-  flake.modules.homeManager.passwords = {
+  flake.modules.homeManager.desktop = {
     config = {
       xdg.autostart.enable = true;
       programs.keepassxc = {

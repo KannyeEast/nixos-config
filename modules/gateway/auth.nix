@@ -1,18 +1,33 @@
 { lib, ... }:
 let
   inherit (lib)
-    optionalAttrs
+    filterAttrs
     mapAttrsToList
     ;
 in
 {
-  flake.modules.nixos.auth =
+  flake.modules.nixos.gateway =
     {
       config,
       user,
-      network,
+      cluster,
       ...
     }:
+    let
+      domain = cluster.domain or (throw "gateway: cluster.json defines no domain");
+          
+      policyOf = {
+        "open" = "bypass";
+        "1fa" = "one_factor";
+        "2fa" = "two_factor";
+        "blocked" = "deny";
+      };
+      
+      # same principle as proxy.nix; only services that arent defined as publicly available will be authenticated
+      guarded = filterAttrs (
+        _: service: service.route != null && !service.route.hasAuth && service.route.access != "open"
+      ) config.internal.services;
+    in
     {
       config = {
         sops.secrets = {
@@ -42,6 +57,8 @@ in
           }
         ];
 
+        # this is a one-time script to initialize users.yml with the hosts admin-hash; 
+        # afterwards its managed by authelia and changes to the admin-hash wont apply
         systemd.services.authelia-main-seed = {
           description = "Seed the Authelia user database";
           wantedBy = [ "multi-user.target" ];
@@ -79,9 +96,9 @@ in
 
             session.cookies = [
               {
-                domain = network.domain;
-                authelia_url = "https://auth.${network.domain}";
-                default_redirection_url = "https://${network.domain}";
+                inherit domain;
+                authelia_url = "https://auth.${domain}";
+                default_redirection_url = "https://${domain}";
               }
             ];
 
@@ -90,23 +107,21 @@ in
 
             access_control = {
               default_policy = "deny";
-              rules = mapAttrsToList (
-                _name: service:
-                {
-                  domain = "${service.subdomain}.${network.domain}";
-                  policy = service.policy;
-                }
-                // optionalAttrs (service.policy != "bypass" && service.groups != [ ]) {
-                  subject = map (group: [ "group:${group}" ]) service.groups;
-                }
-              ) config.internal.server.proxy.services;
+              rules = mapAttrsToList (_: service: {
+                domain = "${service.route.subdomain}.${domain}";
+                policy = policyOf.${service.route.access};
+                subject = map (group: [ "group:${group}" ]) service.route.groups;
+              }) guarded;
             };
           };
         };
 
-        internal.server.proxy.services.auth = {
-          port = 9091;
-          policy = "bypass";
+        internal.services.auth = {
+          route = {
+            port = 9091;
+            access = "open";
+            hasAuth = true;
+          };
         };
       };
     };

@@ -13,7 +13,7 @@ in
       ];
       content.subvolumes = {
         "media" = {
-          mountpoint = "/srv/media";
+          mountpoint = "/server/media";
           mountOptions = [
             "compress=zstd:1"
             "noatime"
@@ -22,7 +22,7 @@ in
           ];
         };
         "data" = {
-          mountpoint = "/srv/data";
+          mountpoint = "/server/data";
           mountOptions = [
             "compress=zstd:1"
             "noatime"
@@ -45,10 +45,11 @@ in
             "scratch"
           ];
           subvolumes."scratch" = {
-            mountpoint = "/srv/scratch";
+            mountpoint = "/server/scratch";
             mountOptions = [
               "noatime"
               "nofail"
+              "x-systemd.device-timeout=10s"
             ];
           };
         };
@@ -65,17 +66,18 @@ in
             "vault"
           ];
           subvolumes."vault" = {
-            mountpoint = "/srv/vault";
+            mountpoint = "/server/vault";
             mountOptions = [
               "noatime"
               "nofail"
+              "x-systemd.device-timeout=10s"
             ];
           };
         };
       };
     };
 
-  # any surviving member answers to the label, unlike the head device
-  fileSystems."/srv/media".device = lib.mkForce "/dev/disk/by-label/tank";
-  fileSystems."/srv/data".device = lib.mkForce "/dev/disk/by-label/tank";
+  # if the head disk dies surviving members can still mount through the label
+  fileSystems."/server/media".device = lib.mkForce "/dev/disk/by-label/tank";
+  fileSystems."/server/data".device = lib.mkForce "/dev/disk/by-label/tank";
 }

@@ -1,18 +1,17 @@
 {
   "flake": "/home/gldn/nixos-config",
   "host": {
-    "name": "server",
     "system": "x86_64-linux",
-    "roles": [
-      "server",
+    "class": "server",
+    "addons": [
       "dev"
     ],
-    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKmRNw4AIN8rtkAG8DIgL5stwAiQYAjGru1rNfJAAQGr root@server"
+    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKmRNw4AIN8rtkAG8DIgL5stwAiQYAjGru1rNfJAAQGr root@node1"
   },
   "user": {
     "name": "gldn",
     "email": "johngit@vexelvault.com",
-    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@server"
+    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@node1"
   },
   "hardware": {
     "gpu": [],
@@ -30,8 +29,5 @@
       "layout": "us",
       "variant": ""
     }
-  },
-  "network": {
-    "domain": "vexelvault.com"
   }
 }

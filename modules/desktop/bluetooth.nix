@@ -1,5 +1,5 @@
 {
-  flake.modules.nixos.bluetooth =
+  flake.modules.nixos.desktop =
     { pkgs, ... }:
     {
       config = {

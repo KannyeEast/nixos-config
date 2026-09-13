@@ -4,24 +4,33 @@ let
     concatStringsSep
     filter
     mapAttrsToList
+    splitString
+    take
     unique
     ;
-
-  hosts = import ../../lib/listHosts.nix lib;
 in
 {
-  flake.modules.homeManager.git =
+  flake.modules.homeManager.system =
     {
       config,
       user,
-      ssh,
+      cluster,
       ...
     }:
     let
+      hosts = import ../../lib/validHosts.nix;
+      home = config.home.homeDirectory;
+      
+      # drop the trailing comment of ssh keys; allowed_signers wants principal keytype base64
+      strip = key: concatStringsSep " " (take 2 (splitString " " key));
+      
+      # every user key of each host, plus each member in the cluster
       keys = unique (
-        filter (key: key != "") (
-          mapAttrsToList (_: host: host.user.publicKey or "") hosts
-          ++ mapAttrsToList (_: value: value.key or "") ssh
+        map strip (
+          filter (key: key != "") (
+            mapAttrsToList (_: host: host.user.publicKey or "") hosts
+            ++ mapAttrsToList (_: member: member.ssh.key or "") (cluster.members or { })
+          )
         )
       );
     in
@@ -39,14 +48,14 @@ in
           signing = {
             format = "ssh";
             signByDefault = true;
-            key = "${config.home.homeDirectory}/.ssh/id_ed25519";
+            key = "${home}/.ssh/id_ed25519";
           };
 
           settings = {
             user.name = user.name;
             user.email = user.email;
             init.defaultBranch = "main";
-            gpg.ssh.allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
+            gpg.ssh.allowedSignersFile = "${home}/.ssh/allowed_signers";
 
             # Show both sides plus the common ancestor in conflicts
             merge.conflictStyle = "zdiff3";

@@ -1,7 +1,12 @@
-{ inputs, ... }:
+{ inputs, lib, ... }:
+let
+  inherit (lib)
+    mkIf
+    ;
+in
 {
-  flake.modules.nixos.ide =
-    { pkgs, ... }:
+  flake.modules.nixos.dev =
+    { host, pkgs, ... }:
     let
       inherit (inputs.nix-jetbrains-plugins.lib)
         buildIdeWithPlugins
@@ -14,11 +19,11 @@
       ];
     in
     {
-      config = {
+      config = mkIf (host.class == "desktop") {
         environment.systemPackages = [
           pkgs.jetbrains-toolbox
-          # (buildIdeWithPlugins pkgs "clion" ([ ] ++ sharedPlugins))
-          # (buildIdeWithPlugins pkgs "pycharm" ([ ] ++ sharedPlugins))
+          # (buildIdeWithPlugins pkgs "clion" sharedPlugins)
+          # (buildIdeWithPlugins pkgs "pycharm" sharedPlugins)
           (buildIdeWithPlugins pkgs "rider" (
             [
               "nix-idea"
@@ -26,7 +31,7 @@
             ]
             ++ sharedPlugins
           ))
-          (buildIdeWithPlugins pkgs "webstorm" ([ ] ++ sharedPlugins))
+          (buildIdeWithPlugins pkgs "webstorm" sharedPlugins)
         ];
       };
     };

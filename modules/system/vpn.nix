@@ -6,9 +6,10 @@ let
     ;
 in
 {
-  flake.modules.nixos.tailscale =
+  flake.modules.nixos.system =
     { config, ... }:
     let
+      # tailscale only enables itself if the host has a valid authkey in secrets.json 
       secrets = builtins.fromJSON (builtins.readFile config.sops.defaultSopsFile);
       hasAuthKey = secrets ? "tailscale-authkey";
     in
@@ -20,6 +21,7 @@ in
         })
 
         {
+          # persist the authkey
           internal.system.impermanence.directories = [
             {
               directory = "/var/lib/tailscale";
@@ -27,10 +29,13 @@ in
             }
           ];
           
+          # magicdns resolves through resolved
           services.resolved.enable = true;
 
           services.tailscale = {
             enable = true;
+            
+            # open UDP ports to allow direct connections  
             openFirewall = true;
           };
         }

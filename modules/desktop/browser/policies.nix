@@ -5,8 +5,8 @@ let
     ;
 in
 {
-  flake.modules.homeManager.browserPolicies =
-    { network, ... }:
+  flake.modules.homeManager.desktop =
+    { cluster, ... }:
     let
       mkPolicy = builtins.mapAttrs (_: Value: { inherit Value; });
     in
@@ -37,8 +37,8 @@ in
             "https://tailscale.com"
             "https://healthchecks.io"
           ]
-          ++ optionals ((network.domain or "") != "") [
-            "https://${network.domain}"
+          ++ optionals ((cluster.domain or "") != "") [
+            "https://${cluster.domain}"
           ];
           Behavior = "reject-tracker-and-partition-foreign";
           BehaviorPrivateBrowsing = "reject-tracker-and-partition-foreign";

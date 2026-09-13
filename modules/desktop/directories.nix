@@ -1,5 +1,5 @@
 {
-  flake.modules.homeManager.directories =
+  flake.modules.homeManager.desktop =
     { config, ... }:
     let
       inherit (config)

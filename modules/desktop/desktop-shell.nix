@@ -1,6 +1,6 @@
 { inputs, ... }:
 {
-  flake.modules.nixos.desktopShell =
+  flake.modules.nixos.desktop =
     { pkgs, ... }:
     {
       config = {
