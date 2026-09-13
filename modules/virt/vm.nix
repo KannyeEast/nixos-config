@@ -28,40 +28,49 @@ in
             mode = "0755";
           }
         ];
-      
-        virtualisation.libvirtd = {
-          enable = true;
-
-          # manual start of vm only
-          onBoot = "ignore";
-          onShutdown = "suspend";
-
-          qemu = {
-            package = pkgs.qemu_kvm;
-            runAsRoot = false;
-
-            # enable tpm emulation; required by win11
-            swtpm.enable = true;
-            ovmf = {
-              enable = true;
-              packages = [ pkgs.OVMFFull.fd ];
-            };
-          };
-        };
         
-        virtualisation.spiceUSBRedirection.enable = true;
-
-        programs.virt-manager.enable = true;
         users.users.${user.name}.extraGroups = [
           "libvirtd"
           "kvm" 
         ];
-
+        
         environment.systemPackages = [
-          pkgs.virtiofsd # host side of the shared folder
-          pkgs.virtio-win # guest drivers: disk, network, virtiofs
-          pkgs.win-spice # guest clipboard and display resize
+          pkgs.virt-manager
+          pkgs.virt-viewer
+          pkgs.virtio-win
+          pkgs.spice
+          pkgs.spice-gtk
+          pkgs.spice-protocol
+          pkgs.win-spice
+          pkgs.adwaita-icon-theme
         ];
+        
+        programs.dconf.enable = true;
+
+        # virsh uses qemu:///session by default; without this every virsh command reports an empty list
+        environment.sessionVariables.LIBVIRT_DEFAULT_URI = "qemu:///system";
+        
+        virtualisation = {
+          libvirtd = {
+            enable = true;
+  
+            # manual start of vm only
+            onBoot = "ignore";
+            onShutdown = "suspend";
+  
+            qemu = {
+              package = pkgs.qemu_kvm;
+              runAsRoot = false;
+  
+              # enable tpm emulation; required by win11
+              swtpm.enable = true;
+            };
+          };
+          
+          spiceUSBRedirection.enable = true;
+        };
+        
+        services.spice-vdagentd.enable = true;
 
         systemd.tmpfiles.rules = [
           # create <images> dir with mode 0755 and user:group as root:root
