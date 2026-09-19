@@ -14,10 +14,10 @@ in
       ...
     }:
     let
-      # guest disks; the path libvirt hands to qemu
+      # ISO image location
       images = "/var/lib/libvirt/images";
 
-      # host side of the virtiofs share; work done in the vm is saved to this directory
+      # path to shared folder for the host
       shared = "${config.users.users.${user.name}.home}/vm";
     in
     {
