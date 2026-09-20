@@ -30,7 +30,7 @@ KEYBOARD=""
 KEYBOARD_VARIANT=""
 
 # == roles ==
-DESKTOP_ADDONS=("dev")
+DESKTOP_ADDONS=("dev" "virt")
 SERVER_ADDONS=("dev")
 
 # == secrets ==
@@ -43,6 +43,10 @@ FLAKE=""
 TEMP_DIR=""
 DISK=""
 SWAP=""
+ESP=512
+RESERVE=0
+ROOT_SIZE="100%"
+REFIND=false
 HIBERNATE=false
 DOTFILES_METHOD=""
 DOTFILES=""
@@ -655,6 +659,47 @@ gatherSwap() {
   done
 }
 
+# == layout ==
+gatherLayout() {
+  formHeader "Layout"
+  RESERVE=0
+  ESP=512
+  ROOT_SIZE="100%"
+  REFIND=false
+
+  local totalMiB rootMiB reserveDefault minRootMiB=30720 slackMiB=16
+
+  totalMiB=$(( $(probe lsblk -bdno SIZE "$DISK" | head -n1) / 1048576 ))
+  logInfo "Disk is $(( totalMiB / 1024 ))GiB"
+
+  formConfirm "Reserve space for another OS?" "n" || return 0
+
+  # both bootloaders live in the same ESP
+  ESP=1024
+  reserveDefault=$(( totalMiB / 1024 / 2 ))
+
+  while :; do
+    formInputOpt RESERVE "Space to leave unallocated, in GiB" "$reserveDefault"
+    RESERVE="${RESERVE:-$reserveDefault}"
+
+    if ! [[ $RESERVE =~ ^[0-9]+$ ]] || (( RESERVE < 1 )); then
+      logWarn "Enter a whole number of GiB"
+      continue
+    fi
+
+    rootMiB=$(( totalMiB - ESP - SWAP * 1024 - RESERVE * 1024 - slackMiB ))
+
+    if (( rootMiB < minRootMiB )); then
+      logWarn "That leaves $(( rootMiB / 1024 ))GiB for the system, and at least $(( minRootMiB / 1024 ))GiB is needed"
+      continue
+    fi
+    break
+  done
+
+  ROOT_SIZE="${rootMiB}M"
+  REFIND=true
+}
+
 # == network (optional) ==
 # Lives in secrets.json, so it is asked for on every install
 gatherWifi() {
@@ -719,6 +764,11 @@ gatherSummary() {
 
   row() { printf '    %-14s %s\n' "$1" "$2"; }
 
+  local reserved="none"
+  if (( RESERVE > 0 )); then
+    reserved="${RESERVE}GiB";
+  fi
+
   {
     [[ $REMOTE == true ]] && { row Target "$TARGET"; echo; }
 
@@ -734,6 +784,7 @@ gatherSummary() {
     row Keyboard "$KEYBOARD / ${KEYBOARD_VARIANT:-skip}"
     row Disk "$DISK"
     row Swap "$SWAP"
+    [[ $CLASS == "desktop" ]] && { row Reserved "$reserved"; }
     [[ $CLASS == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
     [[ $CLASS == "desktop" ]] && { row Dotfiles "${DOTFILES:-skip}"; }
   } | gum style --border="rounded" --padding="1 2" --margin="1 0"
@@ -755,7 +806,10 @@ gather() {
       gatherDisk
       gatherSwap
       
-      [[ $CLASS == "desktop" ]] && gatherDotfiles
+      if [[ $CLASS == "desktop" ]]; then
+        gatherLayout
+        gatherDotfiles
+      fi
     fi
 
     [[ $CLASS == "desktop" ]] && gatherWifi
@@ -872,7 +926,6 @@ writeHostJson() {
 
   jq -n \
     --arg flake "/home/${USERNAME}/nixos-config" \
-    --arg hostName "$HOSTNAME" \
     --arg system "$SYSTEM" \
     --arg class "$CLASS" \
     --argjson addons "$addonsJson" \
@@ -890,7 +943,6 @@ writeHostJson() {
     '{
       flake: $flake,
       host: { 
-        name: $hostName, 
         system: $system, 
         class: $class,
         addons: $addons,
@@ -957,7 +1009,7 @@ in
       partitions = {
         ESP = {
           type = "EF00";
-          size = "512M";
+          size = "${ESP}M";
           content = {
             type = "filesystem";
             format = "vfat";
@@ -978,7 +1030,7 @@ in
           };
         };
         root = {
-          size = "100%";
+          size = "$ROOT_SIZE";
           content = {
             type = "btrfs";
             subvolumes = {
@@ -1032,6 +1084,26 @@ writeDotfiles() {
   logInfo "Copied dotfiles"
 }
 
+# ── seed rEFInd ────────
+writeRefind() {
+  local src="$FLAKE/assets"
+  local dest="$FLAKE/hosts/$HOSTNAME/home/.config/system/refind"
+
+  if [[ ! -f "$src/refind.conf" ]]; then
+    logWarn "$src/refind.conf is missing, skipping rEFInd"
+    return 0
+  fi
+  
+  if [[ ! -f "$dest/refind.conf" ]]; then
+    mkdir -p "$dest"
+    run cp -rT "$src/refind.conf" "$dest"
+    
+    git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/home/.config/system/refind"
+  fi
+
+  logInfo "Seeded rEFInd config"
+}
+
 # ── writing all host relevant files ────────
 write() {
   formHeader "Writing files";
@@ -1047,6 +1119,11 @@ write() {
     writeHardwareNix
     writeDiskoNix
     writeDotfiles
+
+    # after the dotfiles, so a copied home cannot clobber it
+    if [[ $REFIND == true ]]; then
+      writeRefind;
+    fi
   fi
 
   if formConfirm "Validate files?" "y"; then

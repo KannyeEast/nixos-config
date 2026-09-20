@@ -19,15 +19,16 @@ in
       ...
     }:
     let
+      hosts = import ../../lib/validHosts.nix;
       home = "/home/${user.name}";
-
+      
       # members naming this host in their ssh.to; cluster decides who can reach who
       inbound = filterAttrs (_: member: elem host.name (member.ssh.to or [ ])) (cluster.members or { });
 
       # the members own key or the user key from host.json if the member doesnt provide one
       keys = unique (
         filter (key: key != "") (
-          mapAttrsToList (name: member: member.ssh.key or (host.${name}.user.publicKey or "")) inbound
+          mapAttrsToList (name: member: member.ssh.key or (hosts.${name}.user.publicKey or "")) inbound
         )
       );
     in

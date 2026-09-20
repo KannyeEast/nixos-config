@@ -146,17 +146,22 @@ in
           ];
 
           boot.loader.grub = {
-            extraFiles = getFiles refindDir "EFI/refind" // {
-              "EFI/refind/refind_x64.efi" = "${refindOverride}/share/refind/refind_x64.efi";
-              "EFI/tools/shellx64.efi" = "${pkgs.edk2-uefi-shell}/shell.efi";
-              "EFI/tools/memtest86.efi" = "${pkgs.memtest86-efi}/BOOTX64.efi";
-            };
+            extraFiles = 
+              getFiles refindDir "EFI/refind" 
+              // {
+                "EFI/refind/refind_x64.efi" = "${refindOverride}/share/refind/refind_x64.efi";
+                "EFI/tools/shellx64.efi" = "${pkgs.edk2-uefi-shell}/shell.efi";
+                "EFI/tools/memtest86.efi" = "${pkgs.memtest86-efi}/BOOTX64.efi";
+              };
             extraInstallCommands = "${pkgs.writeShellScript "install-refind" (
               efibootmgrSetup config.boot.loader.efi.efiSysMountPoint
               + ''
                 part_dev=$(findmnt -no SOURCE --target "$esp")
                 disk=/dev/$(lsblk -no PKNAME "$part_dev")
                 part=$(cat "/sys/class/block/$(basename "$part_dev")/partition")
+                
+                mkdir -p "$esp/EFI/refind/icons"
+                cp -r ${refindOverride}/share/refind/icons/. "$esp/EFI/refind/icons/"
               ''
               + removeStaleRefind
               + ''

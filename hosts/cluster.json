@@ -16,10 +16,7 @@
     "node1": {
       "addons": [
         "gateway"
-      ], 
-      "ssh": {
-        "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@node1"
-      }, 
+      ],
       "syncthing": {
         "id": "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD", 
         "address": "tcp://100.76.224.84:22000", 
@@ -35,7 +32,6 @@
     }, 
     "laptop": {
       "ssh": {
-        "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Tn9tQVyJwyxfN8Dmpam4x+wfA0AT0dsKVuRajcTRl gldn@laptop", 
         "to": [
           "node1"
         ]
