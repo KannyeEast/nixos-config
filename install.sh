@@ -16,6 +16,8 @@ HOSTNAME=""
 HOST_KEY=""
 SYSTEM=""
 EXISTING=false
+PRESERVE=false
+REDO_DISK=false
 CLASS=""
 ADDONS=()
 USERNAME=""
@@ -137,7 +139,12 @@ trap trapError ERR
 
 cleanup() {
   if [[ -n ${TEMP_DIR:-} ]]; then
-    [[ -d $TEMP_DIR ]] && rm -rf "$TEMP_DIR"
+    if mountpoint -q "$TEMP_DIR/oldroot" 2>/dev/null; then
+      sudo umount "$TEMP_DIR/oldroot" || true
+    fi
+    if [[ -d $TEMP_DIR ]]; then
+      rm -rf "$TEMP_DIR"
+    fi
   fi
   printf '\033[?25h' >&2
 }
@@ -501,7 +508,7 @@ loadHost() {
   DOTFILES=""
   DOTFILES_METHOD=""
 
-  logInfo "Reusing hosts/$HOSTNAME. Keys and secrets are regenerated"
+  logInfo "Reusing hosts/$HOSTNAME"
   return 0
 }
 
@@ -525,6 +532,50 @@ gatherRole() {
   (( ${#addons[@]} > 0 )) && formMulti ADDONS "Add-ons" "${addons[@]}"
 
   return 0
+}
+
+# == identity ==
+preserveIdentity() {
+  formHeader "Identity"
+  PRESERVE=false
+
+  if [[ $REMOTE == true ]]; then
+    logWarn "A remote install cannot read the old disk, keys are regenerated"
+    return 0
+  fi
+
+  local part mnt="$TEMP_DIR/oldroot" key
+
+  if [[ -z $DISK ]]; then
+    logWarn "No disk read from disko.nix, keys are regenerated"
+    return 0
+  fi
+
+  part="$(lsblk -lno PATH,FSTYPE "$DISK" | awk '$2 == "btrfs" { print $1; exit }')"
+
+  if [[ -z $part ]]; then
+    logWarn "No btrfs partition on $DISK, keys are regenerated"
+    return 0
+  fi
+
+  mkdir -p "$mnt"
+
+  if ! sudo mount -o subvol=/persist,ro "$part" "$mnt" 2>/dev/null; then
+    logWarn "Could not mount $part, keys are regenerated"
+    return 0
+  fi
+
+  key="$mnt/etc/ssh/ssh_host_ed25519_key"
+
+  if [[ -f $key ]]; then
+    sudo install -m 600 -o "$(id -u)" -g "$(id -g)" "$key" "$TEMP_DIR/ssh_host_ed25519_key"
+    PRESERVE=true
+    logInfo "Recovered the existing host key"
+  else
+    logWarn "No host key at $key, keys are regenerated"
+  fi
+
+  sudo umount "$mnt"
 }
 
 # == user ==
@@ -783,6 +834,9 @@ gatherSummary() {
     row Locale "$LOCALE / $LOCALE_EXTRA"
     row Keyboard "$KEYBOARD / ${KEYBOARD_VARIANT:-skip}"
     row Disk "$DISK"
+    if [[ $EXISTING == true ]]; then
+      row Identity "$([[ $PRESERVE == true ]] && echo preserved || echo regenerated)"
+    fi
     row Swap "$SWAP"
     [[ $CLASS == "desktop" ]] && { row Reserved "$reserved"; }
     [[ $CLASS == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
@@ -798,6 +852,18 @@ gather() {
 
     if [[ $EXISTING == true ]]; then
       loadHost || { logWarn "Pick a different hostname"; continue; }
+      preserveIdentity
+
+      # a layout change is the only reason for a host reinstall
+      REDO_DISK=false
+      if formConfirm "Redo the disk layout?" "n"; then
+        REDO_DISK=true
+        gatherDisk
+        gatherSwap
+        if [[ $CLASS == "desktop" ]]; then
+          gatherLayout
+        fi
+      fi
     else
       gatherRole
       gatherUser
@@ -812,7 +878,10 @@ gather() {
       fi
     fi
 
-    [[ $CLASS == "desktop" ]] && gatherWifi
+    if [[ $CLASS == "desktop" && $PRESERVE == false ]]; then
+      gatherWifi
+    fi
+
     gatherSummary
 
     if formConfirm "Is this correct?" "y"; then
@@ -828,14 +897,35 @@ generate() {
   formHeader "Generating keys";
 
   # == host keys ==
-  run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$TEMP_DIR/ssh_host_ed25519_key"
+  if [[ $PRESERVE == true ]]; then
+    # ssh-keygen -y prints no comment, so it is put back to keep host.json stable
+    printf '%s root@%s\n' "$(ssh-keygen -y -f "$TEMP_DIR/ssh_host_ed25519_key")" "$HOSTNAME" \
+      > "$TEMP_DIR/ssh_host_ed25519_key.pub"
+  else
+    run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$TEMP_DIR/ssh_host_ed25519_key"
+  fi
+
   HOST_AGE="$(ssh-to-age < "$TEMP_DIR/ssh_host_ed25519_key.pub")"
   HOST_KEY="$(< "$TEMP_DIR/ssh_host_ed25519_key.pub")"
 
   logInfo "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
 
   # == user keys ==
-  run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$TEMP_DIR/id_ed25519"
+  if [[ $PRESERVE == true ]]; then
+    # the user key is itself a secret, so the host key is enough to recover it.
+    SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$TEMP_DIR/ssh_host_ed25519_key")"
+    export SOPS_AGE_KEY
+
+    sops --decrypt "$FLAKE/hosts/$HOSTNAME/secrets.json" \
+      | jq -j '.["user-privatekey"]' > "$TEMP_DIR/id_ed25519"
+    chmod 600 "$TEMP_DIR/id_ed25519"
+
+    printf '%s %s@%s\n' "$(ssh-keygen -y -f "$TEMP_DIR/id_ed25519")" "$USERNAME" "$HOSTNAME" \
+      > "$TEMP_DIR/id_ed25519.pub"
+  else
+    run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$TEMP_DIR/id_ed25519"
+  fi
+
   USER_AGE="$(ssh-to-age < "$TEMP_DIR/id_ed25519.pub")"
   USER_KEY="$(< "$TEMP_DIR/id_ed25519.pub")"
 
@@ -896,6 +986,11 @@ EOF
 
 # ── write secrets.json ────────
 writeSecrets() {
+  if [[ $PRESERVE == true ]]; then
+    logInfo "Keeping the existing secrets"
+    return 0
+  fi
+
   local hash pwd
 
   formPassword pwd "Login password for '$USERNAME'"
@@ -1114,16 +1209,19 @@ write() {
   writeSecrets
   writeHostJson
 
-  # An existing host keeps its hardware.nix, disko.nix, and dotfiles
+  # an existing host keeps its hardware.nix and dotfiles
   if [[ $EXISTING != true ]]; then
     writeHardwareNix
-    writeDiskoNix
     writeDotfiles
+  fi
 
-    # after the dotfiles, so a copied home cannot clobber it
-    if [[ $REFIND == true ]]; then
-      writeRefind;
-    fi
+  if [[ $EXISTING != true || $REDO_DISK == true ]]; then
+    writeDiskoNix
+  fi
+
+  # after the dotfiles, so a copied home cannot clobber it
+  if [[ $REFIND == true ]]; then
+    writeRefind
   fi
 
   if formConfirm "Validate files?" "y"; then
