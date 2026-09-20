@@ -7,12 +7,12 @@
       "dev",
       "virt"
     ],
-    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHF7e6y27ESkc906EClcSPVd4cg/eDwcqZqgFbdzaIK root@laptop"
+    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHF7e6y27ESkc906EClcSPVd4cg/eDwcqZqgFbdzaIK root@laptop root@laptop"
   },
   "user": {
     "name": "gldn",
     "email": "johngit@vexelvault.com",
-    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Tn9tQVyJwyxfN8Dmpam4x+wfA0AT0dsKVuRajcTRl gldn@laptop"
+    "publicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Tn9tQVyJwyxfN8Dmpam4x+wfA0AT0dsKVuRajcTRl gldn@laptop gldn@laptop"
   },
   "hardware": {
     "gpu": [

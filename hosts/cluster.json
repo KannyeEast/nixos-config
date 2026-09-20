@@ -37,7 +37,7 @@
         ]
       }, 
       "syncthing": {
-        "id": "LUONFTT-XQX3M4I-KYRMFEO-M3JKM46-TO5MIJR-4HBPLYS-VGKILLG-3THF2Q4", 
+        "id": "RRV6LVU-UV73C6W-HFGVYPJ-PHEK56P-HROXHBN-C3D4IZZ-VVVLQCD-VQSE5A7", 
         "address": "tcp://100.80.64.3:22000", 
         "to": {
           "node1": [

@@ -10,14 +10,14 @@ in
       partitions = {
         ESP = {
           type = "EF00";
-          size = "512M";
+          size = "1024M";
           content = {
             type = "filesystem";
             format = "vfat";
             mountpoint = "/boot";
             mountOptions = [
               "defaults"
-              "umask=0077"
+              "umask=0077" 
             ];
           };
         };
@@ -31,33 +31,21 @@ in
           };
         };
         root = {
-          size = "100%";
+          size = "702314M";
           content = {
             type = "btrfs";
             subvolumes = {
               "/root" = {
                 mountpoint = "/";
-                mountOptions = [
-                  "compress=zstd"
-                  "noatime"
-                  "space_cache=v2"
-                ];
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
               };
               "/nix" = {
                 mountpoint = "/nix";
-                mountOptions = [
-                  "compress=zstd"
-                  "noatime"
-                  "space_cache=v2"
-                ];
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
               };
               "/persist" = {
                 mountpoint = "/persist";
-                mountOptions = [
-                  "compress=zstd"
-                  "noatime"
-                  "space_cache=v2"
-                ];
+                mountOptions = [ "compress=zstd" "noatime" "space_cache=v2" ];
               };
             };
           };
