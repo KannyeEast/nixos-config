@@ -1,5 +1,12 @@
+{ lib, ... }:
+let
+  inherit (lib)
+    optionals
+    ;
+in
 {
-  flake.modules.homeManager.browserPolicies =
+  flake.modules.homeManager.desktop =
+    { cluster, ... }:
     let
       mkPolicy = builtins.mapAttrs (_: Value: { inherit Value; });
     in
@@ -20,12 +27,18 @@
         Cookies = {
           Allow = [
             "file:///"
+            "https://simplelogin.io"
             "https://proton.me"
             "https://kagi.com"
-            "https://simplelogin.io"
             "https://github.com"
             "https://gitlab.com"
             "https://codeberg.org"
+            "https://cloudflare.com"
+            "https://tailscale.com"
+            "https://healthchecks.io"
+          ]
+          ++ optionals ((cluster.domain or "") != "") [
+            "https://${cluster.domain}"
           ];
           Behavior = "reject-tracker-and-partition-foreign";
           BehaviorPrivateBrowsing = "reject-tracker-and-partition-foreign";

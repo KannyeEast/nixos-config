@@ -4,19 +4,40 @@ let
     concatStringsSep
     filter
     mapAttrsToList
+    splitString
+    take
+    unique
     ;
 in
 {
-  flake.modules.homeManager.git =
-    { config, user, ... }:
+  flake.modules.homeManager.system =
+    {
+      config,
+      user,
+      cluster,
+      ...
+    }:
     let
-      hosts = import ../../lib/listHosts.nix lib;
-      knownUsers = filter (k: k != "") (mapAttrsToList (_: h: h.user.publicKey or "") hosts);
+      hosts = import ../../lib/validHosts.nix;
+      home = config.home.homeDirectory;
+
+      # drop the trailing comment of ssh keys; allowed_signers wants principal keytype base64
+      strip = key: concatStringsSep " " (take 2 (splitString " " key));
+
+      # every user key of each host, plus each member in the cluster
+      keys = unique (
+        map strip (
+          filter (key: key != "") (
+            mapAttrsToList (_: host: host.user.publicKey or "") hosts
+            ++ mapAttrsToList (_: member: member.ssh.key or "") (cluster.members or { })
+          )
+        )
+      );
     in
     {
       config = {
         home.file.".ssh/allowed_signers".text =
-          concatStringsSep "\n" (map (k: "${user.email} ${k}") knownUsers) + "\n";
+          concatStringsSep "\n" (map (key: "${user.email} ${key}") keys) + "\n";
 
         programs.delta.enable = true;
         programs.delta.enableGitIntegration = true;
@@ -27,14 +48,14 @@ in
           signing = {
             format = "ssh";
             signByDefault = true;
-            key = "${config.home.homeDirectory}/.ssh/id_ed25519";
+            key = "${home}/.ssh/id_ed25519";
           };
 
           settings = {
             user.name = user.name;
             user.email = user.email;
             init.defaultBranch = "main";
-            gpg.ssh.allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
+            gpg.ssh.allowedSignersFile = "${home}/.ssh/allowed_signers";
 
             # Show both sides plus the common ancestor in conflicts
             merge.conflictStyle = "zdiff3";

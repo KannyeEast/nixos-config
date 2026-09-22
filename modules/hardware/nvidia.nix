@@ -6,7 +6,7 @@ let
     ;
 in
 {
-  flake.modules.nixos.nvidia =
+  flake.modules.nixos.hardware =
     { config, ... }:
     let
       inherit (config.internal.system)
@@ -15,7 +15,7 @@ in
     in
     {
       options = {
-        internal.system.nvidia.enable = mkEnableOption "Nvidia" // {
+        internal.system.nvidia.enable = mkEnableOption "Nvidia GPU support" // {
           internal = true;
         };
       };

@@ -2,12 +2,17 @@
 let
   inherit (lib)
     genAttrs
+    optionalAttrs
+    optionalString
     ;
 in
 {
-  flake.modules.homeManager.browserTabs =
-    { host, ... }:
+  flake.modules.homeManager.desktop =
+    { host, cluster, ... }:
     let
+      domain = cluster.domain or "";
+      escapeRegex = builtins.replaceStrings [ "." ] [ "\\." ];
+
       paletteFile = ../../../hosts/${host.name}/home/.config/system/zen.json;
       palette =
         if builtins.pathExists paletteFile then
@@ -91,18 +96,36 @@ in
         };
         "FRITZ!Box" = {
           id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
-          url = "http://192.168.178.1/";
+          url = "http://192.168.178.1";
           position = 111;
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
         };
         "Cloudflare" = {
           id = "9fb4ee37-0150-4532-ad02-f981f102f16a";
-          url = "https://dash.cloudflare.com/";
+          url = "https://dash.cloudflare.com";
           position = 112;
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;
         };
+        "Tailscale" = {
+          id = "53bcb3ca-773e-4b5b-9974-16862c8c18b9";
+          url = "https://console.tailscale.com";
+          position = 113;
+          workspace = spaces."Development".id;
+          folderParentId = pins."Server".id;
+        };
+      }
+      // optionalAttrs (domain != "") {
+        "Website" = {
+          id = "07324e6b-5fd0-4c7e-8872-0e8bbc66660b";
+          url = "https://dns.${domain}";
+          position = 115;
+          workspace = spaces."Development".id;
+          folderParentId = pins."Server".id;
+        };
+      }
+      // {
 
         # Forges
         "Codeberg" = {
@@ -203,7 +226,9 @@ in
             "docs" = regexMatch "rust-lang|crates\\.io|docs\\.rs|developer\\.mozilla|devdocs|kernel\\.org|man7";
             "help" = regexMatch "stackoverflow|stackexchange|serverfault|superuser";
             "tools" = regexMatch "regex101|starship\\.rs|quickshell|just\\.systems";
-            "infra" = regexMatch "dash\\.cloudflare|192\\.168\\.|tailscale";
+            "infra" = regexMatch (
+              "dash\\.cloudflare|192\\.168\\.|tailscale" + optionalString (domain != "") "|${escapeRegex domain}"
+            );
           };
         };
 

@@ -1,5 +1,5 @@
 {
-  flake.modules.nixos.direnv =
+  flake.modules.nixos.dev =
     { flake, ... }:
     {
       config = {

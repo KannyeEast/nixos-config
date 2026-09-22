@@ -20,6 +20,14 @@ let
             "tool"
           ];
         }
+        {
+          name = "UUID Generator";
+          url = "https://www.uuidgenerator.net/";
+          tags = [
+            "shortcut"
+            "tool"
+          ];
+        }
       ];
     }
     {
@@ -87,7 +95,7 @@ in
   # user-chrome.nix sizes the urlbar from how many tiles there are
   flake.lib.browserShortcuts = shortcuts;
 
-  flake.modules.homeManager.browserBookmarks = {
+  flake.modules.homeManager.desktop = {
     config = {
       programs.zen-browser.profiles.default = {
         bookmarks.force = true;

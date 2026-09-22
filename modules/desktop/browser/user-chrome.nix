@@ -5,7 +5,7 @@ let
   urlbarWidth = lib.min 744 (lib.max 372 (tileWidth * (tileCount + 2)));
 in
 {
-  flake.modules.homeManager.browserUserChrome = {
+  flake.modules.homeManager.desktop = {
     config = {
       programs.zen-browser.profiles.default.userChrome = ''
         /* ── typography ──────── */

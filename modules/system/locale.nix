@@ -1,29 +1,37 @@
+{ lib, ... }:
+let
+  inherit (lib)
+    genAttrs
+    ;
+in
 {
-  flake.modules.nixos.locale =
+  flake.modules.nixos.system =
     { locale, ... }:
     {
       config = {
         time.timeZone = locale.timeZone;
 
         i18n.defaultLocale = locale.default;
-        i18n.extraLocaleSettings = {
-          LC_CTYPE = locale.extra;
-          LC_ADDRESS = locale.extra;
-          LC_MEASUREMENT = locale.extra;
-          LC_MESSAGES = locale.extra;
-          LC_MONETARY = locale.extra;
-          LC_NAME = locale.extra;
-          LC_NUMERIC = locale.extra;
-          LC_PAPER = locale.extra;
-          LC_TELEPHONE = locale.extra;
-          LC_TIME = locale.extra;
-          LC_COLLATE = locale.extra;
-        };
+        i18n.extraLocaleSettings = genAttrs [
+          "LC_CTYPE"
+          "LC_ADDRESS"
+          "LC_MEASUREMENT"
+          "LC_MESSAGES"
+          "LC_MONETARY"
+          "LC_NAME"
+          "LC_NUMERIC"
+          "LC_PAPER"
+          "LC_TELEPHONE"
+          "LC_TIME"
+          "LC_COLLATE"
+        ] (_: locale.extra);
 
         console.useXkbConfig = true;
-        services.xserver = {
-          xkb.layout = locale.xkb.layout;
-          xkb.variant = locale.xkb.variant;
+        services.xserver.xkb = {
+          inherit (locale.xkb)
+            layout
+            variant
+            ;
         };
       };
     };

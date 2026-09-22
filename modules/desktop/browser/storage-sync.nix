@@ -10,7 +10,7 @@ in
   # which is a single SQLite file with one JSON blob per extension.
   #
   # Values are merged over what is already there.
-  flake.modules.homeManager.browserStorageSync =
+  flake.modules.homeManager.desktop =
     { config, pkgs, ... }:
     let
       profile = "${config.home.homeDirectory}/.config/zen/default";

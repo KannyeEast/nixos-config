@@ -3,7 +3,7 @@
 
   inputs = {
     #
-    # Nix architecture
+    # Config architecture
     #
 
     ## Unstable packages
@@ -28,7 +28,7 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    ### Home-manager
+    ## Home-manager
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -40,10 +40,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    #
-    # Dendritic Pattern
-    #
-
     ## Flake modules
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
@@ -54,16 +50,8 @@
     import-tree.url = "github:denful/import-tree";
 
     #
-    # Profiles
+    # Classes
     #
-
-    # Server
-    ## Infrastructure and network diagrams
-    nix-topology = {
-      url = "github:oddlama/nix-topology";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-parts.follows = "flake-parts";
-    };
 
     # Desktop
     ## Shell
@@ -79,6 +67,18 @@
       inputs.home-manager.follows = "home-manager";
     };
 
+    # Server
+    ## Infrastructure and network diagrams
+    nix-topology = {
+      url = "github:oddlama/nix-topology";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
+    };
+
+    #
+    # Addons
+    #
+
     # Dev
     ## Jetbrains
     nix-jetbrains-plugins = {
@@ -91,19 +91,38 @@
       url = "github:edaywalid/undo";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    # @TODO: Custom packages
-    # >> https://github.com/pewdiepie-archdaemon/odysseus
   };
 
   outputs =
     inputs:
+    let
+      hostData = import ./lib/validHosts.nix;
+
+      systems = inputs.nixpkgs.lib.unique (map (data: data.host.system) (builtins.attrValues hostData));
+    in
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         inputs.flake-parts.flakeModules.modules
-        (inputs.import-tree [
-          ./modules
-        ])
-      ];
+        (inputs.import-tree ./modules)
+      ]
+      ++ map (import ./lib/mkHost.nix) (builtins.attrNames hostData);
+
+      # perSystem outputs (devShell, formatter) exist for every architecture there is a host of
+      # derived from hosts/<host>/host.json -> host.system
+      inherit systems;
+
+      perSystem =
+        { pkgs, ... }:
+        {
+          formatter = pkgs.nixfmt;
+
+          devShells.default = pkgs.mkShell {
+            packages = [
+              pkgs.deadnix
+              pkgs.just
+              pkgs.nixfmt
+            ];
+          };
+        };
     };
 }

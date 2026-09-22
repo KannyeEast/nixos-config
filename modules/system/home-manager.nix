@@ -1,14 +1,12 @@
 { inputs, ... }:
 {
-  flake.modules.nixos.homeManager =
+  flake.modules.nixos.system =
     {
       config,
       flake,
       host,
       user,
-      hardware,
-      locale,
-      network,
+      cluster,
       ...
     }:
     let
@@ -17,9 +15,7 @@
         ;
     in
     {
-      imports = [
-        inputs.home-manager.nixosModules.home-manager
-      ];
+      imports = [ inputs.home-manager.nixosModules.home-manager ];
 
       config = {
         home-manager = {
@@ -32,17 +28,14 @@
               flake
               host
               user
-              hardware
-              locale
-              network
+              cluster
               ;
           };
           users.${user.name} = {
             home = {
               username = user.name;
-              homeDirectory = "/home/${user.name}";
+              homeDirectory = config.users.users.${user.name}.home;
 
-              # Home-manager version
               stateVersion = system.version;
             };
           };

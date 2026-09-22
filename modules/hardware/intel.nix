@@ -6,7 +6,7 @@ let
     ;
 in
 {
-  flake.modules.nixos.intel =
+  flake.modules.nixos.hardware =
     { config, pkgs, ... }:
     let
       inherit (config.internal.system)
@@ -15,14 +15,14 @@ in
     in
     {
       options = {
-        internal.system.intel.enable = mkEnableOption "Intel" // {
+        internal.system.intel.enable = mkEnableOption "Intel GPU support" // {
           internal = true;
         };
       };
 
       config = mkIf intel.enable {
         hardware.graphics.extraPackages = [
-          # Required for modern Intel GPUs (Xe iGPU and ARC)
+          # modern intel GPUs (Xe iGPU and ARC)
           pkgs.intel-media-driver # VA-API (iHD) userspace
           pkgs.vpl-gpu-rt # oneVPL (QSV) runtime
         ];

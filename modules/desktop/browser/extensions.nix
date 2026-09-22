@@ -5,7 +5,7 @@ let
     ;
 in
 {
-  flake.modules.homeManager.browserExtensions =
+  flake.modules.homeManager.desktop =
     let
       mkExtensionEntry =
         {
@@ -26,20 +26,12 @@ in
       );
 
       extensions = {
-        "vpn@proton.ch" = {
-          id = "proton-vpn-firefox-extension";
-          pinned = true;
-        };
         "uBlock0@raymondhill.net" = {
           id = "ublock-origin";
           pinned = true;
         };
         "keepassxc-browser@keepassxc.org" = {
           id = "keepassxc-browser";
-          pinned = true;
-        };
-        "78272b6fa58f4a1abaac99321d503a20@proton.me" = {
-          id = "proton-pass";
           pinned = true;
         };
         "{d867162c-4c38-4c5f-aca4-db6a6592d7da}" = "youtube-tweaks"; # Redundant with custom extensions
@@ -49,7 +41,6 @@ in
         "firefox@tampermonkey.net" = "tampermonkey";
         "{b86e4813-687a-43e6-ab65-0bde4ab75758}" = "localcdn-fork-of-decentraleyes";
         "harper@writewithharper.com" = "private-grammar-checker-harper";
-        "{9076cefe-e6f8-4883-a480-9f968bd09249}" = "reddit-nsfw-unblocker";
         "gdpr@cavi.au.dk" = "consent-o-matic";
       };
     in

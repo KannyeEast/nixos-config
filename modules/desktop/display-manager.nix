@@ -6,7 +6,7 @@ let
     ;
 in
 {
-  flake.modules.nixos.displayManager =
+  flake.modules.nixos.desktop =
     { pkgs, host, ... }:
     let
       hostConfigDir = ../../hosts/${host.name}/home/.config/system;

@@ -1,8 +1,12 @@
 {
-  flake.modules.nixos.fonts =
+  flake.modules.nixos.desktop =
     { pkgs, ... }:
     {
       config = {
+        internal.system.impermanence.directories = [
+          "/var/cache/fontconfig"
+        ];
+
         fonts = {
           fontDir.enable = true;
           enableDefaultPackages = true;

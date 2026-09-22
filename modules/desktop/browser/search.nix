@@ -1,9 +1,8 @@
 {
-  flake.modules.homeManager.browserSearch =
+  flake.modules.homeManager.desktop =
     { pkgs, ... }:
     let
       nixIcon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
-      colorIcon = "https://htmlcolorcodes.com/favicon.ico";
     in
     {
       config = {
@@ -114,25 +113,13 @@
               definedAliases = [ "@ng" ];
             };
 
-            "Colors" = {
-              urls = [
-                {
-                  template = "https://htmlcolorcodes.com/color-picker/";
-                }
-              ];
-              icon = colorIcon;
-              definedAliases = [
-                "@hex"
-                "rgb"
-              ];
-            };
-
             "bing".metaData.hidden = true;
             "ddg".metaData.hidden = true;
             "ebay".metaData.hidden = true;
             "ecosia".metaData.hidden = true;
             "google".metaData.hidden = true;
             "perplexity".metaData.hidden = true;
+            "startpage".metaData.hidden = true;
             "wikipedia".metaData.hidden = true;
           };
         };

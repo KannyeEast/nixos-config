@@ -16,7 +16,9 @@ HOSTNAME=""
 HOST_KEY=""
 SYSTEM=""
 EXISTING=false
-ROLE=""
+PRESERVE=false
+REDO_DISK=false
+CLASS=""
 ADDONS=()
 USERNAME=""
 USEREMAIL=""
@@ -30,7 +32,7 @@ KEYBOARD=""
 KEYBOARD_VARIANT=""
 
 # == roles ==
-DESKTOP_ADDONS=("dev")
+DESKTOP_ADDONS=("dev" "virt")
 SERVER_ADDONS=("dev")
 
 # == secrets ==
@@ -43,6 +45,10 @@ FLAKE=""
 TEMP_DIR=""
 DISK=""
 SWAP=""
+ESP=512
+RESERVE=0
+ROOT_SIZE="100%"
+REFIND=false
 HIBERNATE=false
 DOTFILES_METHOD=""
 DOTFILES=""
@@ -133,7 +139,12 @@ trap trapError ERR
 
 cleanup() {
   if [[ -n ${TEMP_DIR:-} ]]; then
-    [[ -d $TEMP_DIR ]] && rm -rf "$TEMP_DIR"
+    if mountpoint -q "$TEMP_DIR/oldroot" 2>/dev/null; then
+      sudo umount "$TEMP_DIR/oldroot" || true
+    fi
+    if [[ -d $TEMP_DIR ]]; then
+      rm -rf "$TEMP_DIR"
+    fi
   fi
   printf '\033[?25h' >&2
 }
@@ -473,8 +484,8 @@ loadHost() {
   fi
 
   SYSTEM="$(jq -r '.host.system // empty' "$file")"
-  ROLE="$(jq -r '.host.roles[0] // empty' "$file")"
-  mapfile -t ADDONS < <(jq -r '.host.roles[1:][]?' "$file")
+  CLASS="$(jq -r '.host.class // empty' "$file")"
+  mapfile -t ADDONS < <(jq -r '.host.addons[]?' "$file")
   USERNAME="$(jq -r '.user.name // empty' "$file")"
   USEREMAIL="$(jq -r '.user.email // empty' "$file")"
   mapfile -t GPU < <(jq -r '.hardware.gpu[]?' "$file")
@@ -497,30 +508,74 @@ loadHost() {
   DOTFILES=""
   DOTFILES_METHOD=""
 
-  logInfo "Reusing hosts/$HOSTNAME. Keys and secrets are regenerated"
+  logInfo "Reusing hosts/$HOSTNAME"
   return 0
 }
 
 # == roles ==
 gatherRole() {
-  formHeader "Role"
-  ROLE=""
+  formHeader "Role(s)"
+  CLASS=""
   ADDONS=()
 
   local -a roles=("desktop" "server")
   local -a desktopAddons=("${DESKTOP_ADDONS[@]}")
   local -a serverAddons=("${SERVER_ADDONS[@]}")
 
-  formChoose ROLE "Primary role" "${roles[@]}"
+  formChoose CLASS "Primary purpose" "${roles[@]}"
 
   # desktop -> desktopAddons, server -> serverAddons
-  local ref="${ROLE}Addons"
+  local ref="${CLASS}Addons"
   declare -p "$ref" &>/dev/null || return 0
 
   local -n addons="$ref"
   (( ${#addons[@]} > 0 )) && formMulti ADDONS "Add-ons" "${addons[@]}"
 
   return 0
+}
+
+# == identity ==
+preserveIdentity() {
+  formHeader "Identity"
+  PRESERVE=false
+
+  if [[ $REMOTE == true ]]; then
+    logWarn "A remote install cannot read the old disk, keys are regenerated"
+    return 0
+  fi
+
+  local part mnt="$TEMP_DIR/oldroot" key
+
+  if [[ -z $DISK ]]; then
+    logWarn "No disk read from disko.nix, keys are regenerated"
+    return 0
+  fi
+
+  part="$(lsblk -lno PATH,FSTYPE "$DISK" | awk '$2 == "btrfs" { print $1; exit }')"
+
+  if [[ -z $part ]]; then
+    logWarn "No btrfs partition on $DISK, keys are regenerated"
+    return 0
+  fi
+
+  mkdir -p "$mnt"
+
+  if ! sudo mount -o subvol=/persist,ro "$part" "$mnt" 2>/dev/null; then
+    logWarn "Could not mount $part, keys are regenerated"
+    return 0
+  fi
+
+  key="$mnt/etc/ssh/ssh_host_ed25519_key"
+
+  if [[ -f $key ]]; then
+    sudo install -m 600 -o "$(id -u)" -g "$(id -g)" "$key" "$TEMP_DIR/ssh_host_ed25519_key"
+    PRESERVE=true
+    logInfo "Recovered the existing host key"
+  else
+    logWarn "No host key at $key, keys are regenerated"
+  fi
+
+  sudo umount "$mnt"
 }
 
 # == user ==
@@ -655,6 +710,47 @@ gatherSwap() {
   done
 }
 
+# == layout ==
+gatherLayout() {
+  formHeader "Layout"
+  RESERVE=0
+  ESP=512
+  ROOT_SIZE="100%"
+  REFIND=false
+
+  local totalMiB rootMiB reserveDefault minRootMiB=30720 slackMiB=16
+
+  totalMiB=$(( $(probe lsblk -bdno SIZE "$DISK" | head -n1) / 1048576 ))
+  logInfo "Disk is $(( totalMiB / 1024 ))GiB"
+
+  formConfirm "Reserve space for another OS?" "n" || return 0
+
+  # both bootloaders live in the same ESP
+  ESP=1024
+  reserveDefault=$(( totalMiB / 1024 / 2 ))
+
+  while :; do
+    formInputOpt RESERVE "Space to leave unallocated, in GiB" "$reserveDefault"
+    RESERVE="${RESERVE:-$reserveDefault}"
+
+    if ! [[ $RESERVE =~ ^[0-9]+$ ]] || (( RESERVE < 1 )); then
+      logWarn "Enter a whole number of GiB"
+      continue
+    fi
+
+    rootMiB=$(( totalMiB - ESP - SWAP * 1024 - RESERVE * 1024 - slackMiB ))
+
+    if (( rootMiB < minRootMiB )); then
+      logWarn "That leaves $(( rootMiB / 1024 ))GiB for the system, and at least $(( minRootMiB / 1024 ))GiB is needed"
+      continue
+    fi
+    break
+  done
+
+  ROOT_SIZE="${rootMiB}M"
+  REFIND=true
+}
+
 # == network (optional) ==
 # Lives in secrets.json, so it is asked for on every install
 gatherWifi() {
@@ -719,12 +815,18 @@ gatherSummary() {
 
   row() { printf '    %-14s %s\n' "$1" "$2"; }
 
+  local reserved="none"
+  if (( RESERVE > 0 )); then
+    reserved="${RESERVE}GiB";
+  fi
+
   {
     [[ $REMOTE == true ]] && { row Target "$TARGET"; echo; }
 
     row Hostname "$HOSTNAME"
     row System "$SYSTEM"
-    row Role "$ROLE ${ADDONS[*]}"
+    row Class "$CLASS"
+    row Addons "${ADDONS[*]}"
     row User "$USERNAME <$USEREMAIL>"
     row GPU "${GPU[*]:-skip}"
     row "HW modules" "${HW_MODULES[*]:-skip}"
@@ -732,9 +834,13 @@ gatherSummary() {
     row Locale "$LOCALE / $LOCALE_EXTRA"
     row Keyboard "$KEYBOARD / ${KEYBOARD_VARIANT:-skip}"
     row Disk "$DISK"
+    if [[ $EXISTING == true ]]; then
+      row Identity "$([[ $PRESERVE == true ]] && echo preserved || echo regenerated)"
+    fi
     row Swap "$SWAP"
-    [[ $ROLE == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
-    [[ $ROLE == "desktop" ]] && { row Dotfiles "${DOTFILES:-skip}"; }
+    [[ $CLASS == "desktop" ]] && { row Reserved "$reserved"; }
+    [[ $CLASS == "desktop" ]] && { row Wi-Fi "$wifiStr"; }
+    [[ $CLASS == "desktop" ]] && { row Dotfiles "${DOTFILES:-skip}"; }
   } | gum style --border="rounded" --padding="1 2" --margin="1 0"
 }
 
@@ -746,6 +852,18 @@ gather() {
 
     if [[ $EXISTING == true ]]; then
       loadHost || { logWarn "Pick a different hostname"; continue; }
+      preserveIdentity
+
+      # a layout change is the only reason for a host reinstall
+      REDO_DISK=false
+      if formConfirm "Redo the disk layout?" "n"; then
+        REDO_DISK=true
+        gatherDisk
+        gatherSwap
+        if [[ $CLASS == "desktop" ]]; then
+          gatherLayout
+        fi
+      fi
     else
       gatherRole
       gatherUser
@@ -754,10 +872,16 @@ gather() {
       gatherDisk
       gatherSwap
       
-      [[ $ROLE == "desktop" ]] && gatherDotfiles
+      if [[ $CLASS == "desktop" ]]; then
+        gatherLayout
+        gatherDotfiles
+      fi
     fi
 
-    [[ $ROLE == "desktop" ]] && gatherWifi
+    if [[ $CLASS == "desktop" && $PRESERVE == false ]]; then
+      gatherWifi
+    fi
+
     gatherSummary
 
     if formConfirm "Is this correct?" "y"; then
@@ -773,14 +897,35 @@ generate() {
   formHeader "Generating keys";
 
   # == host keys ==
-  run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$TEMP_DIR/ssh_host_ed25519_key"
+  if [[ $PRESERVE == true ]]; then
+    # ssh-keygen -y prints no comment, so it is put back to keep host.json stable
+    printf '%s root@%s\n' "$(ssh-keygen -y -f "$TEMP_DIR/ssh_host_ed25519_key")" "$HOSTNAME" \
+      > "$TEMP_DIR/ssh_host_ed25519_key.pub"
+  else
+    run ssh-keygen -t ed25519 -N "" -C "root@$HOSTNAME" -f "$TEMP_DIR/ssh_host_ed25519_key"
+  fi
+
   HOST_AGE="$(ssh-to-age < "$TEMP_DIR/ssh_host_ed25519_key.pub")"
   HOST_KEY="$(< "$TEMP_DIR/ssh_host_ed25519_key.pub")"
 
   logInfo "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
 
   # == user keys ==
-  run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$TEMP_DIR/id_ed25519"
+  if [[ $PRESERVE == true ]]; then
+    # the user key is itself a secret, so the host key is enough to recover it.
+    SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$TEMP_DIR/ssh_host_ed25519_key")"
+    export SOPS_AGE_KEY
+
+    sops --decrypt "$FLAKE/hosts/$HOSTNAME/secrets.json" \
+      | jq -j '.["user-privatekey"]' > "$TEMP_DIR/id_ed25519"
+    chmod 600 "$TEMP_DIR/id_ed25519"
+
+    printf '%s %s@%s\n' "$(ssh-keygen -y -f "$TEMP_DIR/id_ed25519")" "$USERNAME" "$HOSTNAME" \
+      > "$TEMP_DIR/id_ed25519.pub"
+  else
+    run ssh-keygen -t ed25519 -N "" -C "$USERNAME@$HOSTNAME" -f "$TEMP_DIR/id_ed25519"
+  fi
+
   USER_AGE="$(ssh-to-age < "$TEMP_DIR/id_ed25519.pub")"
   USER_KEY="$(< "$TEMP_DIR/id_ed25519.pub")"
 
@@ -841,6 +986,11 @@ EOF
 
 # ── write secrets.json ────────
 writeSecrets() {
+  if [[ $PRESERVE == true ]]; then
+    logInfo "Keeping the existing secrets"
+    return 0
+  fi
+
   local hash pwd
 
   formPassword pwd "Login password for '$USERNAME'"
@@ -850,7 +1000,7 @@ writeSecrets() {
     --arg pw "$hash" \
     --rawfile key "$TEMP_DIR/id_ed25519" \
     --argjson wifi "$WIFI" \
-    '{ userPassword: $pw, userPrivateKey: $key }
+    '{ user-password: $pw, user-privatekey: $key }
       + (if $wifi == {} then {} else { wifi: $wifi } end)' \
     > "$FLAKE/hosts/$HOSTNAME/secrets.json"
 
@@ -865,15 +1015,15 @@ writeSecrets() {
 writeHostJson() {
   local rolesJson gpuJson modulesJson
 
-  rolesJson=$(printf '%s\n' "$ROLE" "${ADDONS[@]}" | jq -R . | jq -sc 'map(select(. != ""))')
+  addonsJson=$(printf '%s\n' "${ADDONS[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
   gpuJson=$(printf '%s\n' "${GPU[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
   modulesJson=$(printf '%s\n' "${HW_MODULES[@]:-}" | jq -R . | jq -sc 'map(select(. != ""))')
 
   jq -n \
     --arg flake "/home/${USERNAME}/nixos-config" \
-    --arg hostName "$HOSTNAME" \
     --arg system "$SYSTEM" \
-    --argjson roles "$rolesJson" \
+    --arg class "$CLASS" \
+    --argjson addons "$addonsJson" \
     --arg hostKey "$HOST_KEY" \
     --arg userName "$USERNAME" \
     --arg userEmail "$USEREMAIL" \
@@ -888,9 +1038,9 @@ writeHostJson() {
     '{
       flake: $flake,
       host: { 
-        name: $hostName, 
         system: $system, 
-        roles: $roles, 
+        class: $class,
+        addons: $addons,
         publicKey: $hostKey
       },
       user: { 
@@ -904,13 +1054,13 @@ writeHostJson() {
       },
       locale:{ 
         timeZone: $tz, 
-        default: $localeDefault, 
-        extra: $localeExtra, 
-        xkb = { 
+        default: $locale, 
+        extra: $extra, 
+        xkb: { 
           layout: $layout, 
           variant: $variant
         }
-      },
+      }
     }' > "$FLAKE/hosts/$HOSTNAME/host.json"
 
   git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/host.json"
@@ -954,7 +1104,7 @@ in
       partitions = {
         ESP = {
           type = "EF00";
-          size = "512M";
+          size = "${ESP}M";
           content = {
             type = "filesystem";
             format = "vfat";
@@ -975,7 +1125,7 @@ in
           };
         };
         root = {
-          size = "100%";
+          size = "$ROOT_SIZE";
           content = {
             type = "btrfs";
             subvolumes = {
@@ -1029,6 +1179,26 @@ writeDotfiles() {
   logInfo "Copied dotfiles"
 }
 
+# ── seed rEFInd ────────
+writeRefind() {
+  local src="$FLAKE/assets"
+  local dest="$FLAKE/hosts/$HOSTNAME/home/.config/system/refind"
+
+  if [[ ! -f "$src/refind.conf" ]]; then
+    logWarn "$src/refind.conf is missing, skipping rEFInd"
+    return 0
+  fi
+  
+  if [[ ! -f "$dest/refind.conf" ]]; then
+    mkdir -p "$dest"
+    run cp -rT "$src/refind.conf" "$dest"
+    
+    git -C "$FLAKE" add --intent-to-add "hosts/$HOSTNAME/home/.config/system/refind"
+  fi
+
+  logInfo "Seeded rEFInd config"
+}
+
 # ── writing all host relevant files ────────
 write() {
   formHeader "Writing files";
@@ -1039,11 +1209,19 @@ write() {
   writeSecrets
   writeHostJson
 
-  # An existing host keeps its hardware.nix, disko.nix, and dotfiles
+  # an existing host keeps its hardware.nix and dotfiles
   if [[ $EXISTING != true ]]; then
     writeHardwareNix
-    writeDiskoNix
     writeDotfiles
+  fi
+
+  if [[ $EXISTING != true || $REDO_DISK == true ]]; then
+    writeDiskoNix
+  fi
+
+  # after the dotfiles, so a copied home cannot clobber it
+  if [[ $REFIND == true ]]; then
+    writeRefind
   fi
 
   if formConfirm "Validate files?" "y"; then
