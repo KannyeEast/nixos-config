@@ -1,66 +1,81 @@
-{ lib, ... }:
-let
-  inherit (lib)
-    nameValuePair
-    optionalAttrs
-    ;
-in
 {
   flake.modules.homeManager.desktop =
     {
       config,
+      lib, 
+      pkgs,
       host,
       flake,
       ...
     }:
     let
-      inherit (config.lib.file)
-        mkOutOfStoreSymlink
-        ;
-
+      source = "${flake}/hosts/${host.name}/home";
+      target = config.home.homeDirectory;
+      
       # hosts/<host>/home mirrors $HOME itself:
       # home/.zshrc              -> ~/.zshrc
       # home/.config/niri/...    -> ~/.config/niri/...
-      # home/some/custom/dir/... -> ~/some/custom/dir/...
-      dotfilesDir = ../../hosts/${host.name}/home;
+      sync = pkgs.writeShellApplication {
+        name = "dotfiles-sync";
+        runtimeInputs = [
+          pkgs.coreutils
+          pkgs.findutils
+        ];
+        text = ''
+          src=${lib.escapeShellArg source}
+          dst=${lib.escapeShellArg target}
 
-      # https://gist.github.com/mawkler/195def384fd3f73aeb9a965c82781483
-      mkSymlinks =
-        storePath: realPath:
-        let
-          readDirRecursive =
-            relativePath: nixPath:
-            let
-              entries = builtins.readDir nixPath;
-              names = builtins.attrNames entries;
-            in
-            builtins.concatLists (
-              map (
-                name:
-                let
-                  relativePath' = if relativePath == "" then name else "${relativePath}/${name}";
-                  nixPath' = nixPath + "/${name}";
-                in
-                if entries.${name} == "directory" then
-                  readDirRecursive relativePath' nixPath'
-                else
-                  [ relativePath' ]
-              ) names
-            );
+          [ -d "$src" ] || { echo "dotfiles: $src does not exist" >&2; exit 1; }
 
-          mkSymLink =
-            nixPath:
-            nameValuePair nixPath {
-              source = mkOutOfStoreSymlink "${realPath}/${nixPath}";
-            };
-        in
-        builtins.listToAttrs (map mkSymLink (readDirRecursive "" storePath));
+          # link every file, creating directories as needed
+          while IFS= read -r rel; do
+            link="$dst/$rel"
+
+            # never edit an existing $HOME file that is not linked to this hosts home/ config
+            if [ -e "$link" ] && [ ! -L "$link" ]; then
+              echo "dotfiles: $link is a real file, backing it up" >&2
+              mv -- "$link" "$link.bak"
+            fi
+
+            mkdir -p -- "$(dirname -- "$link")"
+            ln -sfnT -- "$src/$rel" "$link"
+          done < <(find "$src" -type f -printf '%P\n')
+
+          # drop links when the source is gone
+          while IFS= read -r top; do
+            [ -e "$dst/$top" ] || continue
+            find "$dst/$top" -xtype l -lname "$src/*" -delete
+          done < <(find "$src" -mindepth 1 -maxdepth 1 -printf '%P\n')
+        '';
+      };
     in
     {
       config = {
-        home.file = optionalAttrs (builtins.pathExists dotfilesDir) (
-          mkSymlinks dotfilesDir "${flake}/hosts/${host.name}/home"
-        );
+        home.packages = [ sync ];
+
+        # first pass at activation
+        home.activation.dotfiles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          ${lib.getExe sync} || true
+        '';
+
+        systemd.user.services.dotfiles = {
+          Unit.Description = "Mirror the host's dotfiles into $HOME";
+          Install.WantedBy = [ "default.target" ];
+
+          Service = {
+            # second pass on change; watch the source directory for changes
+            ExecStart = "${pkgs.writeShellScript "dotfiles-watch" ''
+              while :; do
+                ${lib.getExe sync} || true
+                ${lib.getExe' pkgs.inotify-tools "inotifywait"} \
+                  -r -q -e create,delete,move,close_write \
+                  ${lib.escapeShellArg source} >/dev/null || true
+                sleep 0.2
+              done
+            ''}";
+            Restart = "always";
+          };
+        };
       };
     };
 }

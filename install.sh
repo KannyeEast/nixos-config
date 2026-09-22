@@ -747,7 +747,7 @@ gatherLayout() {
     break
   done
 
-  ROOT_SIZE="${rootMiB}M"
+  ROOT_SIZE="$(( rootMiB / 1024 ))G"
   REFIND=true
 }
 

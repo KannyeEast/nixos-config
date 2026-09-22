@@ -66,6 +66,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
+    
+    ## Shell
+    # @TODO: Custom shell import here
 
     # Server
     ## Infrastructure and network diagrams
